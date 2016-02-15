@@ -1,22 +1,80 @@
 examples.frame.ps = function() {
-  library(rmdtools)
   library(EconCurves)
   setwd("D:/libraries/rmdtools")
   txt = readLines("test.rmd")
-  te = rtutor.make.frame.ps.te(txt)
+  frame.ind = NULL
+  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind))
   te$lang = "de"
-  bdf = te$bdf; br = bdf[bi,]; str = te$txt[br$start:br$end]
-
-  frame.inds = which(bdf$type == "frame")
-  ind = frame.inds[2]
-  fr = bdf[ind,]
-  ui = fr$ui[[1]]
-  
-  view.html(ui=ui, browser=TRUE)
+  bdf = te$bdf
+  ui = make.te.ui(te=te)
+  view.html(ui=ui)
   
 }
 
-rtutor.make.frame.ps.te = function(txt,addons="quiz",filter.fun = NULL,...) {
+make.te.ui = function(te, bdf=te$bdf) {
+  rows = which(bdf$parent == 0)
+  
+  ui.li = bdf$ui[rows]
+  
+}
+
+bdf.frame.filter = function(line=NULL,frame.ind=NULL,type.ind=frame.ind,bdf.ind=NULL,type,keep.precompute=TRUE) {
+  bdf.type.filter(line,type.ind,bdf.ind,type="frame", keep.precompute=keep.precompute)
+}
+
+bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type,keep.precompute=TRUE) {
+  outer.type = type
+  
+  types.to.keep = NULL
+  if (keep.precompute) {
+    types.to.keep = "precompute"
+  }
+  function(bdf, te=NULL) {
+    restore.point("in.bdf.type.filer")
+    
+    bdf.ind = get.bdf.ind(line=line,type.ind=type.ind,bdf.ind=bdf.ind,bdf=bdf,te=te,type=type)
+    if (is.null(bdf.ind)) return(bdf)
+    
+    child.ind = which(bdf[,paste0("parent_",type)] == bdf.ind)
+    keep = bdf$type %in% types.to.keep & bdf$index <= bdf.ind
+    for (ktype in types.to.keep) {
+      keep = keep | (bdf[,paste0("parent_",ktype)] >0 & bdf$index <= bdf.ind)
+    }
+    keep.ind = which(keep)
+    
+    rows = sort(unique(c(keep.ind,bdf.ind,child.ind)))
+    bdf[rows,,drop=FALSE]
+  }
+  
+}
+
+get.bdf.ind = function(line=NULL,type.ind=NULL, bdf.ind=NULL, bdf=NULL, type=NULL, te=NULL) {
+  if (!is.null(bdf.ind)) return(bdf.ind)
+  if (!is.null(type.ind)) {
+    return(bdf$index[bdf$type==type][type.ind]) 
+  }
+  if (!is.null(line)) {
+    return(line.to.bdf.ind(line=line,bdf=bdf, type=type,te=te))
+  }
+  return(NULL)
+}
+
+line.to.bdf.ind = function(line,bdf,type=NULL,txt.start = if (is.null(te$txt.start)) 1 else te$txt.start, te=NULL) {
+  line = line-txt.start+1
+  if (!is.null(type)) {
+    df = df[bdf$type==type,,drop=FALSE]
+  } else {
+    df = bdf
+  }
+  rows = df$start <= line & df$end >= row
+  if (length(rows)>1) {
+    return(rows[which.max(df$start[rows])])
+  }
+  return(rows)
+}
+
+
+rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,...) {
   restore.point("rtutor.make.frame.ps.te")
 
   te = new.env()
@@ -30,14 +88,14 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",filter.fun = NULL,...) {
   txt = mark_utf8(txt)
 
   # Only capture elements between the lines <!-- START --> and <!-- END -->
-  res = rmd.between.start.end.lines(txt)
+  res = rmd.between.start.end.lines(txt,return.start.end = TRUE)
   te$txt.start = res$start; te$txt.end = res$end
   txt = res$txt
 
   
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
-  parent.types = c("frame","column","chunk","preknit","precompute","knit","compute","info")
+  parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
 
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
@@ -45,8 +103,9 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",filter.fun = NULL,...) {
   bdf$prefixed = bdf$ui.in.parent = bdf$has.ui = bdf$is.addon =  FALSE
   
   # Filter bdf if only a subset of elements shall be compiled / shown
-  if (!is.null(filter.fun)) {
-    bdf = filter.fun(bdf, te=te)
+  if (!is.null(bdf.filter)) {
+    bdf = bdf.filter(bdf=bdf, te=te)
+    bdf$index = 1:NROW(bdf)
   }
   
   
