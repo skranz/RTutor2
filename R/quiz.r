@@ -268,7 +268,7 @@ quiz.ui = function(qu, solution=FALSE) {
     }
   })
   if (!is.null(qu$checkBtnId)) {
-    pli = c(pli, list(actionButton(qu$checkBtnId,label = "check")))
+    pli = c(pli, list(actionButton(qu$checkBtnId,label = "check"),br()))
   }
 
   pli
@@ -280,23 +280,23 @@ quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnI
   )
   if (solution) {
     if (part$type=="numeric") {
-      answer = textInput(part$answerId, label = "",value = part$answer)
+      answer = textInput(part$answerId, label = NULL,value = part$answer)
     } else if (part$type =="text") {
-      answer = textInput(part$answerId, label = "",value = part$answer)
+      answer = textInput(part$answerId, label = NULL,value = part$answer)
     } else if (part$type=="mc") {
-      answer = checkboxGroupInput(part$answerId, "",part$choices,selected = part$answer)
+      answer = checkboxGroupInput(part$answerId, label=NULL,part$choices,selected = part$answer)
     } else if (part$type=="sc") {
-      answer = radioButtons(part$answerId, "",part$choices, selected=part$answer)
+      answer = radioButtons(part$answerId, label=NULL,part$choices, selected=part$answer)
     }
   } else {
     if (part$type=="numeric") {
-      answer = textInput(part$answerId, label = "",value = "")
+      answer = textInput(part$answerId, label = NULL,value = "")
     } else if (part$type =="text") {
-      answer = textInput(part$answerId, label = "",value = "")
+      answer = textInput(part$answerId, label = NULL,value = "")
     } else if (part$type=="mc") {
-      answer = checkboxGroupInput(part$answerId, "",part$choices)
+      answer = checkboxGroupInput(part$answerId, label=NULL,part$choices)
     } else if (part$type=="sc") {
-      answer = radioButtons(part$answerId, "",part$choices, selected=NA)
+      answer = radioButtons(part$answerId, label=NULL,part$choices, selected=NA)
     }
   }
 
