@@ -170,7 +170,7 @@ make.rtutor.ui = function(shiny.dt = ps$shiny.dt,cdt=ps$cdt, ps=get.ps(), just.i
   
   view.ui.li = make.view.ui.li(ps=ps)
   ex.ui.li = make.ex.ui.li(ps=ps)
-  #show.html(view.ui.li[[3]])
+  #shown.html(view.ui.li[[3]])
   
   li = list()
   if (isTRUE(ps$show.data.exp)) {

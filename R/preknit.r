@@ -138,16 +138,16 @@ create.rps.chunk.html = function(cdt, chunk.ind, chunk.env, success.message=isTR
 }
 
 
-create.cdt.show.html = function(cdt) {
-  restore.point("create.cdt.show.html")
-  show.html = sapply(1:NROW(cdt), create.show.chunk.html, cdt=cdt)
-  show.html
+create.cdt.shown.html = function(cdt) {
+  restore.point("create.cdt.shown.html")
+  shown.html = sapply(1:NROW(cdt), create.show.chunk.html, cdt=cdt)
+  shown.html
 }
 
 create.show.chunk.html = function(chunk.ind,cdt, eval=FALSE, echo=TRUE, quiet=TRUE) {
   restore.point("create.show.chunk.html")
   
-  txt = paste0("# Not yet solved...\n# Press 'edit' to enter your code.\n\n",cdt$task.txt[[chunk.ind]])
+  txt = paste0("# Not yet solved...\n# Press 'edit' to enter your code.\n\n",cdt$shown.txt[[chunk.ind]])
   name = cdt$chunk.name[[chunk.ind]]
   opt = default.out.chunk.options()
   opt$eval = eval

@@ -70,7 +70,7 @@ create.ps = function(sol.file, ps.name=NULL, user.name= "ENTER A USER NAME HERE"
                         user.name=sol.user.name, ps.dir=dir)
 
 
-  show.txt = write.empty.ps(te=te,  header=header,footer=footer,
+  shown.txt = write.empty.ps(te=te,  header=header,footer=footer,
                             user.name=user.name, ps.dir=dir)
   rps = te.to.rps(te=te)
 
@@ -78,19 +78,19 @@ create.ps = function(sol.file, ps.name=NULL, user.name= "ENTER A USER NAME HERE"
   
   # Store information about empty problem set in order to easily export
   # an html problem set into it
-  show.txt = sep.lines(show.txt)
+  shown.txt = sep.lines(shown.txt)
   
   rmd.header = output.solution.header(rps=rps, te=te)
-  rmd.txt = c(rmd.header,sep.lines(te$show.txt))
+  rmd.txt = c(rmd.header,sep.lines(te$shown.txt))
   rps$empty.rmd.txt = rmd.txt
   rps$empty.rmd.chunk.lines = get.chunk.lines(rmd.txt)
-  #rps$empty.rmd.user.name.line = which(str.starts.with(show.txt,"user.name = '"))[1]
-  #rps$empty.rmd.ps.dir.line = which(str.starts.with(show.txt,"ps.dir =  '"))[1]
-  #rps$empty.rmd.ps.file.line = which(str.starts.with(show.txt,"ps.file = '"))[1]
+  #rps$empty.rmd.user.name.line = which(str.starts.with(shown.txt,"user.name = '"))[1]
+  #rps$empty.rmd.ps.dir.line = which(str.starts.with(shown.txt,"ps.dir =  '"))[1]
+  #rps$empty.rmd.ps.file.line = which(str.starts.with(shown.txt,"ps.file = '"))[1]
 
   if (add.shiny) {
-    rps$shiny.dt = make.shiny.dt(rps=rps, txt=show.txt)
-    rps$cdt$show.html = create.cdt.show.html(rps$cdt)
+    rps$shiny.dt = make.shiny.dt(rps=rps, txt=shown.txt)
+    rps$cdt$shown.html = create.cdt.shown.html(rps$cdt)
   }
 
   source.rps.extra.code(extra.code.file, rps)
@@ -219,12 +219,12 @@ write.output.solution = function(file = paste0(ps.name,"_output_solution.Rmd"), 
 }
 
 
-write.empty.ps = function(file = paste0(te$ps.name,".Rmd"), show.txt=te$show.txt,ps.name=te$ps.name, te,...) {
+write.empty.ps = function(file = paste0(te$ps.name,".Rmd"), shown.txt=te$shown.txt,ps.name=te$ps.name, te,...) {
 
 
-  show.txt = include.ps.extra.lines(show.txt, ps.file=file, ps.name=ps.name,te=te,...)
-  writeLines(show.txt, file, useBytes=TRUE)
-  invisible(show.txt)
+  shown.txt = include.ps.extra.lines(shown.txt, ps.file=file, ps.name=ps.name,te=te,...)
+  writeLines(shown.txt, file, useBytes=TRUE)
+  invisible(shown.txt)
 }
 
 te.to.rps = function(te) {
@@ -277,7 +277,7 @@ te.to.rps = function(te) {
 
     sol.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$sol.txt, collapse="\n"))
 
-    show.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$show.txt, collapse="\n"))
+    shown.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$shown.txt, collapse="\n"))
     part =  lapply(ex$chunks, function(chunk) chunk$part)
     e.li = lapply(ex$chunks, function(ck) {
       ck$e.li
@@ -287,7 +287,7 @@ te.to.rps = function(te) {
     })
 
 
-    dt = data.table(ex.ind = ex.ind, ex.name = names(te$ex)[ex.ind], chunk.ps.ind=0, chunk.ex.ind = seq_along(ex$chunks), chunk.name = names(ex$chunks), chunk.opt=chunk.opt, part=part, num.e = num.e, num.e.shown=num.e.shown, has.test = has.test, e.li = e.li, e.source.li = e.source.li, test.expr=test.expr, hint.expr=hint.expr, show.txt = show.txt, sol.txt=sol.txt, optional=optional, chunk.hint=chunk.hint)
+    dt = data.table(ex.ind = ex.ind, ex.name = names(te$ex)[ex.ind], chunk.ps.ind=0, chunk.ex.ind = seq_along(ex$chunks), chunk.name = names(ex$chunks), chunk.opt=chunk.opt, part=part, num.e = num.e, num.e.shown=num.e.shown, has.test = has.test, e.li = e.li, e.source.li = e.source.li, test.expr=test.expr, hint.expr=hint.expr, shown.txt = shown.txt, sol.txt=sol.txt, optional=optional, chunk.hint=chunk.hint)
     # Remove chunks without expressions
     dt = dt[add.chunk,]
     if (NROW(dt)>0)
@@ -415,7 +415,7 @@ parse.no.change.line = function(row,str,txt, te) {
   restore.point("parse.no.change.line")
   # Normal Markdown text without being in a block
   if (!te$in.chunk & !te$in.block) {
-    te$show.txt = c(te$show.txt, str)
+    te$shown.txt = c(te$shown.txt, str)
     te$sol.txt = c(te$sol.txt, str)
     te$out.txt = c(te$out.txt, str)
 
@@ -564,7 +564,7 @@ parse.command.line = function(row,str,txt, te) {
   str = str.trim(str.right.of(str,"#!"))
   com = str.left.of(str," ")
   if (com == "start_note" | com == "end_note") {
-    te$show.txt = c(te$show.txt, paste0("#! ", str))
+    te$shown.txt = c(te$shown.txt, paste0("#! ", str))
   } else {
     stop(paste0("In row ", row, " you have written an unknown command:\n",str), call.=FALSE)
   }
@@ -575,7 +575,7 @@ parse.command.line = function(row,str,txt, te) {
 add.te.chunk = function(te,ck) {
   restore.point("add.te.chunk")
   if (length(ck$e.li)>0 | isTRUE(ck$has.shown)) {
-    te$show.txt = c(te$show.txt, te$chunk.head, ck$show.txt,"```")
+    te$shown.txt = c(te$shown.txt, te$chunk.head, ck$shown.txt,"```")
     te$sol.txt = c(te$sol.txt, te$chunk.head, ck$sol.txt,"```")
     te$out.txt = c(te$out.txt, te$chunk.head, ck$out.txt,"```")
     ck$add = TRUE
@@ -678,7 +678,7 @@ add.te.code = function(te,ck) {
   ck$sol.txt = c(ck$sol.txt, te$block.txt)
   ck$out.txt = c(ck$out.txt, te$block.txt)
   if (show) {
-    ck$show.txt = c(ck$show.txt, te$block.txt)
+    ck$shown.txt = c(ck$shown.txt, te$block.txt)
   }
 
   if (!notest) {
@@ -717,8 +717,8 @@ add.te.code = function(te,ck) {
         enter.code.str =  ""
       }
       if (!show &
-        !identical(te$show.txt[length(te$show.txt)], enter.code.str)) {
-        ck$show.txt = c(ck$show.txt, enter.code.str)
+        !identical(te$shown.txt[length(te$shown.txt)], enter.code.str)) {
+        ck$shown.txt = c(ck$shown.txt, enter.code.str)
       }
     # Empty code.txt
     } else {
@@ -756,8 +756,8 @@ add.te.compute = function(te,ck,var) {
 
   enter.code.str =  "\n# enter your code here ...\n"
   enter.code.str =  ""
-  if (!identical(te$show.txt[length(te$show.txt)], enter.code.str)) {
-    ck$show.txt = c(ck$show.txt, enter.code.str)
+  if (!identical(te$shown.txt[length(te$shown.txt)], enter.code.str)) {
+    ck$shown.txt = c(ck$shown.txt, enter.code.str)
   }
 }
 
@@ -802,7 +802,7 @@ add.te.info = function(te) {
   }
   info = list(info.name=info.name,type="html", html=html, rmd=txt)
   str = paste0('info("', info.name,'") # Run this line (Strg-Enter) to show info')
-  te$show.txt = c(te$show.txt,str)
+  te$shown.txt = c(te$shown.txt,str)
   te$sol.txt = c(te$sol.txt, str)
   te$out.txt = c(te$out.txt,"\n***\n", paste0("### Info: ", info.name),te$block.txt,"\n***\n")
 
@@ -830,7 +830,7 @@ add.te.addon = function(te,type,args=NULL) {
   placeholder = paste0("#! ", rta$id)
 
 
-  te$show.txt = c(te$show.txt,placeholder)
+  te$shown.txt = c(te$shown.txt,placeholder)
   te$sol.txt = c(te$sol.txt, Addon$sol.txt.fun(ao))
   te$out.txt = c(te$out.txt, Addon$out.txt.fun(ao))
 
@@ -980,7 +980,7 @@ get.empty.chunk = function() {
   ck$test.txt = NULL
   ck$hint.txt = NULL
   ck$chunk.hint.txt = NULL
-  ck$show.txt = NULL
+  ck$shown.txt = NULL
   ck$sol.txt = NULL
   ck$out.txt = NULL
   ck$expr = NULL
@@ -997,7 +997,7 @@ get.empty.te = function(Addons=NULL) {
   te$in.chunk = FALSE
   te$block.head = NULL
 
-  te$show.txt = NULL
+  te$shown.txt = NULL
   te$sol.txt = NULL
   te$out.txt = NULL
   te$code.txt = NULL

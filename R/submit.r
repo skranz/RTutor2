@@ -41,7 +41,7 @@ make.submission = function(ps=get.ps(), user.name=get.user.name(),  ps.name=ps$n
   rmd.code = readLines(ps$stud.file)
   ps$stud.code = rmd.code
   cdt$stud.code = get.stud.chunk.code(ps=ps)
-  cdt$code.as.shown = cdt$stud.code == cdt$show.txt
+  cdt$code.as.shown = cdt$stud.code == cdt$shown.txt
   cdt$chunk.changed = cdt$stud.code != cdt$old.stud.code
   cdt$old.stud.code = cdt$stud.code
   

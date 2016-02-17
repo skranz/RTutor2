@@ -230,13 +230,13 @@ make.chunk.output.ui = function(chunk.ind, ps = get.ps()) {
     
   } else {
     
-    if ((identical(code, ps$cdt$show.txt[[chunk.ind]]) | isTRUE(ps$noeval)) & !is.null(ps$cdt$show.html)) {
+    if ((identical(code, ps$cdt$shown.txt[[chunk.ind]]) | isTRUE(ps$noeval)) & !is.null(ps$cdt$shown.html)) {
       # just show precompiled show
-      html = ps$cdt$show.html[[chunk.ind]]
+      html = ps$cdt$shown.html[[chunk.ind]]
     } else {
       # compile no solution again
       if (ps$noeval) {
-        shown = ps$cdt$show.txt[[chunk.ind]]
+        shown = ps$cdt$shown.txt[[chunk.ind]]
         html = chunk.to.html(shown, chunk.ind, eval=FALSE, nali=nali)
       } else {
         html = chunk.to.html(code, chunk.ind, eval=FALSE, nali=nali)
@@ -460,7 +460,7 @@ restore.shiny.chunk = function(chunk.ind=ps$chunk.ind,...,session=ps$session,ps=
   restore.point("restore.shiny.chunk")
   set.shiny.chunk(chunk.ind)
 
-  ps$cdt$stud.code[[chunk.ind]] = ps$cdt$show.txt[[chunk.ind]]
+  ps$cdt$stud.code[[chunk.ind]] = ps$cdt$shown.txt[[chunk.ind]]
   ps$cdt$is.solved[[chunk.ind]] = FALSE
   ps$stud.code = ps$cdt$stud.code[[chunk.ind]]
 

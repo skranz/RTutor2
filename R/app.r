@@ -179,11 +179,11 @@ rtutor.show.user.session = function(user.name, ps=get.ps()) {
     cdt$stud.code[rows] = cdt$sol.txt[rows]
 
     rows = !cdt$is.solved & changed
-    cdt$stud.code[rows] = cdt$show.txt[rows]
+    cdt$stud.code[rows] = cdt$shown.txt[rows]
     
   } else {
     cdt$is.solved = FALSE
-    cdt$stud.code = cdt$show.txt
+    cdt$stud.code = cdt$shown.txt
     ups$chunk.ind = 1
     #stop("Apps without precomp or noeval are not yet implemented!")
   }

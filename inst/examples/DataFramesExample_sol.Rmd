@@ -61,7 +61,9 @@ data.frame(x=runif(T),y=runif(T)*100000, z=runif(T))
 
 Enter 2*2
 ```{r}
+#< show
 2*2
+#>
 ```
 
 That's all folks!

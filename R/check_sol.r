@@ -66,7 +66,7 @@ Note: use / instead of \\ to separate folders in 'ps.dir'")
 
   ps$stud.code = readLines(ps$stud.file)
   cdt$stud.code = get.stud.chunk.code(ps=ps)
-  cdt$code.is.as.given = cdt$stud.code == cdt$show.txt
+  cdt$code.as.shown = cdt$stud.code == cdt$shown.txt
   cdt$chunk.changed = cdt$stud.code != cdt$old.stud.code
   cdt$old.stud.code = cdt$stud.code
 
@@ -109,7 +109,7 @@ Note: use / instead of \\ to separate folders in 'ps.dir'")
     save.ups()
     if (ret==FALSE) {
       edt$ex.solved[i] = FALSE
-      if (cdt$code.is.as.given[ps$chunk.ind]) {
+      if (cdt$code.as.shown[ps$chunk.ind]) {
         message = paste0("You have not yet started with chunk ", cdt$chunk.name[ps$chunk.ind],"\nIf you have no clue how to start, try hint().")
         #cat(message)
         stop.without.error(message)
@@ -195,7 +195,7 @@ check.chunk = function(chunk.ind,ps=get.ps(), verbose=FALSE,stud.code=ps$cdt$stu
   test.li = ck$test.expr[[1]]
 
   if (expect.change)  {
-    if (stud.code == ck$show.txt) {
+    if (stud.code == ck$shown.txt) {
       ck$chunk.changed = FALSE
       ps$failure.message = paste0("You have not yet changed chunk ", chunk.name)
       return(FALSE)

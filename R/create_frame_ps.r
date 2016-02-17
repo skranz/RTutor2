@@ -1,8 +1,9 @@
 examples.frame.ps = function() {
   library(EconCurves)
   setwd("D:/libraries/RTutor2")
-  txt = readLines("test.rmd")
+  txt = readLines("ex.Rmd")
   frame.ind = NULL
+  options(warn=2)
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind))
   te$lang = "de"
   bdf = te$bdf
@@ -41,13 +42,18 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
   df = adapt.for.back.to.blocks(df,te=te)
+  df$is.addon = df$type %in% addons
+  df$parent_addon = get.levels.parents(df$level, df$is.addon)
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
-
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
+
   bdf$obj = bdf$ui = vector("list", NROW(bdf))
-  bdf$prefixed = bdf$is.addon = bdf$has.handler =  FALSE
-  bdf$show.rmd = bdf$out.rmd = bdf$sol.rmd = ""
+  bdf$prefixed = bdf$has.handler = bdf$is.task = FALSE
+  bdf$task.ind = 0
+  bdf$id = NA_character_
+  bdf$shown.rmd = bdf$out.rmd = bdf$sol.rmd = ""
+  
   
   # Filter bdf if only a subset of elements shall be compiled / shown
   if (!is.null(bdf.filter)) {
@@ -63,6 +69,8 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   te$pre.env = ps.baseenv
   te$env = new.env(parent=parent.env(globalenv()))
   
+
+  
   # Go through blocks and chunks, ordered by end
   binds = order(bdf$end, -bdf$start)
   bi = binds[1]
@@ -76,6 +84,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
       stop(msg)
     }
   }
+  te$bdf$task.ind = cumsum(te$bdf$is.task) * te$bdf$is.task
   te
 }
 
@@ -151,17 +160,20 @@ rtutor.parse.block = function(bi,te) {
   
   # Don't parse blocks inside chunks here
   if (te$bdf$parent_chunk[[bi]] >0) return()
+  if (te$bdf$parent_addon[[bi]] >0) return()
 
+  
   type = te$bdf$type[[bi]]
   if (type %in% te$addons) {
     bdf = te$bdf; br = bdf[bi,];
     str = te$txt[br$start:br$end]
+    Ao = te$Addons[[type]]
     
-    ao = te$Addons[[type]]$parse.fun(str, id = paste0(type,"__",bi))
-    ui = te$Addons[[type]]$shiny.ui.fun(ao)
+    ao = Ao$parse.fun(str, id = paste0(type,"__",bi))
+    ui = Ao$shiny.ui.fun(ao)
     set.bdf.ui(ui,bi,te)
     te$bdf$obj[[bi]] = list(ao=ao)
-    te$bdf$is.addon[[bi]] = te$bdf$has.handler[[bi]] = TRUE
+    te$bdf$is.task[[bi]] = Ao$is.task
     return()
   }
   
@@ -193,14 +205,15 @@ rtutor.parse.chunk = function(bi,te) {
     res = eval(expr,te$pre.env)
     te$bdf$obj[[bi]]$pre.env = copy.env(te$pre.env)
     te$bdf$prefixed[[bi]] = TRUE
-    te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = mstr
+    te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
   } else if (chunk.preknit) {
     ui = knit.rmd(str,envir = te$pre.env,out.type="shiny")
     set.bdf.ui(ui, bi,te)
-    te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = mstr
+    te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
   } else {
     # chunk that user must enter
     set.bdf.ui(uiOutput(paste0("chunkUI__",bi)),bi,te)
+    te$bdf$is.task[bi] = TRUE
   }
 }
 
@@ -213,7 +226,7 @@ rtutor.parse.preknit = function(bi,te) {
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
   ui.li = res$ui.li
   set.bdf.ui(ui.li,bi,te)
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
   return()
   
   # old code knit everything
@@ -235,7 +248,7 @@ rtutor.parse.column = function(bi,te) {
   
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
   
   
   ui.li = res$ui.li
@@ -324,7 +337,7 @@ rtutor.parse.solved = function(bi,te) {
   restore.point("rtutor.parse.success")
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE)
   ui.li = res$ui.li
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
 
   id = paste0("solved_block__",bi)
   te$bdf$obj[[bi]] = list(ui = ui.li, id=id)
@@ -338,7 +351,7 @@ rtutor.parse.row = function(bi,te) {
   
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
   
   ui.li = res$ui.li
   ui = fluidRow(
@@ -357,7 +370,7 @@ rtutor.parse.frame = function(bi,te) {
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, children=children, keep.null=TRUE)
   title = paste0("## Frame ", args$name)
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(title,res$show.rmd)),merge.lines(c(title,res$sol.rmd)),merge.lines(c(title,res$out.rmd)))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(title,res$shown.rmd)),merge.lines(c(title,res$sol.rmd)),merge.lines(c(title,res$out.rmd)))
   
   ui.li = res$ui.li
   is.child = !res$is.frag
@@ -397,7 +410,7 @@ rtutor.parse.info = rtutor.parse.note =  function(bi,te) {
   
   head = paste0("### ", title)
   foot = paste0("---")
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$show.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$shown.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
 
 }
 
@@ -415,7 +428,7 @@ rtutor.parse.references = function(bi,te) {
 
   head = paste0("### ", title)
   foot = paste0("---")
-  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)))
 
 }
 
@@ -465,7 +478,7 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
   res = get.non.children.fragments(bi,te, child.ind = which(children))
   is.frag = res$is.frag
   is.child = !is.frag
-  ui = sol.rmd = show.rmd = out.rmd = res$frag
+  ui = sol.rmd = shown.rmd = out.rmd = res$frag
 
   ui[is.frag] = lapply(ui[is.frag], function(txt) {
     HTML(md2html(txt, fragment.only = TRUE))
@@ -475,7 +488,7 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
     bdf$ui[[ind]]
   })
   sol.rmd[is.child] = bdf$sol.rmd[children]
-  show.rmd[is.child] = bdf$show.rmd[children]
+  shown.rmd[is.child] = bdf$shown.rmd[children]
   out.rmd[is.child] = bdf$out.rmd[children]
 
     
@@ -485,7 +498,7 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
     is.frag = is.frag[null.ui]
   }
   names(ui) = NULL
-  list(ui.li=ui, sol.rmd=sol.rmd,show.rmd=show.rmd,out.rmd=out.rmd, is.frag=is.frag)
+  list(ui.li=ui, sol.rmd=sol.rmd,shown.rmd=shown.rmd,out.rmd=out.rmd, is.frag=is.frag)
 }
 
 get.non.children.fragments = function(bi,te,bdf=te$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE) {
@@ -565,7 +578,7 @@ fast.name.rmd.chunks = function(txt,prefix = "chunk_", chunk.lines = NULL, metho
   }
   right = str
   right[has.eq] = paste0(", ",str[has.eq])
-  right[has.comma] = substring(str[has.comma],comma.pos)
+  right[has.comma] = substring(str[has.comma],comma.pos[has.comma])
   right[!has.comma & !has.eq] = "}"
   
   new =  paste0("```{r ",name,right)

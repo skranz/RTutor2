@@ -24,16 +24,17 @@ rtutor.addon.quiz = function() {
     package = "RTutor",
     type = "quiz",
     mode = "block",
+    is.task = TRUE,
     parse.fun = rtutor.quiz.block.parse,
     shiny.init.fun = rtutor.quiz.init.shiny,
     shiny.ui.fun = rtutor.quiz.shiny.ui,
-    show.txt.fun = rtutor.quiz.show.txt.fun,
+    shown.txt.fun = rtutor.quiz.shown.txt.fun,
     sol.txt.fun = rtutor.quiz.sol.txt.fun,
     out.txt.fun = rtutor.quiz.sol.txt.fun
   )
 }
 
-rtutor.quiz.show.txt.fun = function(ao,solved=FALSE,...) {
+rtutor.quiz.shown.txt.fun = function(ao,solved=FALSE,...) {
   quiz.md(ao,solution = solved)
 } 
 
@@ -49,9 +50,9 @@ rtutor.quiz.init.shiny = function(ao,ps=get.ps(), app=getApp(),...) {
   add.quiz.handlers(qu=ao, quiz.handler=rtutor.quiz.handler)    
 }
 
-rtutor.quiz.block.parse = function(txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL,...) {
+rtutor.quiz.block.parse = function(txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL,...) {
   restore.point("rtutor.quiz.block.parse")
-  qu = shinyQuiz(id = id,yaml = merge.lines(txt),add.handler = FALSE)
+  qu = shinyQuiz(id = id,yaml = merge.lines(txt), bdf = NULL,add.handler = FALSE)
 
   rta = as.environment(list(
     id=id,type=type,optional=TRUE, changes.env=FALSE, max.points=qu$max.points,
@@ -133,12 +134,31 @@ quizDefaults = function(lang="en") {
 #' @param quiz.handler a function that will be called if the quiz is checked.
 #'        The boolean argument solved is TRUE if the quiz was solved
 #'        and otherwise FALSE
-shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml,  quiz.handler=NULL, add.handler=TRUE, single.check.btn=TRUE, defaults=quizDefaults(lang=lang), lang="en") {
+shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, single.check.btn=TRUE, defaults=quizDefaults(lang=lang), lang=NULL) {
   restore.point("shinyQuiz")
 
+  if (is.null(lang)) lang = "en"
+  
   if (is.null(qu)) {
     yaml = enc2utf8(yaml)
+    
+    yaml = sep.lines(yaml)
+    sep = which(str.trim(yaml)=="---")
+    if (length(sep)>0) {
+      rows = (sep+1):(length(yaml)-1)
+      if (rows[2]<rows[1]) rows = integer()
+      blocks.txt = yaml[rows]
+      yaml = yaml[1:(sep-1)]
+    }
+    yaml = merge.lines(yaml)
     qu = try(mark_utf8(read.yaml(text=yaml)), silent=TRUE)
+    
+    if (!is.null(blocks.txt) & is.null(qu$bdf)) {
+      qu$bdf = find.rmd.nested(blocks.txt)
+    } else {
+      qu$bdf = NULL
+    }
+    
     if (is(qu,"try-error")) {
       err = paste0("When importing quiz:\n",paste0(yaml, collapse="\n"),"\n\n",as.character(qu))
       stop(err,call. = FALSE)

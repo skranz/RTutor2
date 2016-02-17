@@ -22,6 +22,7 @@ show.frame.ps = function(te, frame.ind=1, dir=getwd()) {
   
   ps = te
   bdf = ps$bdf
+  ps$show.frames = NULL
   ps$num.frames = sum(bdf$type=="frame")
   add.navigate.handlers()
   set.frame(frame.ind,ps=ps)
@@ -96,7 +97,10 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),...) {
   
   ao.ind = which(bdf$parent_frame == bi & bdf$is.addon)
   addons = lapply(ao.ind, function(ind) bdf$obj[[ind]]$ao)
-  rtutor.init.addons(addons,ps)
+  if (!frame.ind %in% ps$shown.frames) {
+    rtutor.init.addons(addons,ps)
+    ps$shown.frames = c(ps$shown.frames,frame.ind) 
+  }
   
   obj = ps$bdf$obj[[bi]]
   header.ui = tagList(
