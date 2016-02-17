@@ -4,7 +4,7 @@ examples.frame.ps = function() {
   txt = readLines("ex.Rmd")
   frame.ind = NULL
   options(warn=2)
-  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind))
+  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind),catch.errors = FALSE)
   te$lang = "de"
   bdf = te$bdf
   show.frame.ps(te)
@@ -14,7 +14,7 @@ examples.frame.ps = function() {
   
 }
 
-rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),...) {
+rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),catch.errors=TRUE,ps.id = "",...) {
   restore.point("rtutor.make.frame.ps.te")
 
   te = new.env()
@@ -43,6 +43,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   df = find.rmd.nested(txt, dot.levels)
   df = adapt.for.back.to.blocks(df,te=te)
   df$is.addon = df$type %in% addons
+  
   df$parent_addon = get.levels.parents(df$level, df$is.addon)
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
@@ -51,7 +52,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   bdf$obj = bdf$ui = vector("list", NROW(bdf))
   bdf$prefixed = bdf$has.handler = bdf$is.task = FALSE
   bdf$task.ind = 0
-  bdf$id = NA_character_
+  bdf$id = paste0(bdf$type,"__",bdf$index,"__",ps.id)
   bdf$shown.rmd = bdf$out.rmd = bdf$sol.rmd = ""
   
   
@@ -76,12 +77,15 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   bi = binds[1]
   for (bi in binds) {
     restore.point("inner.make.te")
-    
-    res = try(rtutor.parse.block(bi,te), silent=TRUE)
-    if (is(res,"try-error")) {
-      br = te$bdf[bi,]
-      msg = paste0("Error when parsing ",br$type," block lines ", br$start+te$txt.start-1, " to ", br$end+te$txt.start-1,"\n\n", paste0(as.character(res), collape="\n"))
-      stop(msg)
+    if (catch.errors) {
+      res = try(rtutor.parse.block(bi,te), silent=TRUE)
+      if (is(res,"try-error")) {
+        br = te$bdf[bi,]
+        msg = paste0("Error when parsing ",br$type," block lines ", br$start+te$txt.start-1, " to ", br$end+te$txt.start-1,"\n\n", paste0(as.character(res), collape="\n"))
+        stop(msg)
+      }
+    } else {
+      res = rtutor.parse.block(bi,te)  
     }
   }
   te$bdf$task.ind = cumsum(te$bdf$is.task) * te$bdf$is.task
@@ -211,9 +215,8 @@ rtutor.parse.chunk = function(bi,te) {
     set.bdf.ui(ui, bi,te)
     te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
   } else {
-    # chunk that user must enter
-    set.bdf.ui(uiOutput(paste0("chunkUI__",bi)),bi,te)
-    te$bdf$is.task[bi] = TRUE
+    # a task chunk is the classic RTutor chunk
+    rtutor.parse.task.chunk(bi,te,args)
   }
 }
 
@@ -384,7 +387,7 @@ rtutor.parse.frame = function(bi,te) {
   ui = tagList(
     ui.li
   )
-  te$bdf$obj[[bi]] = list(title = args$name, args=args)
+  te$bdf$obj[[bi]] = list(title = args$name, args=args, mathjax.ui = withMathJax(ui))
   set.bdf.ui(ui,bi,te)
 }
 
@@ -413,6 +416,20 @@ rtutor.parse.info = rtutor.parse.note =  function(bi,te) {
   te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$shown.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
 
 }
+
+rtutor.parse.award = function(bi,te) {
+  restore.point("rtutor.parse.award")
+  res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE)
+  ui.li = res$ui.li
+  award.name = 
+  out.rmd = merge.lines(c("---\n### Award",res$out.rmd,"---"))
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c("","",out.rmd)
+
+  id = paste0("award__",bi)
+  te$bdf$obj[[bi]] = list(ui = ui.li, id=id)
+  set.bdf.ui(uiOutput(id),bi,te)
+}
+
 
 
 rtutor.parse.references = function(bi,te) {
@@ -499,6 +516,28 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
   }
   names(ui) = NULL
   list(ui.li=ui, sol.rmd=sol.rmd,shown.rmd=shown.rmd,out.rmd=out.rmd, is.frag=is.frag)
+}
+
+get.child.and.fragment.txt.li = function(bi,te,bdf=te$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE) {
+  restore.point("get.child.and.fragment.txt.li")
+  
+  cpos = cbind(bdf$start[child.ind],bdf$end[child.ind])
+  has.footer = bdf$form[[bi]] != "dotblock"
+  start = bdf$start[bi]+ (1-keep.header.footer)
+  end = bdf$end[bi] - (1- (keep.header.footer | !has.footer))
+  
+  pos = pos.complement(cpos, is.sorted=TRUE, keep.pos=TRUE, start=start, end = end)
+  is.frag = attr(pos,"complement")
+  
+  # we may have one end line too much
+  valid = pos[,1]<=pos[,2]
+  pos = pos[valid,,drop=FALSE]
+  is.frag = is.frag[valid]
+  
+  txt.li = lapply(1:NROW(pos), function(row) {
+    te$txt[pos[row,1]:pos[row,2]]
+  })
+  list(txt.li = txt.li, is.frag=is.frag)
 }
 
 get.non.children.fragments = function(bi,te,bdf=te$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE) {

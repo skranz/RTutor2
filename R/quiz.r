@@ -134,11 +134,9 @@ quizDefaults = function(lang="en") {
 #' @param quiz.handler a function that will be called if the quiz is checked.
 #'        The boolean argument solved is TRUE if the quiz was solved
 #'        and otherwise FALSE
-shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, single.check.btn=TRUE, defaults=quizDefaults(lang=lang), lang=NULL) {
+shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, single.check.btn=TRUE, defaults=quizDefaults(lang=lang), lang="en") {
   restore.point("shinyQuiz")
 
-  if (is.null(lang)) lang = "en"
-  
   if (is.null(qu)) {
     yaml = enc2utf8(yaml)
     

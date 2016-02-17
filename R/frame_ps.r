@@ -1,31 +1,34 @@
 examples.frame.ps = function() {
   library(EconCurves)
   setwd("D:/libraries/RTutor2")
-  txt = readLines("test.rmd")
+  txt = readLines("ex.rmd")
   frame.ind = NULL
-  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind))
+  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE)
   te$lang = "de"
   bdf = te$bdf
   show.frame.ps(te)
 }
 
-show.frame.ps = function(te, frame.ind=1, dir=getwd()) {
+show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE) {
   restore.point("show.frame.ps")
   
   app = eventsApp()
-  app$ps = te
+  app$ps = ps
   app$ui = fluidPage(
     docClickEvents(id="doc_click"),
     uiOutput("frameUI")
   )
   try(shiny::addResourcePath("figure",paste0(dir,"/figure")), silent=TRUE)  
-  
-  ps = te
+
   bdf = ps$bdf
+  
+  ps$offline = offline
+  ps$use.mathjax = !offline
   ps$show.frames = NULL
   ps$num.frames = sum(bdf$type=="frame")
   add.navigate.handlers()
   set.frame(frame.ind,ps=ps)
+  
   
   viewApp(app)
 }
@@ -78,7 +81,7 @@ frame.forward = function(ps=app$ps, app=getApp(),...) {
 }
 
 rtutor.init.addons = function(addons,ps) {
-  restore.point("set.frame")
+  restore.point("rtutor.init.addons")
   
   for (ao in addons) {
     #rta = ao$rta
@@ -88,7 +91,7 @@ rtutor.init.addons = function(addons,ps) {
   }  
 }
 
-set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),...) {
+set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),use.mathjax = isTRUE(ps$use.mathjax),...) {
   restore.point("set.frame")
   
   ps$frame.ind = frame.ind
@@ -114,7 +117,12 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),...) {
     HTML("</td></tr></table>")
   )
   
-  frame.ui = c(header.ui,bdf$ui[bi])
+  if (!use.mathjax) {
+    ui = bdf$ui[bi]     
+  } else {
+    ui = bdf$obj[[bi]]$mathjax.ui
+  }
+  frame.ui = c(header.ui,ui)
   setUI("frameUI",frame.ui)
 }
 
