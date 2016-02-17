@@ -93,7 +93,7 @@ create.rps.chunk.html = function(cdt, chunk.ind, chunk.env, success.message=isTR
 
 
   txt = cdt$sol.txt[[chunk.ind]]
-  if (cdt$num.e[[chunk.ind]] > cdt$num.e.task[[chunk.ind]]) {
+  if (cdt$num.e[[chunk.ind]] > cdt$num.e.shown[[chunk.ind]]) {
     add = c("# Great, solved correctly!")
   } else {
     add = "# You successfully checked the chunk! "
@@ -138,14 +138,14 @@ create.rps.chunk.html = function(cdt, chunk.ind, chunk.env, success.message=isTR
 }
 
 
-create.cdt.task.html = function(cdt) {
-  restore.point("create.cdt.task.html")
-  task.html = sapply(1:NROW(cdt), create.task.chunk.html, cdt=cdt)
-  task.html
+create.cdt.show.html = function(cdt) {
+  restore.point("create.cdt.show.html")
+  show.html = sapply(1:NROW(cdt), create.show.chunk.html, cdt=cdt)
+  show.html
 }
 
-create.task.chunk.html = function(chunk.ind,cdt, eval=FALSE, echo=TRUE, quiet=TRUE) {
-  restore.point("create.task.chunk.html")
+create.show.chunk.html = function(chunk.ind,cdt, eval=FALSE, echo=TRUE, quiet=TRUE) {
+  restore.point("create.show.chunk.html")
   
   txt = paste0("# Not yet solved...\n# Press 'edit' to enter your code.\n\n",cdt$task.txt[[chunk.ind]])
   name = cdt$chunk.name[[chunk.ind]]

@@ -41,14 +41,14 @@ For example:
 
 
 ```{r "1 a)",fig.height=3}
-#< task
+#< show
 x = 10:20
 # Computing the sum of x
 sum(x)
 # Generating a data frame
 df = data.frame(a=c(1,1,2,2,2,3,3,4), b = runif(8), c="Hi")
 #>
-#< task_notest
+#< show_notest
 df
 #>
 ```

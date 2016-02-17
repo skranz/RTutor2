@@ -21,8 +21,10 @@ previewRTutorFrameAddin = function(...) {
   
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(line=line))
   bdf = te$bdf
-  ui = make.te.ui(te=te)
-  cat("\nView frame...")
-  view.html(ui=ui)
+  show.frame.ps(te=te)
+  
+# ui = make.te.ui(te=te)
+# cat("\nView frame...")
+# view.html(ui=ui)
 
 }

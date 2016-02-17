@@ -41,7 +41,7 @@ make.submission = function(ps=get.ps(), user.name=get.user.name(),  ps.name=ps$n
   rmd.code = readLines(ps$stud.file)
   ps$stud.code = rmd.code
   cdt$stud.code = get.stud.chunk.code(ps=ps)
-  cdt$code.is.task = cdt$stud.code == cdt$task.txt
+  cdt$code.as.shown = cdt$stud.code == cdt$show.txt
   cdt$chunk.changed = cdt$stud.code != cdt$old.stud.code
   cdt$old.stud.code = cdt$stud.code
   
@@ -69,7 +69,7 @@ make.submission = function(ps=get.ps(), user.name=get.user.name(),  ps.name=ps$n
     save.ups()
     if (ret==FALSE) {
       edt$ex.solved[i] = FALSE
-      if (cdt$code.is.task[ps$chunk.ind]) {
+      if (cdt$code.as.shown[ps$chunk.ind]) {
         ps$failure.message = paste0("You have not yet started with chunk ", cdt$chunk.name[ps$chunk.ind])
       }
       message = ps$failure.message

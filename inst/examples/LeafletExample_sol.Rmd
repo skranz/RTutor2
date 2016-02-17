@@ -37,7 +37,7 @@ library(leaflet)
 
 Check to see an interactive leaflet centered on the department of Mathematics and Economics at Ulm University. The place where RTutor has been created.
 ```{r results='asis', output="htmlwidget", widget="leaflet"}
-#< task_notest
+#< show_notest
 SFmap <- leaflet() %>% 
   addTiles() %>% 
   setView(9.9620289,48.4251394, zoom = 11) %>% 

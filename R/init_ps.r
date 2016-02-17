@@ -121,13 +121,13 @@ init.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = paste0(p
   # show sample solution for non-testable chunks
   if (noeval & !is.null(cdt$can.noeval.test)) {
     for (row in which(!cdt$can.noeval.test)) {
-      if (cdt$task.txt[[row]] != cdt$sol.txt[[row]]) {
+      if (cdt$show.txt[[row]] != cdt$sol.txt[[row]]) {
         if (cdt$num.e[[row]] >0) {
           add =  "# solution shown because chunk cannot be tested on this server\n"
         } else {
           add =  "# solution shown because chunk cannot be run on this server\n"
         }
-        cdt$task.txt[[row]] = paste0(add, cdt$sol.txt[[row]])
+        cdt$show.txt[[row]] = paste0(add, cdt$sol.txt[[row]])
       }
       cdt$test.expr[[row]] = list()
       cdt$has.test[[row]] = FALSE
@@ -141,7 +141,7 @@ init.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = paste0(p
       new.stud.env(chunk.ind)
     })
   } 
-  cdt$old.stud.code = cdt$task.txt
+  cdt$old.stud.code = cdt$show.txt
 
   cdt = as.data.table(cdt)
 

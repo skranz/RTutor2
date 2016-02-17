@@ -1,0 +1,264 @@
+<!-- START -->
+
+#< precompute
+```{r}
+library(EconCurves)
+opc.pane = pane(xvar="u",yvar="dw",xlab="Arbeitslosigkeitsquote (u)", ylab="Relative Lohnsteigerung", xrange=c(0,0.1), yrange=c(0,0.2))
+```
+#>
+
+#. frame "Start"
+
+#. row
+#. column width=5, offset=0
+Nehme Sie an, die meisten Firmen eines Landes
+verzeichnen auf einmal eine höhere Nachfrage nach ihren Gütern.
+
+Es kann viele Gründe für die höhere Nachfrage geben, z. B.
+  - Die Nachfrage im Ausland steigt und die Exporte steigen somit.
+  - Der Staat steigert die Nachfrage, indem er viele neue Straßen baut.
+  - Haushalte und Firmen entscheiden sich, mehr Immobilien zu bauen.
+  - Die Konsumfreude der privaten Haushalte steigt.
+  - ...
+
+#. column width=5
+#< quiz "Nachfrageschock"
+question: |
+  Welche Auswirkungen wird so ein positiver "Nachfrageschock" vermutlich haben?
+mc:
+  - Die Arbeitslosigkeit steigt.
+  - Löhne steigen stärker als sonst.*
+  - Preise steigen stärker als sonst.*
+failure: Ihre Antworten entsprechen noch nicht dem, was Ökonomen typischerweise erwarten würden.
+#>
+#. row
+  
+#. solved "Nachfrageschock"
+
+Richtig, man würde in der Tat folgendes erwarten:
+
+1. Arbeitslosigkeit sinkt:
+Um die erhöhte Nachfrage zu decken, werden Firmen mehr produzieren.
+Ein Teil der Produktionserhöhung kann durch Überstunden umgesetzt
+werden, aber wir würden vermuten, dass zumindest manche Firmen auch
+mehr Arbeitnehmer einstellen.
+
+2. Löhne steigen stärker als sonst:
+Da viele Firmen mehr Arbeitnehmer suchen, werden Firmen tendenziell
+höhere Löhne bieten, um beispielsweise Arbeitnehmer von anderen
+Firmen abzuwerben oder zu verhindern, dass die eignenen Arbeitnehmer
+abgeworben werden.
+
+3. Preise steigen stärker als sonst:
+Die höheren Löhne erhöhen die Produktionskosten der Firmen. Auch
+sollte durch die erhöhte Nachfrage tendenziell die Marktmacht der
+Firmen steigen. Beides sollte zu einem Preisanstieg
+führen.
+
+#< info "Ist Ihnen aufgefallen..."
+Evtl. wundern Sie sich, das wir in Punkt 1 argumentieren, dass die Arbeitslosigkeit sinkt, in Punkten 2 und 3 aber argumentieren, dass die Preise und Löhne stärker steigen **als sonst**.
+
+Diese Formulierung nimmt schon die Idee vorweg, dass es ein makroökonomisches Gleichgewicht mit konstanter Arbeitslosigkeit aber positiver Inflationsrate gibt. D.h. selbst wenn es keine Nachfrageschocks gibt, bleiben Löhne und Preise nicht konstant sondern steigen Löhne und Preise um einen festen Prozentsatz jedes Jahr. Wir werden dies später genauer erläutern. 
+#>
+
+#. frame "Zusammenhang zwischen Arbeitslosigkeit und Lohnsteigerung"
+
+#. row
+#. column width=6
+Wenn man über solche Nachfrageschocks nachdenkt, könnte man
+folgende Hypothese aufstellen:
+
+**Hypothese 1:**  Lohnsteigerungen und Arbeitslosigkeit haben empirisch einen negativen Zusammenhang
+
+Beispielhafte Wirkungskette:
+
+Nachfrage steigt -> Firmen fragen mehr Arbeit nach
+-> Arbeitslosigkeit fällt und Löhne steigen.
+
+Man kann sich aber auch das Gegenteil vorstellen:
+
+**Hypothese 2:**  Lohnsteigerungen und Arbeitslosigkeit haben empirisch einen positiven Zusammenhang
+
+Eine beispielhafte Wirkungskette für Hypothese 2 wäre:
+
+Gewerkschaften erkämpfen hohe Lohnsteigerungen 
+-> Firmen verlieren auf Grund hoher Kosten internationale Wettbewerbsfähigkeit
+-> Arbeitslosigkeit steigt.
+
+
+#. column width=5
+
+In einem 1958 erschienen Aufsatz untersucht der Ökonom A.W. Phillips
+den historischen Zusammenhang zwischen Lohnsteigerungen und Arbeitslosgkeit
+aus historischen britischen Daten von 1867-1957. 
+
+#< quiz
+question: |
+  Was glauben Sie hat Phillips in seiner empirischen Untersuchung gefunden?
+sc:
+  - Einen negativen Zusammenhang von Lohnsteigerung und Arbeitslosigkeit*
+  - Einen positiven Zusammenhang von Lohnsteigerung und Arbeitslosigkeit
+failure: Nein, leider nicht richtig getippt.
+#>
+
+#< solved
+Richtig, wir zeigen Ihnen einen Auszug von Phillip's Ergebnissen auf der nächsten Slide.
+#>
+
+#. row
+
+#< preknit
+<table><tr><td>
+```{r echo=FALSE, fig.height=3, fig.width=4}
+plot.curve(eq = dw == 2*u,pane=opc.pane,col="blue", main="Hypothese 1")
+```
+</td><td>
+```{r echo=FALSE, fig.height=3, fig.width=4}
+plot.curve(eq = dw == 0.2-2*u,pane=opc.pane,col="blue", main="Hypothese 2")
+```
+</td></tr></table>
+#>
+
+
+#. frame "Historische Phillipskurve"
+
+#. row
+#. column
+
+#< portrait "A. W. Phillips", align="left"
+url: https://upload.wikimedia.org/wikipedia/commons/5/5b/Professor_A.W.H_%28Bill%29_Phillips.jpg
+#>
+
+In einen 1958 erschienen Aufsatz fand der Ökonom A.W. Phillips tatsächlichen einen negativen Zusammenhang zwischen Lohnsteigerungen und Arbeitslosigkeit in historischen britischen Daten von 1867-1913, der sich auch in den Daten von 1914-1957 widerspiegelte.
+
+Sie sehen die erste Abbildung dieses Aufsatzes.
+In Jahren mit niedrigerer Arbeitslosigkeit (x-Achse)
+sind die nominalen Löhne (y-Achse) tendenziell stärker gestiegen
+als in Zeiten hoher Arbeitslosigkeit.
+
+Die berühmte *Phillips-Kurve* war geboren. Verschiedene Varianten
+der Philipps-Kurve sind ein Kern vieler
+makroökonomischer Modelle. Dabei gibt es allerdings wichtige
+Unterschiede in der Interpretation der Phillips-Kurve...
+
+#. column
+
+#< image "PhillipsCurve"
+file: "phillips_curve_1861_1913.png"
+width: "100%"
+#>
+
+#. back_to_frame
+
+#< note "Exkurs: Die Philipps Maschine"
+Später baute Professor Phillips übrigens einen hydraulischen
+Computer, der die britische Wirtschaft modellieren sollte...
+
+#< image PhillipsMachine
+url: https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Phillips_and_MONIAC_LSE.jpg/330px-Phillips_and_MONIAC_LSE.jpg
+#>
+
+#>
+
+#. references
+- Phillips, A. W. (1958). The Relation Between Unemployment and the Rate of Change of Money Wage Rates in the United Kingdom, 1861–1957. Economica, 25(100), 283-299.
+
+
+#. frame "Inflations-Arbeitslosigkeit Tradeoff? (1)"
+
+#. row
+#. column
+#< portrait "Paul Samuelson"
+url: https://upload.wikimedia.org/wikipedia/commons/8/86/Paul_Samuelson.jpg
+link: https://en.wikipedia.org/wiki/Paul_Samuelson
+#>
+
+#< portrait "Robert Solow"
+url: https://upload.wikimedia.org/wikipedia/commons/9/95/Robert_Solow_by_Olaf_Storbeck.jpg
+#>
+
+In einem 1960 erschienen Artikel zeigen Paul Samuelson and Robert Solow
+in einer Abbildung die rechts gezeigte Variante der Phillips-Kurve.
+Auf der y-Achse befindet sich nun statt der Wachstumsrate der
+Nominallöhne die Inflationsrate, d.h.
+die Wachstumsrate des Preisniveaus.
+
+Übersetzt lautet der Text unter der Abbildung in etwa:
+
+*"Dies zeigt die mögliche Auswahl zwischen verschiedenen Niveaus
+von Arbeitslosigkeit und Preisstabilität, so wie sie
+grob aus amerikanischen Daten der letzten 25 Jahre geschätzt
+wurden."*
+
+#. column
+
+#< image
+file: phillips_samuelson_solow.png
+#>
+
+
+#. references
+- Samuelson, Paul A., and Robert M. Solow. “Analytical Aspects of Anti-inflation Policy.” American Economic Review 50, no. 2 (1960): 177–194.
+
+#. frame "Inflations-Arbeitslosigkeit Tradeoff? (2)"
+
+#. row
+#. column
+#< portrait 'John Maynard\n Keynes'
+url: https://upload.wikimedia.org/wikipedia/commons/9/96/Declan_in_20_years_2.jpg
+link: https://en.wikipedia.org/wiki/John_Maynard_Keynes
+#>
+
+Zusammen mit den Ideen von John-Maynard-Keynes, mag diese Abbildung der Philippskurve einigen Politikern und Ökonomen folgendes wirtschaftspolitisches Vorgehen suggeriert haben:
+
+Man überlegt sich, welche Kombination aus Inflationsrate und Arbeitslosigkeit auf der aus historischen Daten geschätzten Phillipskurve man gerne hätte.
+
+Möchte man die Arbeitslosigkeit verringern, kurbelt man die gesamtwirtschaftliche Nachfrage an: entweder durch eine expansive Fiskalpolitik (Staatsausgaben erhöhen), oder expansive Geldpolitik (Zinsen senken und dadurch private Investitionen anheizen). Die Phillipskurve würde beschreiben, wieviel Inflation man in etwa dafür in Kauf nehmen müsste.
+
+Möchte man die Inflation verringern, reduziert man die gesamtwirtschaftliche Nachfrage, durch eine kontraktive Fiskalpolitik (Staatsausgaben verringern), oder kontraktive Geldpolitik (Zinsen erhöhen). Die Phillipskurve beschreibt, wieviel Arbeitslosigkeit man für eine niedrigere Inflationsrate schätzungsweise in Kauf nehmen müsste.
+
+#< portrait 'Helmut Schmidt'
+url: https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Verteidigungsminister_Helmut_Schmidt.jpg/330px-Verteidigungsminister_Helmut_Schmidt.jpg
+link: https://de.wikipedia.org/wiki/Helmut_Schmidt
+#>
+
+Z.B. machte 1972 der damalige Finanzminister und spätere Bundeskanzler Helmut Schmidt, der übrigens VWL studiert hatte, die bekannt gewordene Aussage:
+
+"Lieber fünf Prozent Inflation als fünf Prozent Arbeitslosigkeit."
+
+#. column
+#< image phillips_samuelson_solow
+file: phillips_samuelson_solow.png
+#>
+
+
+#. frame 'Zweifel an stabiler Phillipskurve -- Stagflationserfahrung'
+
+## TODO 
+- Generiere plot mit Inflationsdaten
+- Starte in 60ern, bewege langsam
+- Daten? Ggf. OECD
+
+In der Mitte der 70er trat in Deutschland und anderen Industrieländern,
+das Phänomen der `Stagflation` aus. 
+Die Kombination aus Inflation und Arbeitslosigkeit lag nicht mehr auf der
+historischen Phillipskurve. 
+Stattdessen hatte man hohe Inflationsraten, gleichzeitig kaum Wirtschaftswachstum, und eine im Vergleich zu den Nachkriegsjahren hohe Arbeitslosigkeit.
+Der Glaube an einen stabilen Tradeoff zwischen Inflation und Arbeitslosigkeit wurde geringer.
+  
+#. frame 'Zweifel an stabiler Phillipskurve -- Theorie'
+
+Schon früh hegten Ökonomen Zweifel daran, ob man durch eine Erhöhung der Inflationsrate tatsächlich langfristig die Arbeitslosigkeit senken kann. Beispiele sind die Arbeiten der Nobelpreisträger Friedmann (1969) und Phelps (1967).
+
+Nur weil man in historischen Daten einen bestimmten negativen Zusammenhang zwischen Inflationsrate und Arbeitslosigkeit sah, bedeutet dies nicht, dass dieser Zusammenhang bestehen bleibt, wenn man die Wirtschaftspolitik ändert und systematisch versucht, durch eine höhere Inflationsrate die Arbeitslosigkeit zu senken.
+
+Die meisten Ökonomen sind eher folgender Meinung. Man kann zwar für einen kurzen Zeitraum die Arbeitslosigkeit senken, wenn man inflationssteigernde Maßnahmen, wie eine expansive Geldpoltik, durchführt. Auf längere Sicht führt dies aber dazu, dass sich die Phillipskurve nach oben verschiebt und man wieder die ursprüngliche Arbeitslosigkeit, aber eine höhrere Inflationsrate hat.
+
+In anderen Worten: viele Ökonomen betrachten die Generierung von höhere Inflation durch expansive Geld- oder Fiskalpolitik, wie ein Strohfeuer auf dem Arbeitsmarkt, das schnell verpufft, aber den langfristigen Schaden einer anhaltend hohen Inflation haben kann.
+
+Um die Zusammenhänge besser durchdenken zu können, ist es sehr hilfreich Modelle zu erarbeiten, die theoretische Zusammenhänge zwischen Inflation, Arbeitslosigkeit und weiteren ökonomischen Variablen genauer formalisieren. Wir werden dies in den nächsten Abschnitt tun.
+
+#< references
+- Friedman, M. (1969), The Optimum Quantity of Money, Macmillan
+- Phelps, E. S. (1967), Phillips Curves, Expectations of Inflation and Optimal Unemployment over Time, Economica, Vol. 34, 254-281.
+#>

@@ -14,17 +14,10 @@ examples.translate.old.sol = function() {
 }
 
 translate.old.rtutor.sol = function(txt = readLines(in.file), in.file=NULL, out.file=rmd.file) {
-  txt = gsub("#> task","#>",txt)
-  txt = gsub("#> notest","#>",txt)
-  txt = gsub("#> settings","#>",txt)
-  txt = gsub("#< add to hint","#< add_to_hint",txt)
-  txt = gsub("#< test.arg","#< test_arg",txt)
-  txt = gsub("#< test.hint.arg","#< test_hint_arg",txt)
-  txt = gsub("#< task notest","#< task_notest",txt) 
   
-  rows = str.trim(txt=="#<")
-  txt[rows] = "#< test"
-  
+  txt = gsub("#< task_notest","#< show_notest",txt)
+  txt = gsub("#< task","#< show",txt)
+
   if (!is.null(out.file)) {
     writeLines(txt, out.file)
   }

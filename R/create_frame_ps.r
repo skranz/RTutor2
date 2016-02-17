@@ -6,6 +6,8 @@ examples.frame.ps = function() {
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind))
   te$lang = "de"
   bdf = te$bdf
+  show.frame.ps(te)
+  
   ui = make.te.ui(te=te)
   view.html(ui=ui)
   
@@ -45,7 +47,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
   bdf$obj = bdf$ui = vector("list", NROW(bdf))
   bdf$prefixed = bdf$is.addon = bdf$has.handler =  FALSE
-  bdf$task.rmd = bdf$out.rmd = bdf$sol.rmd = ""
+  bdf$show.rmd = bdf$out.rmd = bdf$sol.rmd = ""
   
   # Filter bdf if only a subset of elements shall be compiled / shown
   if (!is.null(bdf.filter)) {
@@ -65,10 +67,12 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   binds = order(bdf$end, -bdf$start)
   bi = binds[1]
   for (bi in binds) {
+    restore.point("inner.make.te")
+    
     res = try(rtutor.parse.block(bi,te), silent=TRUE)
     if (is(res,"try-error")) {
       br = te$bdf[bi,]
-      msg = paste0("Error when parsing ",br$type," block lines ", br$start+te$txt.start-1, " to ", br$end+te$txt.start-1,"\n\n", as.character(res))
+      msg = paste0("Error when parsing ",br$type," block lines ", br$start+te$txt.start-1, " to ", br$end+te$txt.start-1,"\n\n", paste0(as.character(res), collape="\n"))
       stop(msg)
     }
   }
@@ -83,6 +87,7 @@ adapt.for.back.to.blocks = function(bdf,te, line.start=te$txt.start) {
   bttype = str.right.of(bdf$type[is_backto],"back_to_")
   rows = which(is_backto)
   if (length(rows)==0) return(bdf)
+  i = 1
   for (i in seq_along(rows)) {
     row = rows[i]
     parent = bdf$parent[row]
@@ -188,11 +193,11 @@ rtutor.parse.chunk = function(bi,te) {
     res = eval(expr,te$pre.env)
     te$bdf$obj[[bi]]$pre.env = copy.env(te$pre.env)
     te$bdf$prefixed[[bi]] = TRUE
-    te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = mstr
+    te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = mstr
   } else if (chunk.preknit) {
     ui = knit.rmd(str,envir = te$pre.env,out.type="shiny")
     set.bdf.ui(ui, bi,te)
-    te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = mstr
+    te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = mstr
   } else {
     # chunk that user must enter
     set.bdf.ui(uiOutput(paste0("chunkUI__",bi)),bi,te)
@@ -208,7 +213,7 @@ rtutor.parse.preknit = function(bi,te) {
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
   ui.li = res$ui.li
   set.bdf.ui(ui.li,bi,te)
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$task.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
   return()
   
   # old code knit everything
@@ -230,7 +235,7 @@ rtutor.parse.column = function(bi,te) {
   
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$task.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
   
   
   ui.li = res$ui.li
@@ -266,17 +271,21 @@ rtutor.parse.portrait = function(bi,te) {
   if (!is.null(args$width)) wh = paste0(wh," width ='",args$width,"'")
   if (!is.null(args$height)) wh = paste0(wh," height ='",args$height,"'")
 
-  if (is.null(args$link))
-  if (has.file) {
+   if (has.file) {
     html = paste0('<img src=figure/',args$file,wh,'>')
   } else if (!is.null(args$url)) {
     html = paste0('<img src=',args$url,wh,'>')
   } else {
     html('<p>...figure here...</p>')
   }
+  if (!is.null(args$link)) {
+    html = paste0("<a href='",args$link,"' target='_blank'>",html,"</a>")
+  }
+  
   if (is.null(args$name)) {
     name.html = ""
   } else {
+    args$name = gsub("\n","<br>",args$name, fixed=TRUE)
     name.html = paste0("<tr><td style='padding-bottom: 2px;padding-left: 5px;padding-right: 5px;text-align: center;white-space: normal;word-wrap: break-all;'><font size=1>",args$name,"</font></td></tr>")
   }
   tab = paste0("<table  align='",args$align,"'><tr><td STYLE='padding-left:5px;padding-right:5px;'>",html,'</td></tr>',name.html,"</table>")
@@ -315,7 +324,7 @@ rtutor.parse.solved = function(bi,te) {
   restore.point("rtutor.parse.success")
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE)
   ui.li = res$ui.li
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$task.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
 
   id = paste0("solved_block__",bi)
   te$bdf$obj[[bi]] = list(ui = ui.li, id=id)
@@ -329,7 +338,7 @@ rtutor.parse.row = function(bi,te) {
   
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$task.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$show.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
   
   ui.li = res$ui.li
   ui = fluidRow(
@@ -348,7 +357,7 @@ rtutor.parse.frame = function(bi,te) {
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, children=children, keep.null=TRUE)
   title = paste0("## Frame ", args$name)
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(title,res$task.rmd)),merge.lines(c(title,res$sol.rmd)),merge.lines(c(title,res$out.rmd)))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(title,res$show.rmd)),merge.lines(c(title,res$sol.rmd)),merge.lines(c(title,res$out.rmd)))
   
   ui.li = res$ui.li
   is.child = !res$is.frag
@@ -360,10 +369,9 @@ rtutor.parse.frame = function(bi,te) {
     title = NULL
   }
   ui = tagList(
-    title,
     ui.li
   )
-  
+  te$bdf$obj[[bi]] = list(title = args$name, args=args)
   set.bdf.ui(ui,bi,te)
 }
 
@@ -389,7 +397,7 @@ rtutor.parse.info = rtutor.parse.note =  function(bi,te) {
   
   head = paste0("### ", title)
   foot = paste0("---")
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$task.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$show.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
 
 }
 
@@ -407,7 +415,7 @@ rtutor.parse.references = function(bi,te) {
 
   head = paste0("### ", title)
   foot = paste0("---")
-  te$bdf[bi,c("task.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$task.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
+  te$bdf[bi,c("show.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)))
 
 }
 
@@ -457,7 +465,7 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
   res = get.non.children.fragments(bi,te, child.ind = which(children))
   is.frag = res$is.frag
   is.child = !is.frag
-  ui = sol.rmd = task.rmd = out.rmd = res$frag
+  ui = sol.rmd = show.rmd = out.rmd = res$frag
 
   ui[is.frag] = lapply(ui[is.frag], function(txt) {
     HTML(md2html(txt, fragment.only = TRUE))
@@ -467,7 +475,7 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
     bdf$ui[[ind]]
   })
   sol.rmd[is.child] = bdf$sol.rmd[children]
-  task.rmd[is.child] = bdf$task.rmd[children]
+  show.rmd[is.child] = bdf$show.rmd[children]
   out.rmd[is.child] = bdf$out.rmd[children]
 
     
@@ -477,7 +485,7 @@ get.children.and.fragments.ui.list = function(bi,te,bdf=te$bdf, keep.null=TRUE, 
     is.frag = is.frag[null.ui]
   }
   names(ui) = NULL
-  list(ui.li=ui, sol.rmd=sol.rmd,task.rmd=task.rmd,out.rmd=out.rmd, is.frag=is.frag)
+  list(ui.li=ui, sol.rmd=sol.rmd,show.rmd=show.rmd,out.rmd=out.rmd, is.frag=is.frag)
 }
 
 get.non.children.fragments = function(bi,te,bdf=te$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE) {

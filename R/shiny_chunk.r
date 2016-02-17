@@ -230,14 +230,14 @@ make.chunk.output.ui = function(chunk.ind, ps = get.ps()) {
     
   } else {
     
-    if ((identical(code, ps$cdt$task.txt[[chunk.ind]]) | isTRUE(ps$noeval)) & !is.null(ps$cdt$task.html)) {
-      # just show precompiled task
-      html = ps$cdt$task.html[[chunk.ind]]
+    if ((identical(code, ps$cdt$show.txt[[chunk.ind]]) | isTRUE(ps$noeval)) & !is.null(ps$cdt$show.html)) {
+      # just show precompiled show
+      html = ps$cdt$show.html[[chunk.ind]]
     } else {
       # compile no solution again
       if (ps$noeval) {
-        task = ps$cdt$task.txt[[chunk.ind]]
-        html = chunk.to.html(task, chunk.ind, eval=FALSE, nali=nali)
+        shown = ps$cdt$show.txt[[chunk.ind]]
+        html = chunk.to.html(shown, chunk.ind, eval=FALSE, nali=nali)
       } else {
         html = chunk.to.html(code, chunk.ind, eval=FALSE, nali=nali)
       }
@@ -258,10 +258,6 @@ make.chunk.output.ui = function(chunk.ind, ps = get.ps()) {
   )
 }
 
-
-make.chunk.task.ui = function(...) {
-  make.chunk.output.ui(...)
-}
 
 make.chunk.handlers = function(chunk.ind, nali = ps$cdt$nali[[chunk.ind]], ps=get.ps()) {
   restore.point("make.chunk.handlers")
@@ -464,12 +460,12 @@ restore.shiny.chunk = function(chunk.ind=ps$chunk.ind,...,session=ps$session,ps=
   restore.point("restore.shiny.chunk")
   set.shiny.chunk(chunk.ind)
 
-  ps$cdt$stud.code[[chunk.ind]] = ps$cdt$task.txt[[chunk.ind]]
+  ps$cdt$stud.code[[chunk.ind]] = ps$cdt$show.txt[[chunk.ind]]
   ps$cdt$is.solved[[chunk.ind]] = FALSE
   ps$stud.code = ps$cdt$stud.code[[chunk.ind]]
 
   updateAceEditor(ps$session, ps$nali$editor, value=ps$stud.code, mode="r")
-  updateAceEditor(ps$session, ps$nali$console, value="restored original task code...", mode="text")
+  updateAceEditor(ps$session, ps$nali$console, value="restored originally shown code...", mode="text")
 }
 
 

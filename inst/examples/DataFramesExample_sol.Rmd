@@ -39,7 +39,7 @@ The shiny based inteface of RTutor shows data.frames by default as html tables. 
 
 Use default settings for printing data.frames, that may have been adapted in the call to `show.ps`.
 ```{r "mychunk", optional=TRUE}
-#< task_notest
+#< show_notest
 T = 40
 data.frame(x=runif(T),y=runif(T)*100000)
 2*2
@@ -48,7 +48,7 @@ data.frame(x=runif(T),y=runif(T)*100000)
 
 You can overwrite the default settings for specific chunks, by specifying chunk options.
 ```{r "mychunk2", signif.digits=5, round.digits=3, table.max.rows=30, html.data.frame=FALSE, optional=TRUE}
-#< task_notest
+#< show_notest
 T = 40
 data.frame(x=runif(T),y=runif(T)*100000, z=runif(T))
 #>

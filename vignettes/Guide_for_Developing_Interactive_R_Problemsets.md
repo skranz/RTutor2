@@ -67,7 +67,7 @@ Here is the code from the example solution file "Example_sol.Rmd" that you find 
     a) We often want to compute some summary statistic of a vector.
     For example:
     ```{r "1 a)"}
-    #< task_notest
+    #< show_notest
     x = 10:20
     # Computing the sum of x
     sum(x)
@@ -228,7 +228,7 @@ Let us start by just writing an exercise with solution, without yet adding some 
     a) We often want to compute some summary statistic of a vector.
     For example:
     ```{r}
-    #< task
+    #< show
     x = 10:20
     # Computing the sum of x
     sum(x)
@@ -242,7 +242,7 @@ Let us start by just writing an exercise with solution, without yet adding some 
 
 There are several keywords with special meaning. We have a problem set header starting with `# Problemset` an exercise header starting with `## Exercise`. There is an *ignore block* starting with the line `#< ignore` and ending with the line `#>` that contains a code chunk to generate the problem set files from this solution. Code or text within ignore blocks will not become part of the problem set itself.
 
-The description of the exercise is written as standard text, the code of your solution is put in R code chunks. The first code chunk contains a *task block* starting with `#< task` and ending with `#>` that specifies that this code will be shown to the students as part of the task description of the problem set.
+The description of the exercise is written as standard text, the code of your solution is put in R code chunks. The first code chunk contains a *show block* starting with `#< show` and ending with `#>` that specifies that this code will be shown to the students.
 
 You can already generate an empty problem set from this simple solution file by running Ctrl-Alt-R (see step 3 of part I). In the empty problem set file, places where students have to enter code will be marked by.
 ```
@@ -277,10 +277,10 @@ It is necessary that your line *must* starts with
 
 RTutor recognizes lines in the exercise description that start with a) or ii) etc. as a "part" of an exercise and will use this information when automatically naming the code chunks in the empty problem set. 
 
-## task blocks
+## show blocks
 In our exercise the first code chunk shall be an example that will also be shown to the student. We make code being shown to students by wrapping it in a block starting with the line
 
-	#< task
+	#< show
 
 and ending with a line
 
@@ -290,12 +290,12 @@ Generate the problem set files and look at the empty problem set. You see that t
 
 The interactive problem set can already be used. It automatically tests the solution and if the test fails since `mean(x)` is not entered correctly, it gives the option to type `hint()` to get a hint.
 
-## task_notest blocks 
+## show_notest blocks 
 
-By default also the code as part of a task block will be tested for correctness when the student tests her solution. That is because future code may rely on the given code in the task and we want to make sure that the task code has not been accidentally changed by the user. If you don't want to generate tests for the code given in the task you can do so by wrapping the code instead in a block starting with `#< task_notest`, e.g.
+By default also the code as part of a show block will be tested for correctness when the student tests her solution. That is because future code may rely on the given code in the task and we want to make sure that the show code has not been accidentally changed by the user. If you don't want to generate tests for the code given in the task you can do so by wrapping the code instead in a block starting with `#< show_notest`, e.g.
 
 ```{r eval=FALSE}
-#< task_notest
+#< show_notest
   sum(1:5)
 #>
 ```
@@ -319,11 +319,11 @@ In our example, we want instead a manual hint that tells the student, how the in
     a) We often want to compute some summary statistics of a vector.
     For example:
     ```{r}
-    #< task
+    #< show
     x = 10:20
     # Computing the sum of x
     sum(x)
-    #> task
+    #>
     ```
     Now compute the mean of x.
     ```{r}
@@ -467,14 +467,14 @@ If the sample solution assigns a value to a variable, the default function is `c
 Sometimes you may ask to write a function in the problem set. Here is an example, how you could construct a solution file. In the exercise the student is asked to complete a manual function `ols` that shall compute an ols estimate:
 
 ```
-    #< task_notest
+    #< show_notest
     ols = function(y,X) {
       
       # enter code to compute beta.hat here ...
       
       return(as.numeric(beta.hat))
     }
-    #> task
+    #>
     
     ols <- function(y,X) {
       beta.hat = solve(t(X) %*% X) %*% t(X) %*% y
@@ -489,7 +489,7 @@ Sometimes you may ask to write a function in the problem set. Here is an example
             "from y and X. You have developed this code in Exercise 1.")
     #>
 ```
-First, we have a `#< task_notest` block that specifies an unfinished function that will be given to the student. Afterward, we have an example of a correct function `ols`.
+First, we have a `#< show_notest` block that specifies an unfinished function that will be given to the student. Afterward, we have an example of a correct function `ols`.
 Then the `#< test_arg` block specifies parameters for the automatic test `check.function`. The unnamed parameter 
 
 ```
@@ -592,7 +592,7 @@ You can specify chunks whose output is native HTML code, e.g. if you want to sho
 
 ```  
   ```{r "2_1_a_example", results = 'asis'}
-  #< task
+  #< show
   library(googleVis)
   mp = gvisMotionChart(Int.data,
          idvar = "country", timevar = "year")
@@ -609,7 +609,7 @@ If your chunk plots a figure, you may want to specify the width and height of th
 
 ```
   ```{r "1_a", fig.width=12, fig.height=5}
-  #< task
+  #< show
   plot(1:10,(1:10)^2)
   #>
   ```
@@ -648,7 +648,7 @@ The simplest way to add notes / footnotes is to use an info block as described a
 	This is a note.
 	
 	```{r "1_1  6",optional=TRUE}
-	#< task
+	#< show
 	# show that all integers between 0 and 10
 	#>
 	1:10

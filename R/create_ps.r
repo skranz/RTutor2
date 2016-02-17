@@ -35,9 +35,9 @@ examples.create.ps = function() {
 #' @param preknit shall sample solution of chunks be knitted when problem set is generated. Default = FALSE
 #' @param precomp shall chunk environments be computed from sample solution when problem set is generated? Default = FALSE
 #' @param force.noeval shall problem set only be shown in noeval mode? (Used as a security against accidentially forgetting to set noeval=TRUE in show.ps, when showing the problem set in a web app.)
-#' @param e.points how many points does the user get per required expression in a chunk (expressions in a task do not count). Default=1
+#' @param e.points how many points does the user get per required expression in a chunk (expressions that are shown do not count). Default=1
 #' @param chunk.points you may also specify fixed points given for solving a chunk that will be added to the points per expression. Default=0
-#' @param min.chunk.points minimal points for checking a chunk even if no none-task expression has to be entered. By default=0.5. I feel there may be a higher motivation to continue a problem set if there are may be some free point chunks farther below. Also it feels nice to get points, even if it is just for pressing the check button.
+#' @param min.chunk.points minimal points for checking a chunk even if all expression are already shown. By default=0.5. I feel there may be a higher motivation to continue a problem set if there are may be some free point chunks farther below. Also it feels nice to get points, even if it is just for pressing the check button.
 #' 
 #'
 #' @export
@@ -70,7 +70,7 @@ create.ps = function(sol.file, ps.name=NULL, user.name= "ENTER A USER NAME HERE"
                         user.name=sol.user.name, ps.dir=dir)
 
 
-  task.txt = write.empty.ps(te=te,  header=header,footer=footer,
+  show.txt = write.empty.ps(te=te,  header=header,footer=footer,
                             user.name=user.name, ps.dir=dir)
   rps = te.to.rps(te=te)
 
@@ -78,19 +78,19 @@ create.ps = function(sol.file, ps.name=NULL, user.name= "ENTER A USER NAME HERE"
   
   # Store information about empty problem set in order to easily export
   # an html problem set into it
-  task.txt = sep.lines(task.txt)
+  show.txt = sep.lines(show.txt)
   
   rmd.header = output.solution.header(rps=rps, te=te)
-  rmd.txt = c(rmd.header,sep.lines(te$task.txt))
+  rmd.txt = c(rmd.header,sep.lines(te$show.txt))
   rps$empty.rmd.txt = rmd.txt
   rps$empty.rmd.chunk.lines = get.chunk.lines(rmd.txt)
-  #rps$empty.rmd.user.name.line = which(str.starts.with(task.txt,"user.name = '"))[1]
-  #rps$empty.rmd.ps.dir.line = which(str.starts.with(task.txt,"ps.dir =  '"))[1]
-  #rps$empty.rmd.ps.file.line = which(str.starts.with(task.txt,"ps.file = '"))[1]
+  #rps$empty.rmd.user.name.line = which(str.starts.with(show.txt,"user.name = '"))[1]
+  #rps$empty.rmd.ps.dir.line = which(str.starts.with(show.txt,"ps.dir =  '"))[1]
+  #rps$empty.rmd.ps.file.line = which(str.starts.with(show.txt,"ps.file = '"))[1]
 
   if (add.shiny) {
-    rps$shiny.dt = make.shiny.dt(rps=rps, txt=task.txt)
-    rps$cdt$task.html = create.cdt.task.html(rps$cdt)
+    rps$shiny.dt = make.shiny.dt(rps=rps, txt=show.txt)
+    rps$cdt$show.html = create.cdt.show.html(rps$cdt)
   }
 
   source.rps.extra.code(extra.code.file, rps)
@@ -219,12 +219,12 @@ write.output.solution = function(file = paste0(ps.name,"_output_solution.Rmd"), 
 }
 
 
-write.empty.ps = function(file = paste0(te$ps.name,".Rmd"), task.txt=te$task.txt,ps.name=te$ps.name, te,...) {
+write.empty.ps = function(file = paste0(te$ps.name,".Rmd"), show.txt=te$show.txt,ps.name=te$ps.name, te,...) {
 
 
-  task.txt = include.ps.extra.lines(task.txt, ps.file=file, ps.name=ps.name,te=te,...)
-  writeLines(task.txt, file, useBytes=TRUE)
-  invisible(task.txt)
+  show.txt = include.ps.extra.lines(show.txt, ps.file=file, ps.name=ps.name,te=te,...)
+  writeLines(show.txt, file, useBytes=TRUE)
+  invisible(show.txt)
 }
 
 te.to.rps = function(te) {
@@ -247,7 +247,7 @@ te.to.rps = function(te) {
 
     add.chunk = sapply(ex$chunks, function(ck) isTRUE(ck$add))
     num.e = sapply(ex$chunks, function(ck) length(ck$e.li))
-    num.e.task = sapply(ex$chunks, function(ck) ck$num.e.task)
+    num.e.shown = sapply(ex$chunks, function(ck) ck$num.e.shown)
 
     str = sapply(ex$chunks, function(ck) str.trim(paste0(ck$test.txt,collapse="")))
     has.test = nchar(str)>0
@@ -277,7 +277,7 @@ te.to.rps = function(te) {
 
     sol.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$sol.txt, collapse="\n"))
 
-    task.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$task.txt, collapse="\n"))
+    show.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$show.txt, collapse="\n"))
     part =  lapply(ex$chunks, function(chunk) chunk$part)
     e.li = lapply(ex$chunks, function(ck) {
       ck$e.li
@@ -287,7 +287,7 @@ te.to.rps = function(te) {
     })
 
 
-    dt = data.table(ex.ind = ex.ind, ex.name = names(te$ex)[ex.ind], chunk.ps.ind=0, chunk.ex.ind = seq_along(ex$chunks), chunk.name = names(ex$chunks), chunk.opt=chunk.opt, part=part, num.e = num.e, num.e.task=num.e.task, has.test = has.test, e.li = e.li, e.source.li = e.source.li, test.expr=test.expr, hint.expr=hint.expr, task.txt = task.txt, sol.txt=sol.txt, optional=optional, chunk.hint=chunk.hint)
+    dt = data.table(ex.ind = ex.ind, ex.name = names(te$ex)[ex.ind], chunk.ps.ind=0, chunk.ex.ind = seq_along(ex$chunks), chunk.name = names(ex$chunks), chunk.opt=chunk.opt, part=part, num.e = num.e, num.e.shown=num.e.shown, has.test = has.test, e.li = e.li, e.source.li = e.source.li, test.expr=test.expr, hint.expr=hint.expr, show.txt = show.txt, sol.txt=sol.txt, optional=optional, chunk.hint=chunk.hint)
     # Remove chunks without expressions
     dt = dt[add.chunk,]
     if (NROW(dt)>0)
@@ -304,7 +304,7 @@ te.to.rps = function(te) {
   })
   
   cdt$points = pmax(
-    te$chunk.points + te$e.points * (cdt$num.e - cdt$num.e.task),
+    te$chunk.points + te$e.points * (cdt$num.e - cdt$num.e.shown),
     # we may give points even for just 'click check' chunks
     # this may bring a bit of happiness
     te$min.chunk.points
@@ -415,7 +415,7 @@ parse.no.change.line = function(row,str,txt, te) {
   restore.point("parse.no.change.line")
   # Normal Markdown text without being in a block
   if (!te$in.chunk & !te$in.block) {
-    te$task.txt = c(te$task.txt, str)
+    te$show.txt = c(te$show.txt, str)
     te$sol.txt = c(te$sol.txt, str)
     te$out.txt = c(te$out.txt, str)
 
@@ -564,7 +564,7 @@ parse.command.line = function(row,str,txt, te) {
   str = str.trim(str.right.of(str,"#!"))
   com = str.left.of(str," ")
   if (com == "start_note" | com == "end_note") {
-    te$task.txt = c(te$task.txt, paste0("#! ", str))
+    te$show.txt = c(te$show.txt, paste0("#! ", str))
   } else {
     stop(paste0("In row ", row, " you have written an unknown command:\n",str), call.=FALSE)
   }
@@ -574,8 +574,8 @@ parse.command.line = function(row,str,txt, te) {
 
 add.te.chunk = function(te,ck) {
   restore.point("add.te.chunk")
-  if (length(ck$e.li)>0 | isTRUE(ck$has.task)) {
-    te$task.txt = c(te$task.txt, te$chunk.head, ck$task.txt,"```")
+  if (length(ck$e.li)>0 | isTRUE(ck$has.shown)) {
+    te$show.txt = c(te$show.txt, te$chunk.head, ck$show.txt,"```")
     te$sol.txt = c(te$sol.txt, te$chunk.head, ck$sol.txt,"```")
     te$out.txt = c(te$out.txt, te$chunk.head, ck$out.txt,"```")
     ck$add = TRUE
@@ -605,12 +605,12 @@ add.te.block = function(te) {
       stop(str, call.=FALSE)
     })
   }
-  if (type %in% c("task","task_notest")) {
-    ck$has.task = TRUE
+  if (type %in% c("show","show_notest")) {
+    ck$has.shown = TRUE
   }
 
   # Add test code
-  if (type %in% c("chunk","task","task_notest","notest")) {
+  if (type %in% c("chunk","show","show_notest","notest")) {
     add.te.code(te,ck)
   } else if (type == "extra_test") {
     ind = length(ck$test.txt)
@@ -672,13 +672,13 @@ add.te.code = function(te,ck) {
 
   #if (te$block.type=="chunk")
     #stop("")
-  task = te$block.type == "task" | te$block.type == "task_notest"
-  notest = te$block.type == "notest" | te$block.type == "task_notest"
+  show = te$block.type == "show" | te$block.type == "show_notest"
+  notest = te$block.type == "notest" | te$block.type == "show_notest"
 
   ck$sol.txt = c(ck$sol.txt, te$block.txt)
   ck$out.txt = c(ck$out.txt, te$block.txt)
-  if (task) {
-    ck$task.txt = c(ck$task.txt, te$block.txt)
+  if (show) {
+    ck$show.txt = c(ck$show.txt, te$block.txt)
   }
 
   if (!notest) {
@@ -703,10 +703,10 @@ add.te.code = function(te,ck) {
       ck$hint.txt = c(ck$hint.txt,hint.txt)
       ck$e.li = c(ck$e.li, e.li)
       ck$num.e = ck$num.e + length(e.li)
-      if (task) {
+      if (show) {
         restore.point("jdsnndhfnruenfenrfkerfu84")
         #stop()
-        ck$num.e.task = ck$num.e.task + length(e.li)
+        ck$num.e.shown = ck$num.e.shown + length(e.li)
       }
       
       ck$e.source.li  = c(ck$e.source.li, e.source.li)
@@ -716,9 +716,9 @@ add.te.code = function(te,ck) {
       } else {
         enter.code.str =  ""
       }
-      if (!task &
-        !identical(te$task.txt[length(te$task.txt)], enter.code.str)) {
-        ck$task.txt = c(ck$task.txt, enter.code.str)
+      if (!show &
+        !identical(te$show.txt[length(te$show.txt)], enter.code.str)) {
+        ck$show.txt = c(ck$show.txt, enter.code.str)
       }
     # Empty code.txt
     } else {
@@ -756,8 +756,8 @@ add.te.compute = function(te,ck,var) {
 
   enter.code.str =  "\n# enter your code here ...\n"
   enter.code.str =  ""
-  if (!identical(te$task.txt[length(te$task.txt)], enter.code.str)) {
-    ck$task.txt = c(ck$task.txt, enter.code.str)
+  if (!identical(te$show.txt[length(te$show.txt)], enter.code.str)) {
+    ck$show.txt = c(ck$show.txt, enter.code.str)
   }
 }
 
@@ -802,7 +802,7 @@ add.te.info = function(te) {
   }
   info = list(info.name=info.name,type="html", html=html, rmd=txt)
   str = paste0('info("', info.name,'") # Run this line (Strg-Enter) to show info')
-  te$task.txt = c(te$task.txt,str)
+  te$show.txt = c(te$show.txt,str)
   te$sol.txt = c(te$sol.txt, str)
   te$out.txt = c(te$out.txt,"\n***\n", paste0("### Info: ", info.name),te$block.txt,"\n***\n")
 
@@ -830,7 +830,7 @@ add.te.addon = function(te,type,args=NULL) {
   placeholder = paste0("#! ", rta$id)
 
 
-  te$task.txt = c(te$task.txt,placeholder)
+  te$show.txt = c(te$show.txt,placeholder)
   te$sol.txt = c(te$sol.txt, Addon$sol.txt.fun(ao))
   te$out.txt = c(te$out.txt, Addon$out.txt.fun(ao))
 
@@ -980,12 +980,12 @@ get.empty.chunk = function() {
   ck$test.txt = NULL
   ck$hint.txt = NULL
   ck$chunk.hint.txt = NULL
-  ck$task.txt = NULL
+  ck$show.txt = NULL
   ck$sol.txt = NULL
   ck$out.txt = NULL
   ck$expr = NULL
   ck$num.e = 0
-  ck$num.e.task = 0
+  ck$num.e.shown = 0
   ck
 }
 
@@ -997,7 +997,7 @@ get.empty.te = function(Addons=NULL) {
   te$in.chunk = FALSE
   te$block.head = NULL
 
-  te$task.txt = NULL
+  te$show.txt = NULL
   te$sol.txt = NULL
   te$out.txt = NULL
   te$code.txt = NULL
@@ -1009,7 +1009,7 @@ get.empty.te = function(Addons=NULL) {
   te$markdown.blocks = c("info","award","ignore",names(te$Addons))
   te$code.blocks = c("test","test_arg","test_hint_arg","extra_test","test_calls",
                   "hint","add_to_hint",
-                  "task","task_notest","notest",
+                  "show","show_notest","notest",
                   "compute","settings")
   te$blocks = c(te$markdown.blocks, te$code.blocks, names(te$Addons))
   te$act.chunk = NULL
@@ -1214,14 +1214,14 @@ make.shiny.dt = function(rps, rmd.file, txt = readLines(rmd.file)) {
   }
 
 
-  df.task = data.frame(start=sort(c(1,ex.start,note.start+1, note.end+1,chunk.end+1,addon.start+1, info.start+1, cont.start+1)), type="task")
+  df.shown = data.frame(start=sort(c(1,ex.start,note.start+1, note.end+1,chunk.end+1,addon.start+1, info.start+1, cont.start+1)), type="show")
 
 
 
-  df.task$type.ind = 1:NROW(df.task)
+  df.shown$type.ind = 1:NROW(df.shown)
 
 
-  df = rbind(df.chunk,df.info,df.addon,df.cont, df.task, df.note.start, df.note.end)
+  df = rbind(df.chunk,df.info,df.addon,df.cont, df.shown, df.note.start, df.note.end)
   df = df[!duplicated(df$start),]
   df = arrange(df, start)
   df$end = c(df$start[-1]-1, length(txt))
@@ -1270,7 +1270,7 @@ make.shiny.dt = function(rps, rmd.file, txt = readLines(rmd.file)) {
       dt$code[[i]] = paste0(code, collapse="\n")
       #dt$code[[i]] = mark_utf8(paste0(code, collapse="\n"))
       #shiny.dt$html[[i]] = editChunkUI(chunk.name=chunk.name,code=code)
-    } else if (dt$type[i]=="task") {
+    } else if (dt$type[i]=="show") {
       code = txt[df$start[i]:df$end[i]]
       #dt$code[[i]] = code
       #if (any(str.starts.with(code, "a)"))) {

@@ -27,13 +27,13 @@ rtutor.addon.quiz = function() {
     parse.fun = rtutor.quiz.block.parse,
     shiny.init.fun = rtutor.quiz.init.shiny,
     shiny.ui.fun = rtutor.quiz.shiny.ui,
-    task.txt.fun = rtutor.quiz.task.txt.fun,
+    show.txt.fun = rtutor.quiz.show.txt.fun,
     sol.txt.fun = rtutor.quiz.sol.txt.fun,
     out.txt.fun = rtutor.quiz.sol.txt.fun
   )
 }
 
-rtutor.quiz.task.txt.fun = function(ao,solved=FALSE,...) {
+rtutor.quiz.show.txt.fun = function(ao,solved=FALSE,...) {
   quiz.md(ao,solution = solved)
 } 
 
