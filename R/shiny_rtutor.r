@@ -365,79 +365,6 @@ rerun.solved.chunks = function(ps = get.ps()) {
 }
 
 
-chunk.to.html = function(txt, chunk.ind, name=paste0("out_",ps$cdt$nali[[chunk.ind]]$name), ps = get.ps(), eval=TRUE, success.message=isTRUE(ps$cdt$is.solved[[chunk.ind]]), echo=TRUE, nali=NULL, quiet=TRUE) {
-  restore.point("chunk.to.html")
-  if (is.null(txt))
-    return("")
-
-
-  if (paste0(txt,collapse="\n") == "")
-    txt = "# Press 'edit' to enter your code."
-
-  if (isTRUE(ps$cdt$num.e[[chunk.ind]]>0)) {
-    if (success.message) {
-      add = c("# Great, solved correctly!")
-      if (!is.null(ps$cdt$points) & isTRUE(ps$show.points)) {
-        points = ps$cdt$points[[chunk.ind]]
-        if (points==1) {
-          add = paste0(add, " (1 point)")
-        } else if (points>0) {
-          add = paste0(add, " (",points, " points)")
-        }
-      }
-      txt = c(add,txt)
-    } else {
-      txt = c("# Not yet solved...",txt)
-      echo = TRUE
-    }
-  }
-  opt = default.out.chunk.options()
-  copt = ps$cdt$chunk.opt[[chunk.ind]]
-  if (length(copt)>0) {
-    opt[names(copt)] = copt
-  }
-  opt$eval = eval
-  opt$echo = echo
-
-  header = paste0("```{r '",name,"'",chunk.opt.list.to.string(opt,TRUE),"}")
-
-
-  library(knitr)
-  library(markdown)
-  txt = c(header,sep.lines(txt),"```")
-
-  #stop("stop in chunk.to.html")
-  stud.env = ps$cdt$stud.env[[chunk.ind]]
-  #all.parent.env(stud.env)
-  html ="Evaluation error!"
-
-
-  if (isTRUE(ps$use.secure.eval)) {
-    html = try(
-      RTutor::rtutor.eval.secure(quote(
-        knitr::knit2html(text=txt, envir=stud.env,fragment.only = TRUE,quiet = quiet)
-      ), envir=environment())
-    )
-  } else {
-    html = try(
-      knitr::knit2html(text=txt, envir=stud.env,fragment.only = TRUE,quiet = quiet)
-    )
-  }
-  
-  if (is(html, "try-error")) {
-    html = as.character(html)
-  }
-  restore.point("chunk.to.html.knit2html")
-
-  # Add syntax highlightning
-  if (!is.null(nali$chunkUI)) {
-    html = paste0(paste0(html,collapse="\n"),"\n",
-     "<script>$('#",nali$chunkUI," pre code').each(function(i, e) {hljs.highlightBlock(e)});</script>")
-  }
-
-  html
-}
-
 chunk.opt.list.to.string = function(li, add.comma=!TRUE) {
   if (length(li)==0)
     return("")
@@ -447,9 +374,6 @@ chunk.opt.list.to.string = function(li, add.comma=!TRUE) {
   if (add.comma)
     str = paste0(", ", str)
   str
-}
-default.out.chunk.options = function() {
-  list(fig.width=6.5, fig.height=4.5, fig.align='center', "warning"=FALSE, cache=FALSE, collapse=TRUE, comment=NA)
 }
 
 # Use local version of MathJax so that problem sets really run offline

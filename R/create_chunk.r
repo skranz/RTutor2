@@ -1,6 +1,6 @@
 # Parse a traditional RTutor chunk that allows
 # interactive user input, hints and check of solution
-rtutor.parse.task.chunk  = function(bi,te,args) {
+rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_) {
   restore.point("rtutor.parse.task.chunk")
   
   bdf = te$bdf; br = bdf[bi,];
@@ -19,10 +19,11 @@ rtutor.parse.task.chunk  = function(bi,te,args) {
   # create a chunk object that stores values during parsing  
   ck = new.env()
   txt.li = txt.li
-  ck$code = code
   ck$args = args
   ck$bi = bi
-  
+  ck$id = br$id
+  ck$chunk.ind = chunk.ind
+  ck$stype = "task_chunk"
   ck$shown.txt = ck$sol.txt = NULL
   
   # parse all blocks and create shown.txt, sol.txt,
@@ -35,16 +36,70 @@ rtutor.parse.task.chunk  = function(bi,te,args) {
   # add tests and hints
   add.chunk.tests.and.hints(ck)
 
+  
+  # specify points
+  if (!is.null(args$points)) {
+    ck$max.points = max(opts$e.points * (ck$num.e-sum(ck$e.shown)) + opts$chunk.points, opts$chunk.min.points)
+  } else {
+    ck$max.points = args$points
+  }
+  
+  
+  # clean up
+  ck$test.hint.marker = NULL
+  
   # add info to te$bdf
   te$bdf$obj[[bi]]$ck = ck
+  te$bdf$is.task[[bi]] = TRUE
   shown.txt = paste0(ck$shown.txt, collapse="\n")
   sol.txt = paste0(ck$sol.txt, collapse = "\n")
   te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(
     shown.txt, sol.txt, sol.txt  
   )
-  ui = uiOutput(te$bdf$id[[bi]])
+  ck$nali = make.chunk.nali(id=ck$id)
+  ui = uiOutput(ck$nali$chunkUI)
   set.bdf.ui(ui, bi,te)
+  
+  ck$ui.state = init.ui.state.task.chunk(ck)
+  ck$state = init.state.task.chunk(ck)
+  ck$log = new.env()
+  invisible(ck)
+}
 
+# Get the working environment of a chunk
+# TO DO: implement
+get.chunk.env = function(ck) {
+  new.env(parent = globalenv())
+}
+
+# Names for task chunk shiny widgets
+make.chunk.nali = function(prefix=paste0(id,"_"), id) {
+  restore.point("make.chunk.nali")
+  base.names = c(
+    "chunkUI", "editor","console","chunkout",
+    "runLineKey","runKey","checkKey","hintKey","helpKey",
+    "runLineBtn","runBtn","checkBtn","hintBtn","helpBtn","dataBtn",
+    "outputBtn", "restoreBtn", "saveBtn",
+    "editBtn","solutionBtn","alertOut",
+    "inputPanel","outputPanel"
+  )
+  nali = paste0(prefix,"_",base.names)
+  names(nali) =  base.names
+  nali = as.list(c(nali))
+  nali
+}
+
+init.ui.state.task.chunk = function(ck) {
+  ui.state = as.environment(list(
+    mode = "output"
+  ))
+}
+
+init.state.task.chunk = function(ck) {
+  state = as.environment(list(
+    stud.code = ck$shown.txt,
+    is.solved = FALSE
+  ))
 }
 
 add.chunk.block = function(ck,type,str, add.enter.code.here=FALSE,cbi, bi,te) {
@@ -144,7 +199,6 @@ add.chunk.tests.and.hints = function(ck) {
   } else {
     ck$chunk.hint = parse.text(ck$chunk.hint.txt)  
   }
-
 }
 
 

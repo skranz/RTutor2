@@ -1,47 +1,3 @@
-
-chunk.fluidRow = function(...) {
-  li = list(...)
-  names(li) = NULL
-  li
-}
-
-# set all information for the initial chunk ui
-# when a problem set is started
-make.initial.chunk.ui = function(chunk.ind, ps=get.ps()) {
-  restore.point("make.initial.chunk.ui")
-  chunk.name = ps$cdt$chunk.name[chunk.ind]
-  nali = make.chunk.nali(chunk.name)
-  ui = chunk.fluidRow(
-    uiOutput(nali$chunkUI)
-  )
-  ps$cdt$nali[[chunk.ind]] = nali
-  ps$cdt$ui[[chunk.ind]] = ui
-  invisible(ui)
-}
-
-# Set names for chunk widgets
-make.chunk.nali = function(chunk.name, chunk.ind=which(ps$cdt$chunk.name==chunk.name), ps = get.ps()) {
-  restore.point("make.chunk.nali")
-  name = gsub(" ","_",chunk.name,fixed=TRUE)
-  name = gsub(".","_",name,fixed=TRUE)
-  name = gsub(")","",name,fixed=TRUE)
-  name = paste0("chunk_",name)
-
-  base.names = c(
-    "chunkUI", "editor","console","chunkout",
-    "runLineKey","runKey","checkKey","hintKey","helpKey",
-    "runLineBtn","runBtn","checkBtn","hintBtn","helpBtn","dataBtn",
-    "outputBtn", "restoreBtn", "saveBtn",
-    "editBtn","solutionBtn","alertOut",
-    "inputPanel","outputPanel"
-  )
-  nali = paste0(name,"_",base.names)
-  names(nali) =  base.names
-  nali = as.list(c(name=name, chunk.name=chunk.name, nali))
-  nali$chunk.ind = chunk.ind
-  nali
-}
-
 set.nali.names = function(x, nali) {
   restore.point("set.nali.names")
   ind = match(names(x), names(nali))
@@ -49,51 +5,38 @@ set.nali.names = function(x, nali) {
   x
 }
 
-update.chunk.ui = function(chunk.ind, mode=ps$cdt$mode[chunk.ind], ps=get.ps(), session=ps$session, app=getApp()) {
+# update a chunk.ui to the specified mode
+update.chunk.ui = function(ck, mode=ui.state$mode, ui.state=ck$ui.state,app=getApp()) {
   restore.point("update.chunk.ui")
-  #browser()
-
-  if (app$verbose)
-    cat("\nupdate.chunk.ui: ", chunk.ind)
-  ps$cdt$mode[chunk.ind] = mode
-  ui = get.chunk.ui(chunk.ind, ps=ps)
-  nali = ps$cdt$nali[[chunk.ind]]
-
-  updateUI(session,nali$chunkUI, ui)
-  if (app$verbose)
-    cat("\nend update.chunk.ui\n")
+  ui.state$mode = mode
+  ui = get.chunk.ui(ck)
+  setUI(ck$nali$chunkUI, ui)
 }
 
 # returns the ui for a chunk based on its current mode
-# mode can be "input", "output", "hidden", "hidden.code"
-# or "inactive"
-get.chunk.ui = function(chunk.ind, ps=get.ps(),... ) {
-  restore.point("make.chunkUI")
-  mode = ps$cdt$mode[chunk.ind]
+# mode can be "input", "output", or "inactive"
+get.chunk.ui = function(ck) {
+  restore.point("get.chunk.ui")
+  mode = ck$ui.state$mode
   if (mode=="input") {
-    return(make.chunk.input.ui(chunk.ind=chunk.ind,...))
+    return(make.chunk.input.ui(ck=ck))
   } else if (mode=="output") {
-    return(make.chunk.output.ui(chunk.ind=chunk.ind,...))
+    return(make.chunk.output.ui(ck=ck))
   } else if (mode=="inactive") {
-    chunk.fluidRow(
-      HTML("You must first solve the earlier chunks...")
-    )
+    HTML("You must first solve the earlier chunks...")
   } else  {
-    chunk.fluidRow(
-      HTML("Not shown")
-    )
+    HTML("Not shown")
   }
 }
 
-
-make.chunk.input.ui = function(chunk.ind, theme="textmate", height=NULL, code.lines=NULL, fontSize=12, console.height=height, ps = get.ps()) {
+make.chunk.input.ui = function(ck, theme="textmate", height=NULL, code.lines=NULL, fontSize=12, console.height=height, opts=ps.opts()) {
   restore.point("make.chunk.input.ui")
 
   nali = ps$cdt$nali[[chunk.ind]]
-  code = ps$cdt$stud.code[[chunk.ind]]
+  code = ck$state$stud.code
 
   if (is.null(code.lines))
-    code.lines = length(sep.lines(code))+1
+    code.lines = max(length(sep.lines(code)), length(sep.lines(ck$sol.txt)))+1
 
   if (is.null(height)) {
     height = max((fontSize * 1.25) * code.lines,30)+35
@@ -103,35 +46,31 @@ make.chunk.input.ui = function(chunk.ind, theme="textmate", height=NULL, code.li
     console.height = (fontSize * 1.25) * console.code.lines + 50
   }
 
-  #cat(paste0("\n",nali$name, " height = ", height))
-
-
-
-  if (ps$cdt$is.solved[chunk.ind]) {
+  if (ck$state$is.solved[chunk.ind]) {
     label = "was already solved"
   } else {
     label = "not yet solved"
   }
 
   solutionBtn  = NULL
-  if (isTRUE(ps$show.solution.btn)) {
+  if (isTRUE(opts$show.solution.btn)) {
     solutionBtn=bsButton(nali$solutionBtn, "solution",size="extra-small")
   } else {
     solutionBtn  = NULL
   }
-  if (isTRUE(ps$show.data.exp)) {
+  if (isTRUE(opts$show.data.exp)) {
     dataBtn = bsButton(nali$dataBtn, "data", size="extra-small")
   } else {
     dataBtn  = NULL
   }
 
-  if (isTRUE(ps$show.save.btn)) {
+  if (isTRUE(opts$show.save.btn)) {
     saveBtn = bsButton(nali$saveBtn, "save",size="extra-small")
   } else {
     saveBtn = NULL
   }
   if (!ps$noeval) {
-    button.row = chunk.fluidRow(
+    button.row = tagList(
       bsButton(nali$checkBtn, "check",size="extra-small"),
       bsButton(nali$hintBtn, "hint", size="extra-small"),
       bsButton(nali$runBtn, "run chunk",size="extra-small"),
@@ -142,7 +81,7 @@ make.chunk.input.ui = function(chunk.ind, theme="textmate", height=NULL, code.li
     keys = list(runLineKey="Ctrl-Enter", helpKey="F1", runKey="Ctrl-R|Ctrl-Shift-Enter", hintKey="Ctrl-H", checkKey = "Ctrl-Alt-R|Ctrl-T")
 
   } else {
-    button.row = chunk.fluidRow(
+    button.row = tagList(
       bsButton(nali$checkBtn, "check",size="extra-small"),
       bsButton(nali$hintBtn, "hint", size="extra-small"),
       solutionBtn
@@ -152,77 +91,72 @@ make.chunk.input.ui = function(chunk.ind, theme="textmate", height=NULL, code.li
 
   keys = set.nali.names(keys, nali)
 
-  edit.row = chunk.fluidRow(
+  edit.row = tagList(
     aceEditor(nali$editor, code, mode="r",theme=theme, height=height, fontSize=13,hotkeys = keys, wordWrap=TRUE, debounce=10),
     aceEditor(nali$console, "", mode="r",theme="clouds", height=console.height, fontSize=13,hotkeys = NULL, wordWrap=TRUE, debounce=10, showLineNumbers=FALSE,highlightActiveLine=FALSE)
   )
 
   #aceAutocomplete(nali$editor)
 
-  chunk.fluidRow(
+  tagList(
     button.row,
     bsAlert(nali$alertOut),
     edit.row
   )
 }
 
-make.chunk.output.ui = function(chunk.ind, ps = get.ps()) {
+make.chunk.output.ui = function(ck, opts = ps.opts()) {
   restore.point("make.chunk.output.ui")
+  nali = ck$nali
+  code = ck$state$stud.code
 
-  nali = ps$cdt$nali[[chunk.ind]]
-  code = ps$cdt$stud.code[[chunk.ind]]
-
-  if (isTRUE(ps$show.save.btn)) {
+  if (isTRUE(opts$show.save.btn)) {
     saveBtn = bsButton(nali$saveBtn, "save", size="extra-small")
   } else {
     saveBtn = NULL
   }
-  if (isTRUE(ps$show.data.exp)) {
+  if (isTRUE(opts$show.data.exp)) {
     dataBtn = bsButton(nali$dataBtn, "data", size="extra-small")
   } else {
     dataBtn  = NULL
   }
 
-  
-  if (!ps$noeval) {
-    button.row = chunk.fluidRow(
+  if (!opts$noeval) {
+    button.row = tagList(
       bsButton(nali$editBtn, "edit",size="extra-small"),
       dataBtn,
       saveBtn
     )
   } else {
-    button.row = chunk.fluidRow(
+    button.row = tagList(
       bsButton(nali$editBtn, "edit",size="extra-small")
     )
   }
 
-  is.solved = ps$cdt$is.solved[[chunk.ind]]
-  mode = ps$cdt$mode[[chunk.ind]]
-  #cat("\nbefore if (is.solved) {")
-  #cat("code:\n", code)
+  is.solved = ck$state$is.solved
+  mode = ck$ui.state$mode
   if (is.solved) {
     code = code
-    opts = ps$cdt$chunk.opt[[chunk.ind]]
+    args = ck$args
     
     preknit = 
         # noeval will always be preknit
-        ps$noeval | 
+        opts$noeval | 
         # don't preknit special output or if chunk option replace.sol=FALSE
-        (ps$preknit & !(!is.null(opts[["output"]]) | is.false(opts$replace.sol)))
+        (opts$preknit & !(!is.null(args[["output"]]) | is.false(args$replace.sol)))
     
     if (preknit) {
-      if (!is.null(opts[["output"]])) {
+      if (!is.null(args[["output"]])) {
         html = HTML("<p> SPECIAL OUTPUT HERE <p>")
       } else {
-        html = ps$cdt$sol.html[[chunk.ind]]
-        html = HTML(html)
+        html = HTML(ck$sol.html)
       }
     } else {
       # not preknitted (default)
-      if (!is.null(opts[["output"]])) {
-        html = chunk.special.output(code, chunk.ind, nali=nali, output=opts[["output"]], ps=ps)
+      if (!is.null(args[["output"]])) {
+        html = chunk.special.output(ck=ck)
       } else {
-        html = chunk.to.html(code, chunk.ind, nali=nali)
+        html = chunk.to.html(ck=ck)
         html = HTML(html)
       }
     }
@@ -230,28 +164,24 @@ make.chunk.output.ui = function(chunk.ind, ps = get.ps()) {
     
   } else {
     
-    if ((identical(code, ps$cdt$shown.txt[[chunk.ind]]) | isTRUE(ps$noeval)) & !is.null(ps$cdt$shown.html)) {
+    if ((identical(code, ck$shown.txt) | isTRUE(opts$noeval)) & !is.null(ck$shown.html)) {
       # just show precompiled show
-      html = ps$cdt$shown.html[[chunk.ind]]
+      html = ck$shown.html
     } else {
       # compile no solution again
-      if (ps$noeval) {
-        shown = ps$cdt$shown.txt[[chunk.ind]]
-        html = chunk.to.html(shown, chunk.ind, eval=FALSE, nali=nali)
+      if (opts$noeval) {
+        ck$state$stud.code = ck$shown.txt
+        html = chunk.to.html(ck=ck, eval=FALSE)
       } else {
-        html = chunk.to.html(code, chunk.ind, eval=FALSE, nali=nali)
+        html = chunk.to.html(ck=ck, eval=FALSE)
       }
       
     }
-    
     html = HTML(html)
   }
-
   restore.point("make.chunk.output.ui.2")
 
-  #cat("\nbefore chunk.fluidRow(")
-
-  chunk.fluidRow(
+  tagList(
     button.row,
     bsAlert(nali$alertOut),
     html
@@ -259,9 +189,8 @@ make.chunk.output.ui = function(chunk.ind, ps = get.ps()) {
 }
 
 
-make.chunk.handlers = function(chunk.ind, nali = ps$cdt$nali[[chunk.ind]], ps=get.ps()) {
+make.chunk.handlers = function(ck, nali=ck$nali, opts=ps.opts()) {
   restore.point("make.chunk.handlers")
-
 
   buttonHandler(nali$checkBtn, check.shiny.chunk, chunk.ind=chunk.ind)
   aceHotkeyHandler(nali$checkKey, check.shiny.chunk, chunk.ind=chunk.ind)
@@ -269,102 +198,83 @@ make.chunk.handlers = function(chunk.ind, nali = ps$cdt$nali[[chunk.ind]], ps=ge
   aceHotkeyHandler(nali$hintKey, hint.shiny.chunk, chunk.ind=chunk.ind)
   buttonHandler(nali$saveBtn, save.shiny.chunk, chunk.ind=chunk.ind)
 
-
-  if (!ps$noeval) {
+  if (!opts$noeval) {
     buttonHandler(nali$runBtn, run.shiny.chunk, chunk.ind=chunk.ind)
     aceHotkeyHandler(nali$runKey, run.shiny.chunk, chunk.ind=chunk.ind)
-    if (isTRUE(ps$show.data.exp))
+    if (isTRUE(opts$show.data.exp))
       buttonHandler(nali$dataBtn, data.shiny.chunk, chunk.ind=chunk.ind)
     aceHotkeyHandler(nali$runLineKey, run.line.shiny.chunk, chunk.ind=chunk.ind)
     aceHotkeyHandler(nali$helpKey, help.shiny.chunk, chunk.ind=chunk.ind)
   }
 
-  if (isTRUE(ps$show.solution.btn))
+  if (isTRUE(opts$show.solution.btn))
     buttonHandler(nali$solutionBtn, solution.shiny.chunk, chunk.ind=chunk.ind)
 
   buttonHandler(nali$editBtn, edit.shiny.chunk, chunk.ind=chunk.ind)
 }
 
-
-run.shiny.chunk = function(chunk.ind,...,session=ps$session, ps=get.ps()) {
-  set.shiny.chunk(chunk.ind)
-  envir=ps$stud.env; in.R.console=is.null(ps$nali$console)
+run.shiny.chunk = function(ck, envir = ck$stud.env, code=ck$state$stud.code, opts=ps.opts()) {
   restore.point("run.shiny.chunk")
-
-  if (in.R.console) {
-    eval.in.console(ps$code, envir=envir)
+  if (opts$in.R.console) {
+    eval.in.console(code, envir=envir)
   } else {
-    eval.in.ace.console(ps$code, envir=envir, consoleId=ps$nali$console,session=ps$session)
+    eval.in.ace.console(code, envir=envir, consoleId=ck$nali$console)
   }
 }
 
-run.line.shiny.chunk = function(chunk.ind, cursor=NULL, selection=NULL,...,session=ps$session,ps=get.ps()) {
-  set.shiny.chunk(chunk.ind, cursor=cursor, selection=selection)
-  envir=ps$stud.env; in.R.console=is.null(ps$nali$console)
+run.line.shiny.chunk = function(ck, envir=ck$stud.env, cursor=NULL, selection=NULL, code=ck$state$stud.code,...) {
   restore.point("run.line.shiny.chunk")
 
-  if (ps$selection == "") {
+  if (selection == "") {
     txt = sep.lines(ps$code)
     txt = txt[ps$cursor$row+1]
   } else {
-    txt = ps$selection
+    txt = selection
   }
-  if (in.R.console) {
+  if (opts$in.R.console) {
     eval.in.console(txt, envir=envir)
   } else {
     eval.in.ace.console(txt, envir=envir, consoleId=ps$nali$console,session=ps$session)
   }
 }
 
-check.shiny.chunk = function(chunk.ind = ps$chunk.ind,...,session=ps$session, ps=get.ps(), internal=FALSE, max.lines=300, store.output=FALSE) {
-  #cat("\n check.shiny.chunk1")
-  if (!internal)
-    set.shiny.chunk(chunk.ind)
-  #cat("\n check.shiny.chunk2")
-  #browser()
+check.shiny.chunk = function(ck, internal=FALSE, max.lines=300, store.output=FALSE, opts=ps.opts(), app=getApp()) {
   restore.point("check.shiny.chunk")
-  #cat("\n check.shiny.chunk3")
-
-  
-  if (isTRUE(ps$use.secure.eval)) {
-    ret = secure.check.chunk(chunk.ind=chunk.ind,store.output=store.output)
-    #cat("\nps:")
-    #print(ps)
-    #cat("\n",ps$failure.message)
-    #ps = get.ps()
+  if (opts$use.secure.eval) {
+    ret = secure.check.chunk(ck=ck,store.output=store.output)
   } else {
     if (!is.false(ps$catch.errors)) {
-      ret = tryCatch(check.chunk(chunk.ind=chunk.ind, store.output=store.output), error = function(e) {ps$failure.message <- as.character(e);return(FALSE)})
+      ret = tryCatch(check.chunk(ck=ck, store.output=store.output), error = function(e) {ps$failure.message <- as.character(e);return(FALSE)})
     } else {
-      ret = check.chunk(chunk.ind=chunk.ind,store.output=store.output)
+      ret = check.chunk(ck=ck,store.output=store.output)
     }
   }
   
-
-  ps$prev.check.chunk.ind = chunk.ind
   
+  # Don't yet know how we deal with this
+  # ps$prev.check.chunk.ind = chunk.ind
   if (!ret)
-    ps$cdt$is.solved[chunk.ind] = FALSE
+    ck$state$is.solved = FALSE
   
   if (!internal) {
     if (!ret) {
-      txt = merge.lines(c(ps$success.log, ps$failure.message,"Press Ctrl-H to get a hint."))
-      updateAceEditor(ps$session, ps$nali$console, value=txt, mode="text")
-      ps$cdt$is.solved[chunk.ind] = FALSE
+      txt = merge.lines(c(ck$log$success, ck$log$failure.message,"Press Ctrl-H to get a hint."))
+      updateAceEditor(app$session, ck$nali$console, value=txt, mode="text")
+      ck$state$is.solved = FALSE
     } else {
       #restore.point("success test shiny chunk")
       
-      if (NROW(ps$chunk.console.out)>max.lines) {
+      if (NROW(ck$log$chunk.console.out)>max.lines) {
         txt = merge.lines(
           c("You successfully solved the chunk!",
-            ps$chunk.console.out[1:max.lines],
-            paste0("\n...", NROW(ps$chunk.console.out)-max.lines," lines ommited...")))
+            ck$log$chunk.console.out[1:max.lines],
+            paste0("\n...", NROW(ck$log$chunk.console.out)-max.lines," lines ommited...")))
       } else {
         txt = merge.lines(c("You successfully solved the chunk!",
-                            ps$chunk.console.out))
+                            ck$log$chunk.console.out))
       }
-      updateAceEditor(ps$session, ps$nali$console, value=txt,mode="r")
-      proceed.with.successfuly.checked.chunk(chunk.ind)
+      updateAceEditor(app$session, ck$nali$console, value=txt,mode="r")
+      proceed.with.successfuly.checked.chunk(ck)
     }
   }
 
@@ -372,44 +282,45 @@ check.shiny.chunk = function(chunk.ind = ps$chunk.ind,...,session=ps$session, ps
   return(ret)
 }
 
-proceed.with.successfuly.checked.chunk = function(chunk.ind, ps=get.ps()) {
+
+
+proceed.with.successfuly.checked.chunk = function(ck,opts=ps.opts()) {
   restore.point("proceed.with.successfuly.checked.chunk")
 
-  ps$cdt$is.solved[chunk.ind] = TRUE
-  
+  ck$state$is.solved = TRUE
+
   # If we have precomp=TRUE, it is often sensible to replace 
   # user solution with sample solution 
   # A replace.sol chunk option takes precedence over global problem set option
-  if (!is.null(ps$cdt$chunk.opt[[chunk.ind]][["replace.sol"]])) {
-    replace.sol = ps$cdt$chunk.opt[[chunk.ind]][["replace.sol"]]
+  if (!is.null(ck$args[["replace.sol"]])) {
+    replace.sol = ck$args[["replace.sol"]]
   } else {
-    replace.sol = isTRUE(ps$replace.sol)
+    replace.sol = isTRUE(opts$replace.sol)
   }
   
   if (isTRUE(replace.sol)) {
-    ps$cdt$stud.code[chunk.ind] = ps$cdt$sol.txt[chunk.ind]
+    ck$stat$stud.code = ck$sol.txt
   }
   
-  if (is.last.chunk.of.ex(chunk.ind)) {
-    ex.ind = ps$cdt$ex.ind[chunk.ind]
-    if (!isTRUE(ps$precomp))
-      ps$edt$ex.final.env[[ex.ind]] = copy.stud.env(ps$stud.env)
-  }
-  r.chunk.ui.mode = paste0("r.chunk_",chunk.ind,".ui.mode")
-  ps$cdt$mode[[chunk.ind]]="output"
-  update.chunk.ui(chunk.ind)
+  # if (is.last.chunk.of.ex(chunk.ind)) {
+  #   ex.ind = ps$cdt$ex.ind[chunk.ind]
+  #   if (!isTRUE(ps$precomp))
+  #     ps$edt$ex.final.env[[ex.ind]] = copy.stud.env(ps$stud.env)
+  # }
+  
+  ck$ui.state$mode = "output"
+  update.chunk.ui(ck)
 
-
-  # set the next chunk to edit mode
-  if (chunk.ind < NROW(ps$cdt)) {
-    if (ps$cdt$ex.ind[chunk.ind] == ps$cdt$ex.ind[chunk.ind+1] &
-       !ps$cdt$is.solved[chunk.ind+1]) {
-
-      #cat("update next chunk...")
-      ps$cdt$mode[chunk.ind+1] = "input"
-      update.chunk.ui(chunk.ind+1)
-    }
-  }
+  # # set the next chunk to edit mode
+  # if (chunk.ind < NROW(ps$cdt)) {
+  #   if (ps$cdt$ex.ind[chunk.ind] == ps$cdt$ex.ind[chunk.ind+1] &
+  #      !ps$cdt$is.solved[chunk.ind+1]) {
+  # 
+  #     #cat("update next chunk...")
+  #     ps$cdt$mode[chunk.ind+1] = "input"
+  #     update.chunk.ui(chunk.ind+1)
+  #   }
+  # }
 
 }
 
@@ -488,19 +399,17 @@ output.shiny.chunk = function(chunk.ind, ...,session=ps$session, ps=get.ps()) {
   update.chunk.ui(chunk.ind, mode="output")
 }
 
-
-edit.shiny.chunk = function(chunk.ind, ...,session=ps$session, ps=get.ps()) {
+# edit button is pressed
+edit.shiny.chunk = function(ck, opts = ps.opts(),...) {
   restore.point("edit.shiny.chunk")
   #browser()
-  if (can.chunk.be.edited(chunk.ind)) {
-    update.chunk.ui(chunk.ind, mode="input")
-    set.shiny.chunk(chunk.ind)
-    session = ps$session
+  if (can.chunk.be.edited(ck)) {
+    update.chunk.ui(ck=ck, mode="input")
   } else {
-    nali = ps$cdt$nali[[chunk.ind]]
+    nali = ck$nali
     rtutorAlert(session,nali$alertOut,
         title = "Cannot edit chunk",
-        message= ps$failure.message,
+        message= ck$log$failure.message,
         type = "info", append=FALSE
     )
   }
@@ -543,65 +452,82 @@ save.shiny.chunk = function(chunk.ind=ps$chunk.ind,session=ps$session,
   )
 }
 
+# update.all.chunk.ui = function(ps=get.ps()) {
+#   restore.point("update.all.chunks")
+#   for (chunk.ind in ps$cdt$chunk.ps.ind) {
+#     update.chunk.ui(chunk.ind, ps=ps)
+#   }
+# }
 
-set.shiny.chunk = function(chunk.ind=NULL,selection=NULL, cursor=NULL,
-                           input=session$input,session=ps$session,
-                           ps=get.ps(),reload.env=FALSE, from.data.btn = FALSE) {
-  restore.point("set.shiny.chunk")
-  #browser()
-  #cat("start set.shiny.chunk\n")
 
-  ps$selection = selection
-  ps$cursor = cursor
+chunk.to.html = function(ck,txt = ck$stud.code, opts=ps.opts(), envir=get.chunk.env(ck), eval=TRUE, success.message=isTRUE(ck$state$is.solved), echo=TRUE, nali=NULL, quiet=TRUE) {
+  restore.point("chunk.to.html")
+  if (is.null(txt))
+    return("")
 
-  nali = ps$cdt$nali[[chunk.ind]]
 
-  if (ps$cdt$mode[chunk.ind]=="input") {
-    code = paste0(isolate(input[[nali$editor]]), collapse="\n")
-    ps$stud.code = ps$code = code
-    ps$cdt$stud.code[[chunk.ind]] = code
-  }
-  ps$session = session
-  ps$nali = nali
-  # Always reload env if chunk.ind has changed
-  if (!reload.env)
-      reload.env = !isTRUE(ps$chunk.ind == chunk.ind)
+  # Adapt output text
+  if (paste0(txt,collapse="\n") == "")
+    txt = "# Press 'edit' to enter your code."
 
-  ps$chunk.ind = chunk.ind
-  if (from.data.btn & ps$cdt$mode[chunk.ind]!="input") {
-    reload.env = FALSE
-    ps$stud.env = ps$cdt$stud.env[[ps$chunk.ind]]
-  }
-
-  if (reload.env) {
-    stud.env = NULL
-    if (!is.false(ps$catch.errors)) {
-      tryCatch(
-        stud.env <- make.chunk.stud.env(chunk.ind, ps),
-        error = function(e) {
-          ps$failure.message = paste0(deparse(e), collapse="\n")
+  if (ck$num.e>0) {
+    if (success.message) {
+      add = c("# Great, solved correctly!")
+      if (opts$show.points) {
+        points = ck$max.points
+        if (points==1) {
+          add = paste0(add, " (1 point)")
+        } else if (points>0) {
+          add = paste0(add, " (",points, " points)")
         }
-      )
+      }
+      txt = c(add,txt)
     } else {
-      stud.env <- make.chunk.stud.env(chunk.ind, ps)
+      txt = c("# Not yet solved...",txt)
+      echo = TRUE
     }
-    if (!is.null(stud.env)) {
-      ps$cdt$stud.env[[ps$chunk.ind]] <- stud.env
-    }
-    if (is.null(stud.env)) {
-      return(FALSE)
-    }
-    ps$stud.env = ps$cdt$stud.env[[ps$chunk.ind]]
   }
-  return(TRUE)
+  
+  # Get output arguments
+  args = opts$chunk.out.args
+  if (length(ck$args)>0) {
+    args[names(ck$args)] = ck$args
+  }
+  args$eval = eval
+  args$echo = echo
+  header = paste0("```{r '",ck$id,"'",chunk.opt.list.to.string(opt,TRUE),"}")
+
+  library(knitr)
+  library(markdown)
+  txt = c(header,sep.lines(txt),"```")
+  #all.parent.env(stud.env)
+  html ="Evaluation error!"
+  if (opts$use.secure.eval) {
+    html = try(
+      RTutor::rtutor.eval.secure(quote(
+        knitr::knit2html(text=txt, envir=stud.env,fragment.only = TRUE,quiet = quiet)
+      ), envir=environment())
+    )
+  } else {
+    html = try(
+      knitr::knit2html(text=txt, envir=stud.env,fragment.only = TRUE,quiet = quiet)
+    )
+  }
+  
+  if (is(html, "try-error")) {
+    html = as.character(html)
+  }
+  restore.point("chunk.to.html.knit2html")
+
+  # Add syntax highlightning
+  if (!is.null(nali$chunkUI)) {
+    html = paste0(paste0(html,collapse="\n"),"\n",
+     "<script>$('#",nali$chunkUI," pre code').each(function(i, e) {hljs.highlightBlock(e)});</script>")
+  }
+
+  html
 }
 
-
-
-update.all.chunk.ui = function(ps=get.ps()) {
-  restore.point("update.all.chunks")
-  for (chunk.ind in ps$cdt$chunk.ps.ind) {
-    update.chunk.ui(chunk.ind, ps=ps)
-  }
+default.chunk.out.args = function() {
+  list(fig.width=6.5, fig.height=4.5, fig.align='center', "warning"=FALSE, cache=FALSE, collapse=TRUE, comment=NA)
 }
-

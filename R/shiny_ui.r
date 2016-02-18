@@ -165,6 +165,30 @@ make.rtutor.page.ui = function(inner, ps = get.ps(), title="RTutor") {
   
 }
 
+highlight.code.script = function() {
+  tags$script("$('pre code').each(function(i, e) {hljs.highlightBlock(e)});")
+}
+
+rtutor.html.ressources = function() {
+  # WARNING: If highlightjs cannot be loaded, whole problem set
+  # fails to work (very hard to detect bug)
+  # Link to local highlightjs version
+  dir = paste0(system.file('www', package='RTutor'),"/highlightjs")
+  addResourcePath('highlightjs', paste0(system.file('www', package='RTutor'),"/highlightjs"))
+
+  tagList(
+    tags$script(src = 'highlightjs/highlight.min.js',type = 'text/javascript'),
+    tags$script(src = 'highlightjs/languages/r.min.js',type = 'text/javascript'),
+    tags$link(rel = 'stylesheet', type = 'text/css',href = 'highlightjs/styles/github.min.css')
+#     HTML('
+#     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/styles/default.min.css">
+# <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/highlight.min.js"></script>
+# <script>hljs.initHighlightingOnLoad();</script>
+#    ')
+    
+  )
+}
+
 make.rtutor.ui = function(shiny.dt = ps$shiny.dt,cdt=ps$cdt, ps=get.ps(), just.inner=FALSE) {
   restore.point("make.rtutor.ui")
   

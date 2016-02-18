@@ -1,0 +1,13 @@
+Just a list of internal issues, I have wrestled with. For future reference.
+
+## Syntax Highlighting & Mathjax
+
+
+
+- Need extra call to `highlight.code.script()` script in outputs that are dynamically shown created needed.
+- We add  `highlight.code.script()` in the ui list of a block that will be dynamically rendered and can contain code HTML. Examples are `frame`, and `task_block`.
+
+- The function `highlight.code.script()` interferes with `withMathjax`. `highlight.code.script()` must be called inside `withMathjax`.
+
+- The commonmark package does not render with MathJax
+- If there is no internet connection, we must not call `withMathJax`, chunks won't be shown otherwise.

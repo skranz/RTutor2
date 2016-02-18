@@ -1,7 +1,7 @@
 examples.frame.ps = function() {
   library(EconCurves)
   setwd("D:/libraries/RTutor2")
-  txt = readLines("ex.Rmd")
+  txt = readLines("ex1.Rmd")
   frame.ind = NULL
   options(warn=2)
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind),catch.errors = FALSE)
@@ -42,7 +42,9 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
   df = adapt.for.back.to.blocks(df,te=te)
+  df$stype = df$type
   df$is.addon = df$type %in% addons
+  
   
   df$parent_addon = get.levels.parents(df$level, df$is.addon)
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info")
@@ -50,7 +52,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
 
   bdf$obj = bdf$ui = vector("list", NROW(bdf))
-  bdf$prefixed = bdf$has.handler = bdf$is.task = FALSE
+  bdf$prefixed = bdf$has.handler = bdf$is.task = bdf$has.dyn.ui = FALSE
   bdf$task.ind = 0
   bdf$id = paste0(bdf$type,"__",bdf$index,"__",ps.id)
   bdf$shown.rmd = bdf$out.rmd = bdf$sol.rmd = ""
@@ -89,9 +91,45 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
     }
   }
   te$bdf$task.ind = cumsum(te$bdf$is.task) * te$bdf$is.task
+  
+  # store task.chunks in a list chunks
+  chunk.rows = which(te$bdf$stype == "task_chunk")
+  chunks = lapply(chunk.rows, function(bi) {
+    te$bdf$obj[[bi]]$ck
+  })
+  te$chunks = chunks
   te
 }
 
+# Default problem set options
+ps.opts = function(..., ps=get.ps()) {
+  opts = ps[["rtutor.opts"]]
+  if (is.null(opts)) {
+    opts = list(
+      
+      
+      # parameters related to chunk points
+      e.points = 1,
+      min.chunk.points=0,
+      chunk.points=0,      
+      show.points = TRUE,
+      # relevant for shiny_chunk
+      use.secure.eval = FALSE,
+      noeval = FALSE,
+      preknit = FALSE,
+      precomp = FALSE,
+      replace.sol = FALSE,
+      show.solution.btn=FALSE,
+      show.data.exp=FALSE,
+      show.save.btn=FALSE,
+      in.R.console=FALSE,
+      chunk.out.args = default.chunk.out.args()
+    )
+  }
+  args = list(...)
+  opts[names(args)] = args
+  opts
+}
 
 adapt.for.back.to.blocks = function(bdf,te, line.start=te$txt.start) {
   restore.point("adapt.for.back.to.blocks")
@@ -205,18 +243,24 @@ rtutor.parse.chunk = function(bi,te) {
   code = str[-c(1,length(str))]
   mstr = merge.lines(str) 
   if (chunk.precompute) {
+    te$bdf$stype[[bi]] = "precompute_chunk"
     expr = parse(text=code)
     res = eval(expr,te$pre.env)
     te$bdf$obj[[bi]]$pre.env = copy.env(te$pre.env)
     te$bdf$prefixed[[bi]] = TRUE
     te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
   } else if (chunk.preknit) {
+    te$bdf$stype[[bi]] = "preknit_chunk"    
     ui = knit.rmd(str,envir = te$pre.env,out.type="shiny")
     set.bdf.ui(ui, bi,te)
     te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
   } else {
+    te$bdf$stype[[bi]] = "task_chunk"
+    te$bdf$has.dyn.ui[[bi]] = TRUE
+    chunk.ind = sum(te$bdf$stype[1:bi]=="task_chunk")
+    te$bdf$id[[bi]] = paste0("tchunk_",chunk.ind)
     # a task chunk is the classic RTutor chunk
-    rtutor.parse.task.chunk(bi,te,args)
+    rtutor.parse.task.chunk(bi,te,args, chunk.ind=chunk.ind)
   }
 }
 
@@ -385,7 +429,8 @@ rtutor.parse.frame = function(bi,te) {
     title = NULL
   }
   ui = tagList(
-    ui.li
+    ui.li,
+    highlight.code.script()
   )
   te$bdf$obj[[bi]] = list(title = args$name, args=args, mathjax.ui = withMathJax(ui))
   set.bdf.ui(ui,bi,te)

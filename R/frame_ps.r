@@ -1,7 +1,7 @@
 examples.frame.ps = function() {
   library(EconCurves)
   setwd("D:/libraries/RTutor2")
-  txt = readLines("ex.rmd")
+  txt = readLines("ex1.rmd")
   frame.ind = NULL
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE)
   te$lang = "de"
@@ -9,14 +9,19 @@ examples.frame.ps = function() {
   show.frame.ps(te)
 }
 
-show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE) {
+show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE, just.return.html=FALSE) {
   restore.point("show.frame.ps")
   
   app = eventsApp()
   app$ps = ps
-  app$ui = fluidPage(
+  resTags = rtutor.html.ressources()
+  app$ui = tagList(
+    resTags,
     docClickEvents(id="doc_click"),
-    uiOutput("frameUI")
+    fluidPage(
+      uiOutput("frameUI")
+      #,highlight.code.script()
+    )
   )
   try(shiny::addResourcePath("figure",paste0(dir,"/figure")), silent=TRUE)  
 
@@ -27,10 +32,29 @@ show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE) {
   ps$show.frames = NULL
   ps$num.frames = sum(bdf$type=="frame")
   add.navigate.handlers()
-  set.frame(frame.ind,ps=ps)
+  frame.ui = set.frame(frame.ind,ps=ps)
   
+  # May be useful for debugging HTML problems
+  if (just.return.html) {
+    html = tagList(
+      resTags,
+      docClickEvents(id="doc_click"),
+      fluidPage(
+        frame.ui
+      )
+    )
+    return(html)
+  }
   
   viewApp(app)
+}
+
+show.dyn.ui = function(stype=bdf$stype[[bi]], obj=bdf$obj[[bi]], bi, bdf = ps$bdf,ps=NULL) {
+  
+  # TO DO: store whether UI really needs an update...
+  if (stype=="task_chunk") {
+    update.chunk.ui(ck=obj$ck)
+  }
 }
 
 rtutor.navigate.btns = function() {
@@ -80,6 +104,7 @@ frame.forward = function(ps=app$ps, app=getApp(),...) {
   frame.next(ps=ps,app=app,...)
 }
 
+# TO DO: improve code
 rtutor.init.addons = function(addons,ps) {
   restore.point("rtutor.init.addons")
   
@@ -98,6 +123,8 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),use.mathja
   bdf = ps$bdf
   bi = which(bdf$type=="frame")[ps$frame.ind]
   
+  # init addons
+  # TO DO: improve code  
   ao.ind = which(bdf$parent_frame == bi & bdf$is.addon)
   addons = lapply(ao.ind, function(ind) bdf$obj[[ind]]$ao)
   if (!frame.ind %in% ps$shown.frames) {
@@ -105,25 +132,47 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),use.mathja
     ps$shown.frames = c(ps$shown.frames,frame.ind) 
   }
   
+  # show dynamic ui of the frame
+  dyn.ui.ind = which(bdf$parent_frame == bi & bdf$has.dyn.ui)
+  for (cbi in dyn.ui.ind) {
+    show.dyn.ui(bi = cbi, bdf=bdf)
+  }
+  
   obj = ps$bdf$obj[[bi]]
+  # header.ui = tagList(
+  #   HTML("<table width='100%'><tr><td>"),
+  #   h4(obj$title),
+  #   HTML("</td><td align='right' valign='top' nowrap>"),
+  #   list(
+  #     rtutor.navigate.btns(),
+  #     HTML(paste0(frame.ind, " of ",ps$num.frames))      
+  #   ),
+  #   HTML("</td></tr></table>")
+  # )
+
   header.ui = tagList(
     HTML("<table width='100%'><tr><td>"),
     h4(obj$title),
     HTML("</td><td align='right' valign='top' nowrap>"),
-    list(
-      rtutor.navigate.btns(),
-      HTML(paste0(frame.ind, " of ",ps$num.frames))      
-    ),
+    HTML("<table><tr><td valign='center' nowrap>"),    
+    rtutor.navigate.btns(),
+    HTML("</td><td valign='center' nowrap style='padding-left: 5px'>"),
+    HTML(paste0(frame.ind, " of ",ps$num.frames)),      
+    HTML("</td></tr></table>"),
     HTML("</td></tr></table>")
   )
+  
   
   if (!use.mathjax) {
     ui = bdf$ui[bi]     
   } else {
     ui = bdf$obj[[bi]]$mathjax.ui
   }
-  frame.ui = c(header.ui,ui)
+  frame.ui = list(header.ui,ui)
+
   setUI("frameUI",frame.ui)
+  
+  invisible(frame.ui)
 }
 
 

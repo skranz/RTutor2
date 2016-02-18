@@ -1,3 +1,7 @@
+
+mutate_.NULL = select_.NULL = arrange_.NULL = filter_.NULL = function(...) NULL
+
+
 substitute.call = function (x, env=parent.frame()) 
 {
   call <- substitute(substitute(x, env), list(x = x))
