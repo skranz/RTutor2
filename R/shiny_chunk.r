@@ -6,22 +6,23 @@ set.nali.names = function(x, nali) {
 }
 
 # update a chunk.ui to the specified mode
-update.chunk.ui = function(ck, mode=ui.state$mode, ui.state=ck$ui.state,app=getApp()) {
+update.chunk.ui = function(uk, mode=uk$mode,app=getApp()) {
   restore.point("update.chunk.ui")
-  ui.state$mode = mode
-  ui = get.chunk.ui(ck)
+  ck = uk$ck
+  uk$mode = mode
+  ui = get.chunk.ui(uk)
   setUI(ck$nali$chunkUI, ui)
 }
 
 # returns the ui for a chunk based on its current mode
 # mode can be "input", "output", or "inactive"
-get.chunk.ui = function(ck) {
+get.chunk.ui = function(uk) {
   restore.point("get.chunk.ui")
-  mode = ck$ui.state$mode
+  mode = uk$mode
   if (mode=="input") {
-    return(make.chunk.input.ui(ck=ck))
+    return(make.chunk.input.ui(uk=uk))
   } else if (mode=="output") {
-    return(make.chunk.output.ui(ck=ck))
+    return(make.chunk.output.ui(uk=uk))
   } else if (mode=="inactive") {
     HTML("You must first solve the earlier chunks...")
   } else  {
@@ -29,11 +30,12 @@ get.chunk.ui = function(ck) {
   }
 }
 
-make.chunk.input.ui = function(ck, theme="textmate", height=NULL, code.lines=NULL, fontSize=12, console.height=height, opts=ps.opts()) {
+make.chunk.input.ui = function(uk, theme="textmate", height=NULL, code.lines=NULL, fontSize=12, console.height=height, opts=ps.opts()) {
   restore.point("make.chunk.input.ui")
 
-  nali = ps$cdt$nali[[chunk.ind]]
-  code = ck$state$stud.code
+  ck = uk$ck
+  nali = ck$nali
+  code = merge.lines(uk$stud.code)
 
   if (is.null(code.lines))
     code.lines = max(length(sep.lines(code)), length(sep.lines(ck$sol.txt)))+1
@@ -46,7 +48,7 @@ make.chunk.input.ui = function(ck, theme="textmate", height=NULL, code.lines=NUL
     console.height = (fontSize * 1.25) * console.code.lines + 50
   }
 
-  if (ck$state$is.solved[chunk.ind]) {
+  if (uk$is.solved) {
     label = "was already solved"
   } else {
     label = "not yet solved"
@@ -69,7 +71,7 @@ make.chunk.input.ui = function(ck, theme="textmate", height=NULL, code.lines=NUL
   } else {
     saveBtn = NULL
   }
-  if (!ps$noeval) {
+  if (!opts$noeval) {
     button.row = tagList(
       bsButton(nali$checkBtn, "check",size="extra-small"),
       bsButton(nali$hintBtn, "hint", size="extra-small"),
@@ -92,8 +94,8 @@ make.chunk.input.ui = function(ck, theme="textmate", height=NULL, code.lines=NUL
   keys = set.nali.names(keys, nali)
 
   edit.row = tagList(
-    aceEditor(nali$editor, code, mode="r",theme=theme, height=height, fontSize=13,hotkeys = keys, wordWrap=TRUE, debounce=10),
-    aceEditor(nali$console, "", mode="r",theme="clouds", height=console.height, fontSize=13,hotkeys = NULL, wordWrap=TRUE, debounce=10, showLineNumbers=FALSE,highlightActiveLine=FALSE)
+    aceEditor(nali$editor, code, mode="r",theme=theme, height=height, fontSize=13,hotkeys = keys, wordWrap=TRUE, debounce=1, showLineNumbers=isTRUE(opts$show.line.numbers)),
+    aceEditor(nali$console, "", mode="r",theme="clouds", height=console.height, fontSize=13,hotkeys = NULL, wordWrap=TRUE, debounce=1, showLineNumbers=FALSE,highlightActiveLine=FALSE)
   )
 
   #aceAutocomplete(nali$editor)
@@ -105,10 +107,10 @@ make.chunk.input.ui = function(ck, theme="textmate", height=NULL, code.lines=NUL
   )
 }
 
-make.chunk.output.ui = function(ck, opts = ps.opts()) {
+make.chunk.output.ui = function(uk, opts = ps.opts()) {
   restore.point("make.chunk.output.ui")
-  nali = ck$nali
-  code = ck$state$stud.code
+  ck = uk$ck; nali = ck$nali
+  code = uk$stud.code
 
   if (isTRUE(opts$show.save.btn)) {
     saveBtn = bsButton(nali$saveBtn, "save", size="extra-small")
@@ -133,8 +135,8 @@ make.chunk.output.ui = function(ck, opts = ps.opts()) {
     )
   }
 
-  is.solved = ck$state$is.solved
-  mode = ck$ui.state$mode
+  is.solved = uk$is.solved
+  mode = uk$mode
   if (is.solved) {
     code = code
     args = ck$args
@@ -154,9 +156,9 @@ make.chunk.output.ui = function(ck, opts = ps.opts()) {
     } else {
       # not preknitted (default)
       if (!is.null(args[["output"]])) {
-        html = chunk.special.output(ck=ck)
+        html = chunk.special.output(uk=uk)
       } else {
-        html = chunk.to.html(ck=ck)
+        html = chunk.to.html(uk=uk)
         html = HTML(html)
       }
     }
@@ -170,10 +172,10 @@ make.chunk.output.ui = function(ck, opts = ps.opts()) {
     } else {
       # compile no solution again
       if (opts$noeval) {
-        ck$state$stud.code = ck$shown.txt
-        html = chunk.to.html(ck=ck, eval=FALSE)
+        uk$stud.code = ck$shown.txt
+        html = chunk.to.html(uk=uk, eval=FALSE)
       } else {
-        html = chunk.to.html(ck=ck, eval=FALSE)
+        html = chunk.to.html(uk=uk, eval=FALSE)
       }
       
     }
@@ -189,32 +191,33 @@ make.chunk.output.ui = function(ck, opts = ps.opts()) {
 }
 
 
-make.chunk.handlers = function(ck, nali=ck$nali, opts=ps.opts()) {
+make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=ps.opts()) {
   restore.point("make.chunk.handlers")
 
-  buttonHandler(nali$checkBtn, check.shiny.chunk, chunk.ind=chunk.ind)
-  aceHotkeyHandler(nali$checkKey, check.shiny.chunk, chunk.ind=chunk.ind)
-  buttonHandler(nali$hintBtn, hint.shiny.chunk, chunk.ind=chunk.ind)
-  aceHotkeyHandler(nali$hintKey, hint.shiny.chunk, chunk.ind=chunk.ind)
-  buttonHandler(nali$saveBtn, save.shiny.chunk, chunk.ind=chunk.ind)
+  buttonHandler(nali$checkBtn, check.shiny.chunk, uk=uk)
+  aceHotkeyHandler(nali$checkKey, check.shiny.chunk, uk=uk,if.handler.exists = "skip")
+  buttonHandler(nali$hintBtn, hint.shiny.chunk, uk=uk)
+  aceHotkeyHandler(nali$hintKey, hint.shiny.chunk, uk=uk,if.handler.exists = "skip")
+  buttonHandler(nali$saveBtn, save.shiny.chunk, uk=uk)
 
   if (!opts$noeval) {
-    buttonHandler(nali$runBtn, run.shiny.chunk, chunk.ind=chunk.ind)
-    aceHotkeyHandler(nali$runKey, run.shiny.chunk, chunk.ind=chunk.ind)
+    buttonHandler(nali$runBtn, run.shiny.chunk, uk=uk)
+    aceHotkeyHandler(nali$runKey, run.shiny.chunk, uk=uk,if.handler.exists = "skip")
     if (isTRUE(opts$show.data.exp))
-      buttonHandler(nali$dataBtn, data.shiny.chunk, chunk.ind=chunk.ind)
-    aceHotkeyHandler(nali$runLineKey, run.line.shiny.chunk, chunk.ind=chunk.ind)
-    aceHotkeyHandler(nali$helpKey, help.shiny.chunk, chunk.ind=chunk.ind)
+      buttonHandler(nali$dataBtn, data.shiny.chunk, uk=uk)
+    aceHotkeyHandler(nali$runLineKey, run.line.shiny.chunk, uk=uk,if.handler.exists = "skip")
+    aceHotkeyHandler(nali$helpKey, help.shiny.chunk, uk=uk,if.handler.exists = "skip")
   }
 
   if (isTRUE(opts$show.solution.btn))
-    buttonHandler(nali$solutionBtn, solution.shiny.chunk, chunk.ind=chunk.ind)
+    buttonHandler(nali$solutionBtn, solution.shiny.chunk, uk=uk)
 
-  buttonHandler(nali$editBtn, edit.shiny.chunk, chunk.ind=chunk.ind)
+  buttonHandler(nali$editBtn, edit.shiny.chunk, uk=uk)
 }
 
-run.shiny.chunk = function(ck, envir = ck$stud.env, code=ck$state$stud.code, opts=ps.opts()) {
+run.shiny.chunk = function(uk, envir = uk$stud.env, code=uk$stud.code, opts=ps.opts(),...) {
   restore.point("run.shiny.chunk")
+  ck = uk$ck
   if (opts$in.R.console) {
     eval.in.console(code, envir=envir)
   } else {
@@ -222,59 +225,56 @@ run.shiny.chunk = function(ck, envir = ck$stud.env, code=ck$state$stud.code, opt
   }
 }
 
-run.line.shiny.chunk = function(ck, envir=ck$stud.env, cursor=NULL, selection=NULL, code=ck$state$stud.code,...) {
+run.line.shiny.chunk = function(uk, envir=uk$stud.env, cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp()) {
   restore.point("run.line.shiny.chunk")
 
+  uk$stud.code = code
+
   if (selection == "") {
-    txt = sep.lines(ps$code)
-    txt = txt[ps$cursor$row+1]
+    txt = sep.lines(code)
+    txt = txt[cursor$row+1]
   } else {
     txt = selection
   }
   if (opts$in.R.console) {
     eval.in.console(txt, envir=envir)
   } else {
-    eval.in.ace.console(txt, envir=envir, consoleId=ps$nali$console,session=ps$session)
+    eval.in.ace.console(txt, envir=envir, consoleId=ps$nali$console,session=app$session)
   }
 }
 
-check.shiny.chunk = function(ck, internal=FALSE, max.lines=300, store.output=FALSE, opts=ps.opts(), app=getApp()) {
+check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FALSE, opts=ps.opts(), app=getApp(),...) {
+  uk$stud.code = getInputValue(uk$ck$nali$editor)
   restore.point("check.shiny.chunk")
-  if (opts$use.secure.eval) {
-    ret = secure.check.chunk(ck=ck,store.output=store.output)
+  ck = uk$ck
+  if (!is.false(opts$catch.errors)) {
+    ret = tryCatch(check.chunk(uk=uk, store.output=store.output, use.secure.eval=opts$use.secure.eval), error = function(e) {uk$log$failure.message <- as.character(e);return(FALSE)})
   } else {
-    if (!is.false(ps$catch.errors)) {
-      ret = tryCatch(check.chunk(ck=ck, store.output=store.output), error = function(e) {ps$failure.message <- as.character(e);return(FALSE)})
-    } else {
-      ret = check.chunk(ck=ck,store.output=store.output)
-    }
+    ret = check.chunk(uk=uk,store.output=store.output, use.secure.eval=opts$use.secure.eval)
   }
-  
-  
+
   # Don't yet know how we deal with this
   # ps$prev.check.chunk.ind = chunk.ind
-  if (!ret)
-    ck$state$is.solved = FALSE
-  
+
   if (!internal) {
     if (!ret) {
-      txt = merge.lines(c(ck$log$success, ck$log$failure.message,"Press Ctrl-H to get a hint."))
+      txt = merge.lines(c(uk$log$success, uk$log$failure.message,"Press Ctrl-H to get a hint."))
       updateAceEditor(app$session, ck$nali$console, value=txt, mode="text")
-      ck$state$is.solved = FALSE
+      uk$is.solved = FALSE
     } else {
       #restore.point("success test shiny chunk")
       
-      if (NROW(ck$log$chunk.console.out)>max.lines) {
+      if (NROW(uk$log$chunk.console.out)>max.lines) {
         txt = merge.lines(
           c("You successfully solved the chunk!",
-            ck$log$chunk.console.out[1:max.lines],
-            paste0("\n...", NROW(ck$log$chunk.console.out)-max.lines," lines ommited...")))
+            uk$log$chunk.console.out[1:max.lines],
+            paste0("\n...", NROW(uk$log$chunk.console.out)-max.lines," lines ommited...")))
       } else {
         txt = merge.lines(c("You successfully solved the chunk!",
-                            ck$log$chunk.console.out))
+                            uk$log$chunk.console.out))
       }
       updateAceEditor(app$session, ck$nali$console, value=txt,mode="r")
-      proceed.with.successfuly.checked.chunk(ck)
+      proceed.with.successfuly.checked.chunk(uk)
     }
   }
 
@@ -284,10 +284,10 @@ check.shiny.chunk = function(ck, internal=FALSE, max.lines=300, store.output=FAL
 
 
 
-proceed.with.successfuly.checked.chunk = function(ck,opts=ps.opts()) {
+proceed.with.successfuly.checked.chunk = function(uk,opts=ps.opts()) {
   restore.point("proceed.with.successfuly.checked.chunk")
-
-  ck$state$is.solved = TRUE
+  ck = uk$ck
+  uk$is.solved = TRUE
 
   # If we have precomp=TRUE, it is often sensible to replace 
   # user solution with sample solution 
@@ -299,7 +299,7 @@ proceed.with.successfuly.checked.chunk = function(ck,opts=ps.opts()) {
   }
   
   if (isTRUE(replace.sol)) {
-    ck$stat$stud.code = ck$sol.txt
+    uk$stud.code = ck$sol.txt
   }
   
   # if (is.last.chunk.of.ex(chunk.ind)) {
@@ -308,8 +308,8 @@ proceed.with.successfuly.checked.chunk = function(ck,opts=ps.opts()) {
   #     ps$edt$ex.final.env[[ex.ind]] = copy.stud.env(ps$stud.env)
   # }
   
-  ck$ui.state$mode = "output"
-  update.chunk.ui(ck)
+  uk$mode = "output"
+  update.chunk.ui(uk)
 
   # # set the next chunk to edit mode
   # if (chunk.ind < NROW(ps$cdt)) {
@@ -325,36 +325,39 @@ proceed.with.successfuly.checked.chunk = function(ck,opts=ps.opts()) {
 }
 
 
-hint.shiny.chunk = function(chunk.ind, ...,session=ps$session, ps=get.ps()) {
+hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=ps.opts(),app=getApp()) {
   restore.point("hint.shiny.chunk")
-  set.shiny.chunk(chunk.ind, ps=ps)
-  envir=ps$stud.env; in.R.console=is.null(ps$nali$console)
   
-  # If the current chunk has not been checked. Check it again
-  #if (!identical(chunk.ind,ps$prev.check.chunk.ind))
-  if (!isTRUE(ps$hint.noeval))
-    check.shiny.chunk(chunk.ind, internal=TRUE)
+  uk$stud.code = code
+
+  if (!isTRUE(opts$hint.noeval)) {
+    if (!identical(uk$stud.code,uk$last.check.code))
+      check.chunk(uk,opts=opts)
+  }
   
-  txt = tryCatch(merge.lines(capture.output(hint(ps=ps))),
-         error = function(e) {merge.lines(as.character(e))})
+  txt = tryCatch(merge.lines(
+      capture.output(run.chunk.hint(uk=uk, opts=opts))
+    ),
+    error = function(e) {merge.lines(as.character(e))}
+  )
   txt = paste0("Hint: ", txt)
-  updateAceEditor(ps$session, ps$nali$console, value=txt, mode="text")
+  updateAceEditor(app$session, uk$ck$nali$console, value=txt, mode="text")
 }
 
-help.shiny.chunk = function(chunk.ind, cursor=NULL, selection="",...,session=ps$session, ps=get.ps()) {
+help.shiny.chunk = function(uk, cursor=NULL, selection="",..., app=getApp()) {
   set.shiny.chunk(chunk.ind, cursor=cursor, selection=selection)
-  envir=ps$stud.env; in.R.console=is.null(ps$nali$console)
+  envir=uk$stud.env; in.R.console=is.null(uk$nali$console)
   restore.point("help.shiny.chunk")
 
-  if (ps$selection == "") {
+  if (selection == "") {
     txt = sep.lines(ps$code)
-    txt = txt[ps$cursor$row+1]
-    txt = word.at.pos(txt, pos=ps$cursor$column+1)
+    txt = txt[cursor$row+1]
+    txt = word.at.pos(txt, pos=cursor$column+1)
   } else {
-    txt = ps$selection
+    txt = selection
   }
   if (is.null(txt) | isTRUE(nchar(txt)==0)) {
-    updateAceEditor(ps$session, ps$nali$console, value="No R command selected to show help for.", mode="text")
+    updateAceEditor(app$session, uk$ck$nali$console, value="No R command selected to show help for.", mode="text")
     return()
   }
   
@@ -362,108 +365,74 @@ help.shiny.chunk = function(chunk.ind, cursor=NULL, selection="",...,session=ps$
   # To do: replace special characters in a better manner
   help = iconv(help, to='ASCII//TRANSLIT')
   #Encoding(help) = "UTF8"
-  updateAceEditor(ps$session, ps$nali$console, value=help, mode="text")
+  updateAceEditor(app$session, uk$ck$nali$console, value=help, mode="text")
 
   return()
 }
 
-restore.shiny.chunk = function(chunk.ind=ps$chunk.ind,...,session=ps$session,ps=get.ps()) {
+restore.shiny.chunk = function(uk,...,app=getApp()) {
   restore.point("restore.shiny.chunk")
-  set.shiny.chunk(chunk.ind)
 
-  ps$cdt$stud.code[[chunk.ind]] = ps$cdt$shown.txt[[chunk.ind]]
-  ps$cdt$is.solved[[chunk.ind]] = FALSE
-  ps$stud.code = ps$cdt$stud.code[[chunk.ind]]
+  uk$stud.code = uk$ck$shown.txt
+  uk$is.solved = FALSE
 
-  updateAceEditor(ps$session, ps$nali$editor, value=ps$stud.code, mode="r")
-  updateAceEditor(ps$session, ps$nali$console, value="restored originally shown code...", mode="text")
+  updateAceEditor(app$session, uk$ck$nali$editor, value=uk$stud.code, mode="r")
+  updateAceEditor(app$session, uk$ck$$console, value="restored originally shown code...", mode="text")
 }
 
 
-solution.shiny.chunk = function(chunk.ind=ps$chunk.ind,...,session=ps$session,ps=get.ps()) {
-  restore.point("restore.shiny.chunk")
-  set.shiny.chunk(chunk.ind)
+solution.shiny.chunk = function(uk,...,app=getApp()) {
+  restore.point("solution.shiny.chunk")
 
-  ps$cdt$stud.code[[chunk.ind]] = ps$cdt$sol.txt[[chunk.ind]]
-  #ps$cdt$is.solved[[chunk.ind]] = FALSE
-  ps$stud.code = ps$cdt$stud.code[[chunk.ind]]
-
-  updateAceEditor(ps$session, ps$nali$editor, value=ps$stud.code, mode="r")
-  updateAceEditor(ps$session, ps$nali$console, value="Sample solution shown", mode="text")
+  uk$stud.code = uk$ck$sol.txt
+  
+  updateAceEditor(app$session, uk$ck$nali$editor, value = uk$stud.code, mode="r")
+  updateAceEditor(app$session, uk$ck$nali$console, value = "Sample solution shown", mode="text")
 }
 
-
-output.shiny.chunk = function(chunk.ind, ...,session=ps$session, ps=get.ps()) {
-  restore.point("output.shiny.chunk")
-  set.shiny.chunk(chunk.ind)
-  update.chunk.ui(chunk.ind, mode="output")
-}
 
 # edit button is pressed
-edit.shiny.chunk = function(ck, opts = ps.opts(),...) {
+edit.shiny.chunk = function(uk, opts = ps.opts(),...) {
   restore.point("edit.shiny.chunk")
+  ck = uk$ck
   #browser()
-  if (can.chunk.be.edited(ck)) {
-    update.chunk.ui(ck=ck, mode="input")
+  #if (can.chunk.be.edited(ck)) {
+  if (TRUE) {
+    update.chunk.ui(uk=uk, mode="input")
   } else {
     nali = ck$nali
     rtutorAlert(session,nali$alertOut,
         title = "Cannot edit chunk",
-        message= ck$log$failure.message,
+        message= uk$log$failure.message,
         type = "info", append=FALSE
     )
   }
 }
 
-data.shiny.chunk = function(chunk.ind=ps$chunk.ind,session=ps$session,
-                            ...,ps=get.ps()) {
+data.shiny.chunk = function(uk,...,app=getApp()) {
   restore.point("data.shiny.chunk")
-  set.shiny.chunk(chunk.ind, from.data.btn = TRUE)
-
-  if (FALSE) {
-    RRprofStart()
-    update.data.explorer.ui()
-    RRprofStop()
-  # Uncomment to open the report
-    RRprofReport()
-
-    Rprof(tmp <- tempfile())
-    update.data.explorer.ui()
-    Rprof()
-    summaryRprof(tmp)
-    unlink(tmp)
-  }
   update.data.explorer.ui()
-  updateTabsetPanel(session, inputId="exTabsetPanel",
-                    selected = "dataExplorerTabPanel")
+  updateTabsetPanel(session=app$session, inputId="exTabsetPanel",selected = "dataExplorerTabPanel")
 }
 
-save.shiny.chunk = function(chunk.ind=ps$chunk.ind,session=ps$session,
-                            ...,ps=get.ps()) {
+save.shiny.chunk = function(uk,...,ps=get.ps(),app=getApp()) {
   restore.point("data.shiny.chunk")
   #set.shiny.chunk(chunk.ind)
   save.sav()
-  nali = ps$cdt$nali[[chunk.ind]]
+  nali = uk$ck$nali[[chunk.ind]]
 
-  createAlert(session, nali$alertOut,
+  createAlert(app$session, nali$alertOut,
     title = paste0("Saved as ", ps$sav.file),
     content = "",
     style = "info", append=FALSE
   )
 }
 
-# update.all.chunk.ui = function(ps=get.ps()) {
-#   restore.point("update.all.chunks")
-#   for (chunk.ind in ps$cdt$chunk.ps.ind) {
-#     update.chunk.ui(chunk.ind, ps=ps)
-#   }
-# }
-
-
-chunk.to.html = function(ck,txt = ck$stud.code, opts=ps.opts(), envir=get.chunk.env(ck), eval=TRUE, success.message=isTRUE(ck$state$is.solved), echo=TRUE, nali=NULL, quiet=TRUE) {
+chunk.to.html = function(uk,txt = uk$stud.code, opts=ps.opts(), envir=get.chunk.env(uk), eval=TRUE, success.message=isTRUE(uk$is.solved), echo=TRUE, nali=NULL, quiet=TRUE) {
   restore.point("chunk.to.html")
   if (is.null(txt))
     return("")
+  ck = uk$ck
 
 
   # Adapt output text
@@ -495,7 +464,7 @@ chunk.to.html = function(ck,txt = ck$stud.code, opts=ps.opts(), envir=get.chunk.
   }
   args$eval = eval
   args$echo = echo
-  header = paste0("```{r '",ck$id,"'",chunk.opt.list.to.string(opt,TRUE),"}")
+  header = paste0("```{r '",ck$id,"'",chunk.opt.list.to.string(args,TRUE),"}")
 
   library(knitr)
   library(markdown)
@@ -505,12 +474,12 @@ chunk.to.html = function(ck,txt = ck$stud.code, opts=ps.opts(), envir=get.chunk.
   if (opts$use.secure.eval) {
     html = try(
       RTutor::rtutor.eval.secure(quote(
-        knitr::knit2html(text=txt, envir=stud.env,fragment.only = TRUE,quiet = quiet)
+        knitr::knit2html(text=txt, envir=envir,fragment.only = TRUE,quiet = quiet)
       ), envir=environment())
     )
   } else {
     html = try(
-      knitr::knit2html(text=txt, envir=stud.env,fragment.only = TRUE,quiet = quiet)
+      knitr::knit2html(text=txt, envir=envir,fragment.only = TRUE,quiet = quiet)
     )
   }
   
@@ -519,6 +488,7 @@ chunk.to.html = function(ck,txt = ck$stud.code, opts=ps.opts(), envir=get.chunk.
   }
   restore.point("chunk.to.html.knit2html")
 
+  nali = ck$nali
   # Add syntax highlightning
   if (!is.null(nali$chunkUI)) {
     html = paste0(paste0(html,collapse="\n"),"\n",

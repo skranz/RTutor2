@@ -1,7 +1,10 @@
 Just a list of internal issues, I have wrestled with. For future reference.
 
-## Syntax Highlighting & Mathjax
+## Syntax Highlighting & Mathjax % uiOutput
 
+- If you don't call withMathJax in the main app UI, late uiOutputs cannot be set. No content will be shown.
+
+- In an earlier version, withMathJax destroyed uiOutputs when no code is rendered... we don't know yet the current, state.
 
 
 - Need extra call to `highlight.code.script()` script in outputs that are dynamically shown created needed.

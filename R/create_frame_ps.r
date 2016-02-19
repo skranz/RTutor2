@@ -3,7 +3,6 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   frame.ind = NULL
-  options(warn=2)
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind),catch.errors = FALSE)
   te$lang = "de"
   bdf = te$bdf
@@ -14,7 +13,7 @@ examples.frame.ps = function() {
   
 }
 
-rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),catch.errors=TRUE,ps.id = "",...) {
+rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),catch.errors=TRUE,ps.id = "",opts=default.ps.opts(),...) {
   restore.point("rtutor.make.frame.ps.te")
 
   te = new.env()
@@ -22,6 +21,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   te$Addons = make.addons.list(addons)
   te$dir = dir
   te$figure.dir = figure.dir
+  te$opts = opts
   
   if (length(txt)==1)  
     txt = sep.lines(txt)
@@ -53,7 +53,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
 
   bdf$obj = bdf$ui = vector("list", NROW(bdf))
   bdf$prefixed = bdf$has.handler = bdf$is.task = bdf$has.dyn.ui = FALSE
-  bdf$task.ind = 0
+  bdf$task.ind = bdf$stype.ind = 0
   bdf$id = paste0(bdf$type,"__",bdf$index,"__",ps.id)
   bdf$shown.rmd = bdf$out.rmd = bdf$sol.rmd = ""
   
@@ -92,39 +92,62 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   }
   te$bdf$task.ind = cumsum(te$bdf$is.task) * te$bdf$is.task
   
-  # store task.chunks in a list chunks
+  # store task.chunks in a list ck.li and the
+  # corresponding user chunks in uk
   chunk.rows = which(te$bdf$stype == "task_chunk")
-  chunks = lapply(chunk.rows, function(bi) {
+  te$bdf$stype.ind[chunk.rows] = seq_along(chunk.rows)
+  te$ck.li = lapply(chunk.rows, function(bi) {
     te$bdf$obj[[bi]]$ck
   })
-  te$chunks = chunks
+  te$org.uk.li = lapply(te$ck.li, function(ck) {
+    make.user.chunk(ck)
+  })
   te
+}
+
+default.ps.opts = function(
+  is.shiny = TRUE,
+  catch.errors = TRUE,
+  # parameters related to ups
+  ups.save=default.ups.save(),
+  # parameters related to chunk points
+  e.points = 1,
+  min.chunk.points=0,
+  chunk.points=0,      
+  show.points = TRUE,
+  # relevant for shiny_chunk
+  show.line.numbers = TRUE,
+  check.whitelist = FALSE,
+  use.secure.eval = FALSE,
+  noeval = FALSE,
+  preknit = FALSE,
+  precomp = FALSE,
+  replace.sol = FALSE,
+  show.solution.btn=FALSE,
+  show.data.exp=FALSE,
+  show.save.btn=FALSE,
+  in.R.console=FALSE,
+  chunk.out.args = default.chunk.out.args(),
+  # Turn off graphics when checking chunk
+  use.null.device = TRUE,
+  
+  ...
+) {
+  args = c(as.list(environment()),list(...))
+  args
+}
+
+set.ps.opts = function(...,opts=ps.opts(), ps=get.ps()) {
+  args = list(...)
+  opts[names(args)] = args
+  ps[["rtutor.opts"]] = opts
 }
 
 # Default problem set options
 ps.opts = function(..., ps=get.ps()) {
   opts = ps[["rtutor.opts"]]
   if (is.null(opts)) {
-    opts = list(
-      
-      
-      # parameters related to chunk points
-      e.points = 1,
-      min.chunk.points=0,
-      chunk.points=0,      
-      show.points = TRUE,
-      # relevant for shiny_chunk
-      use.secure.eval = FALSE,
-      noeval = FALSE,
-      preknit = FALSE,
-      precomp = FALSE,
-      replace.sol = FALSE,
-      show.solution.btn=FALSE,
-      show.data.exp=FALSE,
-      show.save.btn=FALSE,
-      in.R.console=FALSE,
-      chunk.out.args = default.chunk.out.args()
-    )
+    opts = default.ps.opts()
   }
   args = list(...)
   opts[names(args)] = args
@@ -260,7 +283,7 @@ rtutor.parse.chunk = function(bi,te) {
     chunk.ind = sum(te$bdf$stype[1:bi]=="task_chunk")
     te$bdf$id[[bi]] = paste0("tchunk_",chunk.ind)
     # a task chunk is the classic RTutor chunk
-    rtutor.parse.task.chunk(bi,te,args, chunk.ind=chunk.ind)
+    rtutor.parse.task.chunk(bi=bi,te=te,args=args, chunk.ind=chunk.ind)
   }
 }
 
@@ -432,7 +455,7 @@ rtutor.parse.frame = function(bi,te) {
     ui.li,
     highlight.code.script()
   )
-  te$bdf$obj[[bi]] = list(title = args$name, args=args, mathjax.ui = withMathJax(ui))
+  te$bdf$obj[[bi]] = list(title = args$name, args=args)
   set.bdf.ui(ui,bi,te)
 }
 

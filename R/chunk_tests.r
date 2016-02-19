@@ -1,150 +1,106 @@
 # Direct testing functions
 
-#' Tests whether a package is loaded. Not yet implemented for speed reasons
-#' @export
-check.package = function(package) {
-  return(TRUE)
-}
 
-
-examples.check.function = function() {
-## Here is an example of how you could implement check.function in a solution file.
-
-#< task
-ols = function(y,X) {
-
-  # enter code to compute beta.hat here ...
-
-  return(as.numeric(beta.hat))
-}
-#>
-#< test
-check.function({
-  ols = function(y,X) {
-    beta.hat = solve(t(X) %*% X) %*% t(X) %*% y
-    return(as.numeric(beta.hat))
-  }},
-  ols(c(100,50,20,60),cbind(1,c(20,30,15,20)))
-)
-#>
-
-}
-
-#' Checks a function written by the student
+#' Checks an assignment to a variable
 #'
-#' @param code code of the form {fun_name = function(x,y) {#body of function}}. It is important to wrap the code in {} and to assign the function name with = (don't use <-). See example below.
-#' @param ... you can add several test calls to the function. It will be checked whether the users' function returns the same values in those calls than the function in the solution. You can also have a code block wrapped in {} that ends with a call to the function. In this way you can e.g. specify a random seeds before calling the function.
-#' @param check.args if TRUE check the arguments of the user function. If a character vector only check the given arguments.
-#' @param check.defaults TRUE = check the default values of the arguments of the user function. If a character vector only check the default values of the given arguments.
-#' @param check.args.order if TRUE make sure that the checked arguments appear in the same order in the user function than in the solution
-#' @param allow.extra.arg if TRUE the user function can have additional arguments (at the end) that are not in the solution
+#' By default a solution is considered correct if the assignment yields the same value than the sample solution, or has the same rhs (e.g. a call runif(1,0,1)), even if the value differs.
+#'
+#' @param call the correct assignment that shall be checked (not a quoted call)
+#' @param call.object alternatively to call a quoted call (call object)
+#' @param allow.extra.arg if TRUE (not default) the student is allowed to supply additional arguments to the call that were not in the solution. Useful, e.g. if the student shall plot something and is allowed to customize her plot with additional arguments.
+#' @param ignore.arg a vector of argument names that will be ignored when checking correctness
+#' @param ok.if.same.val if TRUE (not default) the call will be considered as correct, if it yields the same resulting value as the solution, even if its arguments differ.
+#' @param only.check.assign.exists if TRUE (default = FALSE) only check if an assignemnt to the lhs variable exists no matter whether the assignment is correct. May be sensible if there are additional tests specified afterwards that check some characteristics of the assigned variable.
 #' @export
-check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, check.args.order=TRUE, allow.extra.arg = TRUE, ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE, part = NULL) {
-
-  test.calls = eval(substitute(alist(...)), stud.env)
-
-  code = substitute(code)
+check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = "You have not yet included correctly, all required R commands in your code...", ok.if.same.val = TRUE,call.object=NULL,  s3.method=NULL,uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, stud.env = uk$stud.env, stud.expr.li = uk$stud.expr.li, verbose=FALSE, only.check.assign.exists=FALSE, noeval=opts$noeval, ...) {
 
 
-  #restore.point("check.function")
+  ck = uk$ck
+  if (!is.null(call.object)) {
+    call = call.object
+  } else {
+    call = substitute(call)
+  }
+  restore.point("check.assign")
 
-  part.str = if (isTRUE(ps$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
+  part.str = if (isTRUE(opts$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
 
-  env = new.env(parent=stud.env)
-  eval(code,env)
-  fun.name = ls(env)[1]
-  sol.fun = get(fun.name,env)
+  if (noeval) {
+    mco.env=make.base.env()
+    stud.env = emptyenv()
+    check.arg.by.value=FALSE
+    ok.if.same.val = FALSE
+  } else {
+    mco.env = stud.env
+  }
 
-  if (!exists(fun.name,stud.env, inherits=FALSE)) {
-    short.failure = paste0(fun.name, " does not exist.")
-    failure.message = paste0("You have not yet created the function ",fun.name, part.str, ".")
-    add.failure(short.failure,failure.message, var = var)
+
+  check.expr = match.call.object(call,envir=mco.env, s3.method=s3.method)
+
+
+  check.expr = standardize.assign(check.expr)
+
+  stud.expr.li = lapply(as.list(stud.expr.li), standardize.assign)
+  stud.expr.li = stud.expr.li[(!sapply(stud.expr.li,is.null))]
+
+  # Check names
+  var = deparse1(check.expr[[2]])
+  var.expr = check.expr[[2]]
+  stud.var = sapply(stud.expr.li,function(e) deparse1(e[[2]]))
+  stud.expr.li = stud.expr.li[stud.var == var]
+
+  if (length(stud.expr.li) == 0) {
+    if (is.null(failure.message))
+      failure.message = paste0("You have not yet made an assignment to ", var, part.str,".")
+    add.failure(log,failure.message,...)
     return(FALSE)
   }
 
-  # Check the function's arguments
+  ce.rhs = match.call.object(check.expr[[3]], envir=mco.env,s3.method=s3.method)
+  dce.rhs = describe.call(call.obj=ce.rhs)
+  se.rhs.li = lapply(stud.expr.li, function(e) match.call.object(e[[3]], envir=mco.env, s3.method=s3.method))
 
-  stud.fun = get(fun.name,stud.env)
-  stud.args = formals(stud.fun)
-  sol.args = formals(sol.fun)
-
-  if (identical(check.args,TRUE)) check.args = names(sol.args)
-  if (identical(check.args,TRUE)) check.defaults = names(sol.args)
-
-  if (is.character(check.args)) {
-    missing.args = setdiff(check.args, names(stud.args))
-    if (length(missing.args)>0) {
-      failure.message = paste0("Your function ", fun.name, part.str, " misses the argument(s) ", paste0(missing.args, collapse=", "),".")
-      add.failure(failure.message)
-      return(FALSE)
-    }
-    arg.ind = seq_along(check.args)
-    if (check.args.order) {
-      if (!identical(names(stud.args)[arg.ind], check.args)) {
-        failure.message = paste0("Your function ", fun.name, part.str, " has the wrong order of arguments. Please arrange them as follows: ", paste0(check.args, collapse=", "),".")
-        add.failure(failure.message)
-        return(FALSE)
+  # Check if a student rhs has the same return value as ce.rhs
+  if (ok.if.same.val & !noeval) {
+    check.val = eval(ce.rhs, stud.env)
+    ok = FALSE
+    if (length(se.rhs.li)>1) {
+      for (se.rhs in se.rhs.li) {
+        tryCatch({
+          sval = eval(se.rhs,stud.env)
+          if (is.same(check.val,sval)) {
+            ok <- TRUE
+            break
+          }
+        }, error = function(e){})
       }
+    } else {
+      tryCatch({
+          sval = eval(var.expr,stud.env)
+          if (is.same(check.val,sval)) {
+              ok <- TRUE
+          }
+        }, error = function(e){})
     }
-    if (!identical(stud.args[check.defaults], sol.args[check.defaults])) {
-      failure.message = paste0("Not all arguments of your function ", fun.name, " have the correct default value.")
-      add.failure(failure.message)
-      return(FALSE)
-    }
-    if (!allow.extra.arg) {
-      extra.args = set.diff(names(stud.args),names(sol.args))
-      failure.message =  paste0("Your function ", fun.name, " is not allowed to have the additional arguments ", paste0(extra.args, collapse=", "),".")
-      add.failure(failure.message)
-      return(FALSE)
-    }
-  }
-
-  # Test calls
-  stud.tenv = new.env(parent=stud.env)
-  sol.tenv = new.env(parent=stud.env)
-  assign(fun.name, sol.fun,sol.tenv)
-
-  i = 1
-  for (i in seq_along(test.calls)) {
-    sol.res = eval(test.calls[[i]], sol.tenv)
-    ok = TRUE
-    failure.message = ""
-    stud.res = tryCatch(eval(test.calls[[i]], stud.tenv),
-                        error = function(e) {
-                          failure.message <<- as.character(e)
-                          ok <<- FALSE
-                        })
-    if (!ok) {
-      add.failure(failure.message,...)
-      return(FALSE)
-    }
-
-    res = compare.values(stud.res, sol.res)
-    if (length(res)>0) {
-      call.str = deparse1(test.calls[[i]], collapse="\n")
-      failure.message = paste0("Your function ",fun.name, " seems not ok. I test it with the call\n\n", call.str, "\n\n and your returned object differs from my solution, it has wrong ", paste0(res, collapse=","),".\n\n I stored in the variables 'test.sol.res' and 'test.your.res' the return values of the correct function and your function. You can take a look at them.")
-      add.failure(failure.message,...)
-      assign(paste0("test.sol.res"),sol.res,.GlobalEnv)
-      assign(paste0("test.your.res"),stud.res,.GlobalEnv)
-      return(FALSE)
+    if (ok) {
+     success.message = paste0("Great,",part.str," you correctly assigned ", var,"!")
+     add.success(log,success.message)
+     return(TRUE)
     }
   }
 
-  success.message = paste0("Great, I good not find an error in your function ", fun.name, "!")
-  add.success(success.message,...)
-  return(TRUE)
+  ret = internal.check.call(ce.rhs,dce.rhs, se.rhs.li,stud.env,allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
+  if (ret[[1]]==TRUE) {
+     success.message = paste0("Great,",part.str," you correctly assigned ", var, " = ",ret[[2]],"!")
+     add.success(log,success.message)
+     return(TRUE)
+  } else {
+    if (is.null(failure.message))
+      failure.message = paste0("You have not made a correct assignment to ", var, part.str,".")
+    add.failure(log,failure.message)
+    return(FALSE)
+  }
 }
-
-
-
-
-#' Simply shows a success message when this test is reached for the first time!
-#' @export
-show.success.message = function(success.message,...) {
-  add.success(success.message,...)
-  return(TRUE)
-}
-
 
 #' Checks whether the user makes a particular function call in his code or call a particular R statement
 #'
@@ -154,25 +110,24 @@ show.success.message = function(success.message,...) {
 #' @param ignore.arg a vector of argument names that will be ignored when checking correctness
 #' @param ok.if.same.val if TRUE (not default) the call will be considered as correct, if it yields the same resulting value as the solution, even if its arguments differ.
 #' @export
-check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = NULL, ok.if.same.val = FALSE,s3.method=NULL,
-  ps=get.ps(),stud.env = ps$stud.env, part=ps$part, stud.expr.li = ps$stud.expr.li, verbose=FALSE, noeval=isTRUE(ps$noeval),  ...
-) {
+check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = NULL, ok.if.same.val = FALSE,s3.method=NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, stud.env = uk$stud.env, stud.expr.li = uk$stud.expr.li, verbose=FALSE, noeval=opts$noeval, ...) {
 
+  ck = uk$ck
   expr = call = substitute(call)
-
   if (noeval) {
+    mco.env = make.base.env()
     stud.env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
+  } else {
+    mco.env = stud.env
   }
-
-
   # restore.point can lead to error
   restore.point("check.call")
 
-  part.str = if (isTRUE(ps$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
+  part.str = if (isTRUE(opts$is.shiny)) "" else paste0(" in chunk ",  ck$chunk.name)
 
-  ce = match.call.object(expr, envir=match.call.object.env(), s3.method=s3.method)
+  ce = match.call.object(expr, envir=mco.env, s3.method=s3.method)
   dce = describe.call(call.obj=ce)
   check.na = dce$name
 
@@ -196,24 +151,24 @@ check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, igno
     }
     if (ok) {
       success.message = paste0("Great,",part.str," you correctly called the command: ",deparse1(se))
-      add.success(success.message)
+      add.success(log,success.message)
       return(TRUE)
     }
   }
 
-  stud.expr.li = lapply(stud.expr.li, function(e) match.call.object(e, envir=match.call.object.env(), s3.method=s3.method))
+  stud.expr.li = lapply(stud.expr.li, function(e) match.call.object(e, envir=mco.env, s3.method=s3.method))
 
 
   ret = internal.check.call(ce,dce, stud.expr.li,stud.env, allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
   if (ret[[1]]==TRUE) {
      success.message = paste0("Great,",part.str," you correctly called the command: ",ret[[2]])
-     add.success(success.message)
+     add.success(log,success.message)
      return(TRUE)
   } else {
 
     if (is.null(failure.message))
       failure.message = paste0("You have not yet entered all correct commands", part.str,".")
-    add.failure(failure.message,...)
+    add.failure(log,failure.message,...)
     return(FALSE)
   }
 }
@@ -286,6 +241,146 @@ internal.check.call = function(ce,dce, stud.expr.li,stud.env, allow.extra.arg=FA
   return(list(TRUE, "test not implemented"))
 }
 
+
+examples.check.function = function() {
+## Here is an example of how you could implement check.function in a solution file.
+
+#< task
+ols = function(y,X) {
+
+  # enter code to compute beta.hat here ...
+
+  return(as.numeric(beta.hat))
+}
+#>
+#< test
+check.function({
+  ols = function(y,X) {
+    beta.hat = solve(t(X) %*% X) %*% t(X) %*% y
+    return(as.numeric(beta.hat))
+  }},
+  ols(c(100,50,20,60),cbind(1,c(20,30,15,20)))
+)
+#>
+
+}
+
+#' Checks a function written by the student
+#'
+#' @param code code of the form {fun_name = function(x,y) {#body of function}}. It is important to wrap the code in {} and to assign the function name with = (don't use <-). See example below.
+#' @param ... you can add several test calls to the function. It will be checked whether the users' function returns the same values in those calls than the function in the solution. You can also have a code block wrapped in {} that ends with a call to the function. In this way you can e.g. specify a random seeds before calling the function.
+#' @param check.args if TRUE check the arguments of the user function. If a character vector only check the given arguments.
+#' @param check.defaults TRUE = check the default values of the arguments of the user function. If a character vector only check the default values of the given arguments.
+#' @param check.args.order if TRUE make sure that the checked arguments appear in the same order in the user function than in the solution
+#' @param allow.extra.arg if TRUE the user function can have additional arguments (at the end) that are not in the solution
+#' @export
+check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, check.args.order=TRUE, allow.extra.arg = TRUE, ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE, part = NULL) {
+
+  test.calls = eval(substitute(alist(...)), stud.env)
+
+  code = substitute(code)
+
+
+  #restore.point("check.function")
+
+  part.str = if (isTRUE(ps$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
+
+  env = new.env(parent=stud.env)
+  eval(code,env)
+  fun.name = ls(env)[1]
+  sol.fun = get(fun.name,env)
+
+  if (!exists(fun.name,stud.env, inherits=FALSE)) {
+    short.failure = paste0(fun.name, " does not exist.")
+    failure.message = paste0("You have not yet created the function ",fun.name, part.str, ".")
+    add.failure(log,short.failure,failure.message, var = var)
+    return(FALSE)
+  }
+
+  # Check the function's arguments
+
+  stud.fun = get(fun.name,stud.env)
+  stud.args = formals(stud.fun)
+  sol.args = formals(sol.fun)
+
+  if (identical(check.args,TRUE)) check.args = names(sol.args)
+  if (identical(check.args,TRUE)) check.defaults = names(sol.args)
+
+  if (is.character(check.args)) {
+    missing.args = setdiff(check.args, names(stud.args))
+    if (length(missing.args)>0) {
+      failure.message = paste0("Your function ", fun.name, part.str, " misses the argument(s) ", paste0(missing.args, collapse=", "),".")
+      add.failure(log,failure.message)
+      return(FALSE)
+    }
+    arg.ind = seq_along(check.args)
+    if (check.args.order) {
+      if (!identical(names(stud.args)[arg.ind], check.args)) {
+        failure.message = paste0("Your function ", fun.name, part.str, " has the wrong order of arguments. Please arrange them as follows: ", paste0(check.args, collapse=", "),".")
+        add.failure(log,failure.message)
+        return(FALSE)
+      }
+    }
+    if (!identical(stud.args[check.defaults], sol.args[check.defaults])) {
+      failure.message = paste0("Not all arguments of your function ", fun.name, " have the correct default value.")
+      add.failure(log,failure.message)
+      return(FALSE)
+    }
+    if (!allow.extra.arg) {
+      extra.args = set.diff(names(stud.args),names(sol.args))
+      failure.message =  paste0("Your function ", fun.name, " is not allowed to have the additional arguments ", paste0(extra.args, collapse=", "),".")
+      add.failure(log,failure.message)
+      return(FALSE)
+    }
+  }
+
+  # Test calls
+  stud.tenv = new.env(parent=stud.env)
+  sol.tenv = new.env(parent=stud.env)
+  assign(fun.name, sol.fun,sol.tenv)
+
+  i = 1
+  for (i in seq_along(test.calls)) {
+    sol.res = eval(test.calls[[i]], sol.tenv)
+    ok = TRUE
+    failure.message = ""
+    stud.res = tryCatch(eval(test.calls[[i]], stud.tenv),
+                        error = function(e) {
+                          failure.message <<- as.character(e)
+                          ok <<- FALSE
+                        })
+    if (!ok) {
+      add.failure(log,failure.message,...)
+      return(FALSE)
+    }
+
+    res = compare.values(stud.res, sol.res)
+    if (length(res)>0) {
+      call.str = deparse1(test.calls[[i]], collapse="\n")
+      failure.message = paste0("Your function ",fun.name, " seems not ok. I test it with the call\n\n", call.str, "\n\n and your returned object differs from my solution, it has wrong ", paste0(res, collapse=","),".\n\n I stored in the variables 'test.sol.res' and 'test.your.res' the return values of the correct function and your function. You can take a look at them.")
+      add.failure(log,failure.message,...)
+      assign(paste0("test.sol.res"),sol.res,.GlobalEnv)
+      assign(paste0("test.your.res"),stud.res,.GlobalEnv)
+      return(FALSE)
+    }
+  }
+
+  success.message = paste0("Great, I good not find an error in your function ", fun.name, "!")
+  add.success(log,success.message,...)
+  return(TRUE)
+}
+
+
+
+
+#' Simply shows a success message when this test is reached for the first time!
+#' @export
+show.success.message = function(success.message,...) {
+  add.success(log,success.message,...)
+  return(TRUE)
+}
+
+
 standardize.assign = function(call, null.if.no.assign=TRUE) {
   #restore.point("standardize.assign")
   if (length(call)<=1)
@@ -301,105 +396,6 @@ standardize.assign = function(call, null.if.no.assign=TRUE) {
 }
 
 
-#' Checks an assignment to a variable
-#'
-#' By default a solution is considered correct if the assignment yields the same value than the sample solution, or has the same rhs (e.g. a call runif(1,0,1)), even if the value differs.
-#'
-#' @param call the correct assignment that shall be checked (not a quoted call)
-#' @param call.object alternatively to call a quoted call (call object)
-#' @param allow.extra.arg if TRUE (not default) the student is allowed to supply additional arguments to the call that were not in the solution. Useful, e.g. if the student shall plot something and is allowed to customize her plot with additional arguments.
-#' @param ignore.arg a vector of argument names that will be ignored when checking correctness
-#' @param ok.if.same.val if TRUE (not default) the call will be considered as correct, if it yields the same resulting value as the solution, even if its arguments differ.
-#' @param only.check.assign.exists if TRUE (default = FALSE) only check if an assignemnt to the lhs variable exists no matter whether the assignment is correct. May be sensible if there are additional tests specified afterwards that check some characteristics of the assigned variable.
-#' @export
-check.assign = function(
-  call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = "You have not yet included correctly, all required R commands in your code...", ok.if.same.val = TRUE,call.object=NULL,  s3.method=NULL,
-  ps=get.ps(),stud.env = ps$stud.env, part=ps$part, stud.expr.li = ps$stud.expr.li, verbose=FALSE, only.check.assign.exists=FALSE, noeval=isTRUE(ps$noeval), ...) {
-
-  if (!is.null(call.object)) {
-    call = call.object
-  } else {
-    call = substitute(call)
-  }
-  restore.point("check.assign")
-
-  part.str = if (isTRUE(ps$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
-
-  if (noeval) {
-    stud.env = emptyenv()
-    check.arg.by.value=FALSE
-    ok.if.same.val = FALSE
-  }
-
-
-  check.expr = match.call.object(call,envir=match.call.object.env(), s3.method=s3.method)
-
-
-  check.expr = standardize.assign(check.expr)
-
-  stud.expr.li = lapply(as.list(stud.expr.li), standardize.assign)
-  stud.expr.li = stud.expr.li[(!sapply(stud.expr.li,is.null))]
-
-  # Check names
-  var = deparse1(check.expr[[2]])
-  var.expr = check.expr[[2]]
-  stud.var = sapply(stud.expr.li,function(e) deparse1(e[[2]]))
-  stud.expr.li = stud.expr.li[stud.var == var]
-
-  if (length(stud.expr.li) == 0) {
-    if (is.null(failure.message))
-      failure.message = paste0("You have not yet made an assignment to ", var, part.str,".")
-    add.failure(failure.message,...)
-    return(FALSE)
-  }
-
-  ce.rhs = match.call.object(check.expr[[3]], envir=match.call.object.env(),s3.method=s3.method)
-  dce.rhs = describe.call(call.obj=ce.rhs)
-  se.rhs.li = lapply(stud.expr.li, function(e) match.call.object(e[[3]], envir=match.call.object.env(), s3.method=s3.method))
-
-  # Check if a student rhs has the same return value as ce.rhs
-  if (ok.if.same.val & !noeval) {
-    check.val = eval(ce.rhs, stud.env)
-    ok = FALSE
-    if (length(se.rhs.li)>1) {
-      for (se.rhs in se.rhs.li) {
-        tryCatch({
-          sval = eval(se.rhs,stud.env)
-          if (is.same(check.val,sval)) {
-            ok <- TRUE
-            break
-          }
-        }, error = function(e){})
-      }
-    } else {
-      tryCatch({
-          sval = eval(var.expr,stud.env)
-          if (is.same(check.val,sval)) {
-              ok <- TRUE
-          }
-        }, error = function(e){})
-    }
-    if (ok) {
-     success.message = paste0("Great,",part.str," you correctly assigned ", var,"!")
-     add.success(success.message)
-     return(TRUE)
-    }
-  }
-
-  ret = internal.check.call(ce.rhs,dce.rhs, se.rhs.li,stud.env,allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
-  if (ret[[1]]==TRUE) {
-     success.message = paste0("Great,",part.str," you correctly assigned ", var, " = ",ret[[2]],"!")
-     add.success(success.message)
-     return(TRUE)
-  } else {
-    if (is.null(failure.message))
-      failure.message = paste0("You have not made a correct assignment to ", var, part.str,".")
-    add.failure(failure.message)
-    return(FALSE)
-  }
-}
-
-
 #' Check whether a given file exists
 #' @export
 check.file.exists = function(
@@ -411,10 +407,10 @@ check.file.exists = function(
 
   restore.point("check.file.exists")
   if (file.exists(file)) {
-    add.success(success.message,...)
+    add.success(log,success.message,...)
     return(TRUE)
   }
-  add.failure(failure.message,...)
+  add.failure(log,failure.message,...)
   return(FALSE)
 }
 
@@ -483,26 +479,26 @@ check.expr = function(check.expr, correct.expr,
   check.expr.str = deparse1(check.expr)
 
   if (!identical(class(val.check),class(val.sol))) {
-    add.failure(failure.message, check_expr=check.expr.str)
+    add.failure(log,failure.message, check_expr=check.expr.str)
     return(FALSE)
   }
   if (!is.same(length(val.check),length(val.sol))) {
-    add.failure(failure.message, check_expr=check.expr.str)
+    add.failure(log,failure.message, check_expr=check.expr.str)
     return(FALSE)
   }
 
   if (is.list(val.check) | is.environment(val.sol)) {
     if (!identical(val.sol, val.stud, ignore.environment=TRUE)) {
-      add.failure(failure.message, check_expr=check.expr.str)
+      add.failure(log,failure.message, check_expr=check.expr.str)
       return(FALSE)
     }
   } else {
     if (! all(val.check==val.sol)) {
-      add.failure(failure.message, check_expr=check.expr.str)
+      add.failure(log,failure.message, check_expr=check.expr.str)
       return(FALSE)
     }
   }
-  add.success(success.message)
+  add.success(log,success.message)
   return(TRUE)
 }
 
@@ -528,7 +524,7 @@ check.class = function(expr, classes,unsubst.expr=NULL, str.expr=NULL, ps=get.ps
   } else {
     failure.message=paste0(str.expr, " has wrong class. It should be ", paste0(classes, collapse=", "),".")
   }
-  add.failure(failure.message)
+  add.failure(log,failure.message)
   return(FALSE)
 
 }
@@ -583,7 +579,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
       does.exist = NCOL(dat)>=col
     }
     if (!does.exist) {
-      add.failure(failure.exists,failure.exists, col = col,df=df)
+      add.failure(log,failure.exists,failure.exists, col = col,df=df)
       return(FALSE)
     }
   }
@@ -592,7 +588,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
 
   if (length != FALSE) {
     if (!length(var.stud)==length(var.sol)) {
-      add.failure(failure.length, failure.length, col=col,df=df, length_stud = length(var.stud), length_sol=length(var.sol))
+      add.failure(log,failure.length, failure.length, col=col,df=df, length_stud = length(var.stud), length_sol=length(var.sol))
       return(FALSE)
     }
   }
@@ -603,31 +599,31 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
     if (class.sol == "integer") class.sol = "numeric"
 
     if (class.stud!=class.sol) {
-      add.failure(failure.class, failure.class, col=col,df=df, class_stud=class.stud, class_sol = class.sol)
+      add.failure(log,failure.class, failure.class, col=col,df=df, class_stud=class.stud, class_sol = class.sol)
       return(FALSE)
     }
   }
   if (values != FALSE) {
     if (is.numeric(var.stud) & is.numeric(var.sol)) {
       if (max(abs(var.stud-var.sol), na.rm=TRUE)>tol ) {
-        add.failure(failure.values, failure.values, col=col,df=df)
+        add.failure(log,failure.values, failure.values, col=col,df=df)
         return(FALSE)
       }
       if (!is.same(is.na(var.stud),is.na(var.sol))) {
-        add.failure(failure.values, failure.values, col=col,df=df)
+        add.failure(log,failure.values, failure.values, col=col,df=df)
         return(FALSE)
       }
 
     } else {
       if (! all(var.stud==var.sol)) {
-        add.failure(failure.values, failure.values, col=col,df=df)
+        add.failure(log,failure.values, failure.values, col=col,df=df)
         return(FALSE)
       }
     }
   }
 
   tests.str = flags.to.string(length=length,class=class,values=values)
-  add.success(success.message, col=col, df=df, tests=tests.str)
+  add.success(log,success.message, col=col, df=df, tests=tests.str)
   return(TRUE)
 }
 
@@ -635,7 +631,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
 check.var.exists = function(var, ps=get.ps(),stud.env = ps$stud.env) {
   if (!exists(var,stud.env, inherits=FALSE)) {
       msg = paste0("You have not yet generated the variable '", var,"'.")
-      add.failure(msg, var = var)
+      add.failure(log,msg, var = var)
       return(FALSE)
   }
   return(TRUE)
@@ -663,7 +659,7 @@ check.variable = function(var, expr, length=check.all,dim=check.all, class=check
 
   if (!exists(var,stud.env, inherits=FALSE)) {
       short.message = paste0("{{var}} does not exist")
-      add.failure(failure.exists, var = var)
+      add.failure(log,failure.exists, var = var)
       return(FALSE)
   }
 
@@ -692,7 +688,7 @@ check.variable = function(var, expr, length=check.all,dim=check.all, class=check
   }
   if (dim != FALSE) {
     if (!is.same(dim(var.stud), dim(var.sol))) {
-      add.failure(failure.dim, failure.dim, var=var)
+      add.failure(log,failure.dim, failure.dim, var=var)
       return(FALSE)
     }
   }
@@ -723,7 +719,7 @@ check.variable = function(var, expr, length=check.all,dim=check.all, class=check
   }
 
   tests.str = flags.to.string(length=length,dim=dim,class=class,values=values)
-  add.success(success.message, var=var, tests=tests.str)
+  add.success(log,success.message, var=var, tests=tests.str)
   return(TRUE)
 }
 
@@ -832,14 +828,14 @@ test.H0.rejected = function(test.expr,p.value,test.name="",
     p.value = test.res$p.value
   }
   if (p.value > alpha.failure) {
-    add.failure(failure.message,test_name=test.name,p_value=p.value)
+    add.failure(log,failure.message,test_name=test.name,p_value=p.value)
     return(FALSE)
   }
 
-  add.success(success.message,test_name=test.name,p_value=p.value,...)
+  add.success(log,success.message,test_name=test.name,p_value=p.value,...)
 
   if (p.value > alpha.warning & check.warning) {
-    add.warning(warning.message,test_name=test.name,p_value=p.value)
+    add.warning(log,warning.message,test_name=test.name,p_value=p.value)
     return("warning")
   }
 
@@ -887,14 +883,14 @@ test.H0 = function(test.expr,p.value,test.name="",
   }
 
   if (p.value < alpha.failure) {
-    add.failure(failure.message,test_name=test.name,p_value=p.value,...)
+    add.failure(log,failure.message,test_name=test.name,p_value=p.value,...)
     return(FALSE)
   }
 
-  add.success(success.message,test_name=test.name,p_value=p.value,...)
+  add.success(log,success.message,test_name=test.name,p_value=p.value,...)
 
   if (p.value < alpha.warning & check.warning) {
-    add.warning(warning.message,test_name=test.name,p_value=p.value,...)
+    add.warning(log,warning.message,test_name=test.name,p_value=p.value,...)
     return("warning")
   }
   return(TRUE)
@@ -987,20 +983,11 @@ holds.true = function(cond, short.message = failure.message,failure.message="Fai
   restore.point("holds.true")
 
   if (!all(eval(cond,stud.env))) {
-    add.failure(failure.message,cond=cond.str,...)
+    add.failure(log,failure.message,cond=cond.str,...)
     return(FALSE)
   }
-  add.success(success.message,cond=cond.str,...)
+  add.success(log,success.message,cond=cond.str,...)
   #cat(paste0("\n",message, "... ok!"))
   return(TRUE)
-}
-
-
-match.call.object.env = function(stud.env = ps$stud.env,ps=get.ps()) {
-  if (isTRUE(ps$noeval)) {
-    ps$ps.baseenv
-  } else {
-    stud.env
-  }
 }
 

@@ -1,24 +1,3 @@
-info = function(info.name, ps = get.ps()) {
-  restore.point("info")
-  if (is.null(ps)) {
-    display("Please check your problem set once with Ctrl-Alt-R. Then you can see infos.")
-    return()
-  }
-  infos = ps$rps$infos
-  if (! info.name %in% names(infos)) {
-    display("You problem set has not the info '", info.name, "'. Only the following infos are stored: ", paste0("'", names(infos),"'", collapse=", "))
-    return()
-  }
-  htmlFile <- tempfile(fileext=".html")
-  writeLines(infos[[info.name]]$html,htmlFile )
-  if (require(rstudioapi)) {
-    rstudioapi::viewer(htmlFile)
-  } else {
-    cat("Info boxes can only be shown from RStudio. Please install the package rstudioapi.")
-  }
-
-}
-
 
 #' Shows a hint for the current problem.
 #' @export
@@ -96,14 +75,85 @@ hint = function(..., ps=get.ps()) {
   invisible("")
 }
 
+# run hint for chunk uk; uses no ps information
+# TO DO: Need to think about good envir, uk and opts will be drawn
+#        from the parent.frame
+run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts()) {
+  restore.point("hint")
 
+  ck = uk$ck
+  uk$hint.was.shown = FALSE
+  chunk.ind = ck$chunk.ind
+  do.log = TRUE
 
+  #env = new.env(parent.env=envir)
+  #env$uk=uk
+  #env$opts=opts
+  
+  if (isTRUE(opts$use.secure.eval) & !isTRUE(opts$hint.noeval)) {
+    eval.fun = function(call, envir=parent.frame(),...) {
+      if (is.expression(call)) call = call[[1]]
+      new.call = substitute(capture.output(call), list(call=call))
+      txt = RTutor::rtutor.eval.secure(new.call, envir=envir, silent.check=TRUE)
+      cat(paste0(txt, collapse="\n"))
+    }
+  } else {
+    eval.fun = base::eval
+  }
+  
+  # get hint for expression where last call to check.chunk
+  # failed...
+  if (uk$e.ind == 0) {
+    hint.expr = uk$ck$chunk.hint
+  } else {
+    hint.expr = uk$ck$hint.expr[[uk$e.ind]]
+  }
 
-log.hint = function(chunk.ind = ps$chunk.ind, ex.ind = ps$ex.ind, e.ind = ps$e.ind, ps=get.ps()) {
-  log.event(type="hint",chunk=ps$chunk.ind, ex=ps$ex.ind, e.ind=ps$e.ind)
+  # No expression set
+  if (uk$e.ind == 0) {
+    if (!is.null(hint.expr)) {
+      eval.fun(chunk.hint)
+      log.event(type="hint",chunk.ind=chunk.ind, e.ind=uk$e.ind)
+      if (ck$num.e>0) {
+        cat("\nI can't give you a more specific hint, since I can't run your code, due to an error.")
+      }
+      uk$hint.was.shown = TRUE      
+    } else {
+       if (ck$num.e==0) {
+        cat("Sorry, but there is no hint for your current problem.")
+      } else {
+        cat("There is an error in your code chunk so that RTutor cannot evaluate your code. Before you can get a more detailed hint, write code that runs without error when you manually run your chunk. (One way to get no syntax error is to remove all your own code in your chunk.)")
+      }
+    }
+    
+  # hint for expression uk$e.ind
+  } else {
+    if (length(hint.expr)==0) {
+      if (!is.null(chunk.hint)) {
+        eval.fun(hint.expr)
+        log.event(type="hint",chunk.ind=chunk.ind, e.ind=uk$e.ind)
+        uk$hint.was.shown = TRUE
+      } else {
+        do.log = FALSE
+        cat("Sorry, but there is no hint for your current problem.")
+      }
+    } else {
+      eval.fun(hint.expr)
+      if (!is.null(chunk.hint)) {
+        eval.fun(chunk.hint)
+      }
+      uk$hint.was.shown = TRUE
+    }
+  }
+  invisible("")
+  
+}
 
+# update ups since a hint has been shown
+update.ups.hint.shown = function(uk) {
   # Update ups statistics
-  if (isTRUE(ps$e.ind>0)) {
+  if (uk$hint.was.shown) {
+    chunk.ind = uk$ck$chunk.ind
     ups = get.ups()
     update = !ups$cu$solved[chunk.ind]
     
@@ -116,19 +166,19 @@ log.hint = function(chunk.ind = ps$chunk.ind, ex.ind = ps$ex.ind, e.ind = ps$e.i
 
 #' Default hint for a call
 #' @export
-hint.for.function = function(code, ..., ps = get.ps()) {
+hint.for.function = function(code, ...,uk=parent.frame()$uk, opts=parent.frame()$opts) {
   code = substitute(code)
   restore.point("hint.for.function")
 
-  if (isTRUE(ps$noeval) | isTRUE(ps$hint.noeval)) {
+  if (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval)) {
     display("Sorry, the default hint for your function requires to evaluate your code, but this is forbidden for security reasons on this server.")
     return()
   }
 
   #stop()
   part.str = ""
-  stud.env = ps$stud.env
-  env = new.env(parent=ps$stud.env)
+  stud.env = uk$stud.env
+  env = new.env(parent=uk$stud.env)
   eval(code,env)
   fun.name = ls(env)[1]
   sol.fun = get(fun.name,env)
@@ -168,7 +218,8 @@ hint.for.function = function(code, ..., ps = get.ps()) {
 
 #' Default hint for a call
 #' @export
-hint.for.call = function(call, ps=get.ps(), env = ps$stud.env, stud.expr.li = ps$stud.expr.li, part=ps$part, from.assign=!is.null(lhs), lhs = NULL, call.obj = NULL,s3.method=NULL, start.char="\n", end.char="\n") {
+hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, from.assign=!is.null(lhs), lhs = NULL, call.obj = NULL,s3.method=NULL, start.char="\n", end.char="\n") {
+  
   if (!is.null(call.obj)) {
     call = call.obj
   } else {
@@ -209,8 +260,8 @@ hint.for.call = function(call, ps=get.ps(), env = ps$stud.env, stud.expr.li = ps
     }
 
     # Environment in which argument values shall be evaluated. Is a data frame
-    # if the function is a dplyer function like mutate(dat,...)
-    if (isTRUE(ps$noeval) | isTRUE(ps$hint.noeval)) {
+    # if the function is a dplyr function like mutate(dat,...)
+    if (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval)) {
       val.env = NULL
     } else {
       val.env = env
@@ -250,7 +301,7 @@ hint.for.call = function(call, ps=get.ps(), env = ps$stud.env, stud.expr.li = ps
       display("Let's take a look at your assignment to '", lhs, "', which should call the function '", check.na, "'",part.str,", and compare it with my solution:\n", analyse.str,start.char=start.char, end.char=end.char)
 
   } else if (cde$type == "chain") {
-    return(inner.hint.for.call.chain(stud.expr.li=stud.expr.li, cde=cde,ce=ce, assign.str=assign.str, ps = ps, env=env))
+    return(inner.hint.for.call.chain(stud.expr.li=stud.expr.li, cde=cde,ce=ce, assign.str=assign.str, uk = uk, opts=opts, env=env))
   }  else if (cde$type == "math") {
     restore.point("math.fail")
     hint.str = scramble.text(deparse(call),"?",0.4, keep.char=" ")
@@ -285,7 +336,7 @@ scramble.text = function(txt, scramble.char="?", share=0.5, keep.char=" ") {
 
 #' Default hint for an assignment
 #' @export
-hint.for.assign = function(expr, ps=get.ps(), env = ps$stud.env, stud.expr.li = ps$stud.expr.li, part=ps$part, s3.method=NULL, expr.object=NULL,start.char="\n", end.char="\n",...) {
+hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, s3.method=NULL, expr.object=NULL,start.char="\n", end.char="\n",...) {
   if (!is.null(expr.object)) {
     expr = expr.object
   } else {
@@ -309,17 +360,17 @@ hint.for.assign = function(expr, ps=get.ps(), env = ps$stud.env, stud.expr.li = 
 
   se.rhs.li = lapply(stud.expr.li, function(e) match.call.object(e[[3]], envir=match.call.object.env(),s3.method=s3.method))
 
-  hint.for.call(call.obj=ce.rhs, ps=ps,env=env, stud.expr.li=se.rhs.li,part=part, lhs=var,s3.method=s3.method, start.char=start.char, end.char=end.char)
+  hint.for.call(call.obj=ce.rhs, uk=uk, opts=opts,env=env, stud.expr.li=se.rhs.li,part=part, lhs=var,s3.method=s3.method, start.char=start.char, end.char=end.char)
 }
 
 
 #' Default hint for a compute block
 #' @export
-hint.for.compute = function(expr, hints.txt=NULL,var="", ps=get.ps(), env = ps$stud.env, stud.expr.li = ps$stud.expr.li, part=ps$part,start.char="\n", end.char="\n",...) {
+hint.for.compute = function(expr, hints.txt=NULL,var="", uk=parent.frame()$uk,opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL,start.char="\n", end.char="\n",...) {
   expr = substitute(expr)
   restore.point("hint.for.compute")
 
-  if (isTRUE(ps$noeval) | isTRUE(ps$hint.noeval)) {
+  if (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval)) {
     display("Sorry, the default hint requires to evaluate your code, but this is forbidden for security reasons on this server. I show you the solution instead:")
     sol.txt = ps$cdt$sol.txt[[ps$chunk.ind]]
     display(sol.txt)
@@ -360,7 +411,7 @@ hint.for.compute = function(expr, hints.txt=NULL,var="", ps=get.ps(), env = ps$s
       #display(message)
     }
   }
-  if (ret==FALSE & i < length(expr.li) & !isTRUE(ps$is.shiny)) {
+  if (ret==FALSE & i < length(expr.li) & !isTRUE(opts$is.shiny)) {
     display("Note: If you have finished this step and want a hint for the next step. Check your problem set with Ctrl-Alt-R before you type hint() again.")
   }
   if (ret==TRUE) {
@@ -373,12 +424,12 @@ is.dplyr.fun = function(na) {
   na %in% c("mutate","filter","select","arrange","summarise","summarize")
 }
 
-inner.hint.for.call.chain = function(stud.expr.li, cde, ps = get.ps(), ce=NULL, assign.str=assign.str,start.char="\n", end.char="\n", env=ps$stud.env,...) {
+inner.hint.for.call.chain = function(stud.expr.li, cde,uk=parent.frame()$uk,opts=parent.frame()$opts, ce=NULL, assign.str=assign.str,start.char="\n", end.char="\n", env=uk$stud.env,...) {
 
   restore.point("inner.hint.for.call.chain")
 
 
-  compare.vals = ! (isTRUE(ps$noeval) | isTRUE(ps$hint.noeval))
+  compare.vals = ! (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval))
 
   # if (isTRUE(ps$noeval)) {
   #   display("Sorry, the default hint requires to evaluate your code, but this is forbidden for security reasons on this server. I show you the complete solution instead:")

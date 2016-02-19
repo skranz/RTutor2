@@ -1,6 +1,6 @@
 # Parse a traditional RTutor chunk that allows
 # interactive user input, hints and check of solution
-rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_) {
+rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_, opts=te$opts) {
   restore.point("rtutor.parse.task.chunk")
   
   bdf = te$bdf; br = bdf[bi,];
@@ -22,6 +22,7 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_) {
   ck$args = args
   ck$bi = bi
   ck$id = br$id
+  ck$chunk.name = ck$id
   ck$chunk.ind = chunk.ind
   ck$stype = "task_chunk"
   ck$shown.txt = ck$sol.txt = NULL
@@ -32,18 +33,20 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_) {
     add.chunk.block(ck=ck,type=types[i], str=txt.li[[i]],cbi=i,bi=bi,te=te)
   }
   
+  # Collapse, since txt from aceEditor is also collapsed
+  ck$shown.txt = paste0(ck$shown.txt, collapse="\n")
+  ck$sol.txt = paste0(ck$sol.txt, collapse="\n")
   
   # add tests and hints
   add.chunk.tests.and.hints(ck)
 
   
   # specify points
-  if (!is.null(args$points)) {
+  if (is.null(args$points)) {
     ck$max.points = max(opts$e.points * (ck$num.e-sum(ck$e.shown)) + opts$chunk.points, opts$chunk.min.points)
   } else {
     ck$max.points = args$points
   }
-  
   
   # clean up
   ck$test.hint.marker = NULL
@@ -60,16 +63,29 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_) {
   ui = uiOutput(ck$nali$chunkUI)
   set.bdf.ui(ui, bi,te)
   
-  ck$ui.state = init.ui.state.task.chunk(ck)
-  ck$state = init.state.task.chunk(ck)
-  ck$log = new.env()
   invisible(ck)
 }
 
-# Get the working environment of a chunk
-# TO DO: implement
-get.chunk.env = function(ck) {
-  new.env(parent = globalenv())
+# init a user chunk
+# this holds user specific states for a chunk
+make.user.chunk = function(ck) {
+  uk = list(
+    ck = ck,
+    mode = "output", # output mode
+    stud.code = ck$shown.txt,
+    is.solved = FALSE,
+    test.passed = length(ck$test.expr),
+    stud.env = NULL,
+    log = NULL
+  )
+  uk
+}
+
+init.user.chunk = function(uk) {
+  restore.point("init.user.chunk")
+  uk = as.environment(as.list(uk))
+  uk$log = new.env()
+  uk
 }
 
 # Names for task chunk shiny widgets
@@ -91,14 +107,12 @@ make.chunk.nali = function(prefix=paste0(id,"_"), id) {
 
 init.ui.state.task.chunk = function(ck) {
   ui.state = as.environment(list(
-    mode = "output"
+    
   ))
 }
 
 init.state.task.chunk = function(ck) {
   state = as.environment(list(
-    stud.code = ck$shown.txt,
-    is.solved = FALSE
   ))
 }
 
@@ -194,6 +208,7 @@ add.chunk.tests.and.hints = function(ck) {
   # Parse tests and hints
   ck$test.expr = lapply(ck$test.txt, parse.text)
   ck$hint.expr = lapply(ck$hint.txt, parse.text)
+  
   if (is.null(ck$chunk.hint.txt)) {
     ck$chunk.hint = NULL 
   } else {

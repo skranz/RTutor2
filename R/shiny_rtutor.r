@@ -377,10 +377,10 @@ chunk.opt.list.to.string = function(li, add.comma=!TRUE) {
 }
 
 # Use local version of MathJax so that problem sets really run offline
-mathJaxRTutor <- function(html, ps=get.ps()) {
+mathJaxRTutor <- function(html, offline=ps$offline, ps=get.ps()) {
   restore.point("mathJaxRTutor")
 
-  if (isTRUE(ps$offline))
+  if (offline)
     return(html)
 
   #path =  paste0(system.file('www', package='RTutor'),"/MathJax")

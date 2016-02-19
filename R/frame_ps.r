@@ -1,28 +1,38 @@
+# To DO: More effective click handler in shinyEvents: register only a single javascript handler... dispatch in R to the corresponding function.
+
 examples.frame.ps = function() {
   library(EconCurves)
   setwd("D:/libraries/RTutor2")
-  txt = readLines("ex1.rmd")
+  txt = readLines("ex1.rmd", warn=FALSE)
   frame.ind = NULL
   te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE)
   te$lang = "de"
   bdf = te$bdf
-  show.frame.ps(te)
+  show.frame.ps(te, catch.errors=FALSE)
 }
 
-show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE, just.return.html=FALSE) {
+show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE) {
   restore.point("show.frame.ps")
   
   app = eventsApp()
   app$ps = ps
+  
+  set.ps(ps)
+  opts = default.ps.opts(catch.errors=catch.errors)
+  set.ps.opts(opts=opts)
+  init.ps.user.objects(ps)
+    
   resTags = rtutor.html.ressources()
   app$ui = tagList(
     resTags,
-    docClickEvents(id="doc_click"),
+    #buttonHandlerScript(),
+    #docClickEvents(),    
+    rtutorClickHandler(),
     fluidPage(
-      uiOutput("frameUI")
-      #,highlight.code.script()
+      withMathJax(uiOutput("frameUI"))
     )
   )
+  #setUI("tchunk_2__chunkUI",HTML("Ich werde gesehen!"))
   try(shiny::addResourcePath("figure",paste0(dir,"/figure")), silent=TRUE)  
 
   bdf = ps$bdf
@@ -33,6 +43,7 @@ show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE, just.retur
   ps$num.frames = sum(bdf$type=="frame")
   add.navigate.handlers()
   frame.ui = set.frame(frame.ind,ps=ps)
+  
   
   # May be useful for debugging HTML problems
   if (just.return.html) {
@@ -49,11 +60,24 @@ show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE, just.retur
   viewApp(app)
 }
 
-show.dyn.ui = function(stype=bdf$stype[[bi]], obj=bdf$obj[[bi]], bi, bdf = ps$bdf,ps=NULL) {
+init.ps.user.objects = function(ps) {
+  ps$uk.li = lapply(ps$org.uk.li, init.user.chunk)
+}
+
+show.dyn.ui = function(bi,ps=NULL) {
+  restore.point("show.dyn.ui")
   
   # TO DO: store whether UI really needs an update...
+  bdf = ps$bdf
+  stype = bdf$stype[[bi]]
   if (stype=="task_chunk") {
-    update.chunk.ui(ck=obj$ck)
+    uk = ps$uk.li[[ bdf$stype.ind[[bi]] ]]
+    
+    if (!isTRUE(uk$handlers.initialized)) {
+      uk$handlers.initialized = TRUE
+      make.chunk.handlers(uk)
+    }
+    update.chunk.ui(uk=uk)
   }
 }
 
@@ -131,72 +155,38 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),use.mathja
     rtutor.init.addons(addons,ps)
     ps$shown.frames = c(ps$shown.frames,frame.ind) 
   }
-  
+
   # show dynamic ui of the frame
   dyn.ui.ind = which(bdf$parent_frame == bi & bdf$has.dyn.ui)
   for (cbi in dyn.ui.ind) {
-    show.dyn.ui(bi = cbi, bdf=bdf)
+    show.dyn.ui(bi = cbi, ps=ps)
   }
+  
+  
   
   obj = ps$bdf$obj[[bi]]
-  # header.ui = tagList(
-  #   HTML("<table width='100%'><tr><td>"),
-  #   h4(obj$title),
-  #   HTML("</td><td align='right' valign='top' nowrap>"),
-  #   list(
-  #     rtutor.navigate.btns(),
-  #     HTML(paste0(frame.ind, " of ",ps$num.frames))      
-  #   ),
-  #   HTML("</td></tr></table>")
-  # )
 
-  header.ui = tagList(
-    HTML("<table width='100%'><tr><td>"),
-    h4(obj$title),
-    HTML("</td><td align='right' valign='top' nowrap>"),
-    HTML("<table><tr><td valign='center' nowrap>"),    
-    rtutor.navigate.btns(),
-    HTML("</td><td valign='center' nowrap style='padding-left: 5px'>"),
-    HTML(paste0(frame.ind, " of ",ps$num.frames)),      
-    HTML("</td></tr></table>"),
-    HTML("</td></tr></table>")
-  )
+  header.ui = frame.title.bar.ui(title=obj$title, frame.ind=frame.ind, num.frames=ps$num.frames)
   
-  
-  if (!use.mathjax) {
-    ui = bdf$ui[bi]     
-  } else {
-    ui = bdf$obj[[bi]]$mathjax.ui
-  }
-  frame.ui = list(header.ui,ui)
+  ui = bdf$ui[bi]
+  frame.ui = tagList(header.ui,ui)
 
   setUI("frameUI",frame.ui)
-  
   invisible(frame.ui)
 }
 
 
-# Add javascript to deal with clicks on free html area,
-# i.e. not on inputs, buttons, links or images
-# can be used to proceed with slides
-docClickEvents = function(id="doc_click") { 
-  tags$script(paste0('
-  $(document).on("click", function (e) {
-    var nn = e.target.nodeName;
-
-    if (nn === "BUTTON" || nn === "IMG" || nn === "INPUT" || nn === "A") {
-      return;
-    }
-    var pn = e.target.parentNode;
-    if (pn.className === "radio" || pn.className === "checkbox") {
-      return;
-    }
-    var gpn = pn.parentNode;
-    if (gpn.className === "radio" || gpn.className === "checkbox") {
-      return;
-    }
-
-    Shiny.onInputChange("',id,'", {targetId: e.target.id, targetType: nn, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
-  });'))
+frame.title.bar.ui = function(title, frame.ind, num.frames) {
+ tagList(
+    HTML("<table width='100%'><tr><td>"),
+    h4(title),
+    HTML("</td><td align='right' valign='top' nowrap>"),
+    HTML("<table><tr><td valign='center' nowrap>"),    
+    rtutor.navigate.btns(),
+    HTML("</td><td valign='center' nowrap style='padding-left: 5px'>"),
+    HTML(paste0(frame.ind, " of ",num.frames)),      
+    HTML("</td></tr></table>"),
+    HTML("</td></tr></table>")
+  )  
 }
 
