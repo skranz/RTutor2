@@ -54,15 +54,19 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_, opts=te$o
   # add info to te$bdf
   te$bdf$obj[[bi]]$ck = ck
   te$bdf$is.task[[bi]] = TRUE
+
   shown.txt = paste0(ck$shown.txt, collapse="\n")
   sol.txt = paste0(ck$sol.txt, collapse = "\n")
   te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(
     shown.txt, sol.txt, sol.txt  
   )
   ck$nali = make.chunk.nali(id=ck$id)
-  ui = uiOutput(ck$nali$chunkUI)
-  set.bdf.ui(ui, bi,te)
-  
+
+  # a task chunk is a container
+  te$bdf$is.container[[bi]] = TRUE
+  set.container.div.and.output(bi,te)
+  te$bdf$always.reload[[bi]] = TRUE
+
   invisible(ck)
 }
 

@@ -28,6 +28,7 @@ show.frame.ps = function(ps, frame.ind=1, dir=getwd(), offline=FALSE, just.retur
     #buttonHandlerScript(),
     #docClickEvents(),    
     rtutorClickHandler(),
+    #swipeEvents(),
     fluidPage(
       withMathJax(uiOutput("frameUI"))
     )
@@ -95,7 +96,9 @@ add.navigate.handlers = function() {
   buttonHandler("rtNextBtn",frame.next)
   buttonHandler("rtForwardBtn",frame.forward)
   changeHandler("doc_click",frame.click)
-
+  swipeLeftHandler(fun=frame.prev)
+  swipeRightHandler(fun=frame.prev)
+  
 }
 
 
@@ -157,10 +160,10 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),use.mathja
   }
 
   # show dynamic ui of the frame
-  dyn.ui.ind = which(bdf$parent_frame == bi & bdf$has.dyn.ui)
-  for (cbi in dyn.ui.ind) {
-    show.dyn.ui(bi = cbi, ps=ps)
-  }
+  #dyn.ui.ind = which(bdf$parent_frame == bi & bdf$has.dyn.ui)
+  #for (cbi in dyn.ui.ind) {
+  #  show.dyn.ui(bi = cbi, ps=ps)
+  #}
   
   
   
@@ -170,7 +173,8 @@ set.frame = function(frame.ind = ps$frame.ind,ps=app$ps, app=getApp(),use.mathja
   
   ui = bdf$ui[bi]
   frame.ui = tagList(header.ui,ui)
-
+  frame.ui = withMathJax(frame.ui)
+  
   setUI("frameUI",frame.ui)
   invisible(frame.ui)
 }

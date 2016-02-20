@@ -3,8 +3,8 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   frame.ind = NULL
-  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind),catch.errors = FALSE)
   te$lang = "de"
+  te = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind),catch.errors = FALSE)
   bdf = te$bdf
   show.frame.ps(te)
   
@@ -50,12 +50,20 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
+  bdf$obj = bdf$ui = bdf$inner.ui = vector("list", NROW(bdf))
+  bdf = mutate(bdf,
+    stype.ind = 0,
+    id = paste0(type,"__",index,"__",ps.id),    
+    has.handler = FALSE,
+    is.task = FALSE,task.ind = 0,
+    prefixed=FALSE,
+    is.container=FALSE,container.ind = 0, always.reload=FALSE,
+    div.id = "",output.id=  "",   
+    
+ 
+    shown.rmd = "", out.rmd = "",sol.rmd = ""
 
-  bdf$obj = bdf$ui = vector("list", NROW(bdf))
-  bdf$prefixed = bdf$has.handler = bdf$is.task = bdf$has.dyn.ui = FALSE
-  bdf$task.ind = bdf$stype.ind = 0
-  bdf$id = paste0(bdf$type,"__",bdf$index,"__",ps.id)
-  bdf$shown.rmd = bdf$out.rmd = bdf$sol.rmd = ""
+  )
   
   
   # Filter bdf if only a subset of elements shall be compiled / shown
@@ -91,7 +99,6 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
     }
   }
   te$bdf$task.ind = cumsum(te$bdf$is.task) * te$bdf$is.task
-  
   # store task.chunks in a list ck.li and the
   # corresponding user chunks in uk
   chunk.rows = which(te$bdf$stype == "task_chunk")
@@ -102,6 +109,14 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   te$org.uk.li = lapply(te$ck.li, function(ck) {
     make.user.chunk(ck)
   })
+  
+  # specify containers
+  te$bdf$container.ind = cumsum(te$bdf$is.container) * te$bdf$is.container
+  
+  # TO DO: repair get.levels.parents, only returns 0.
+  te$bdf$parent_container = get.levels.parents(bdf$level, bdf$is.container) 
+  
+  
   te
 }
 
@@ -279,11 +294,11 @@ rtutor.parse.chunk = function(bi,te) {
     te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
   } else {
     te$bdf$stype[[bi]] = "task_chunk"
-    te$bdf$has.dyn.ui[[bi]] = TRUE
     chunk.ind = sum(te$bdf$stype[1:bi]=="task_chunk")
     te$bdf$id[[bi]] = paste0("tchunk_",chunk.ind)
     # a task chunk is the classic RTutor chunk
     rtutor.parse.task.chunk(bi=bi,te=te,args=args, chunk.ind=chunk.ind)
+    
   }
 }
 
@@ -311,27 +326,6 @@ rtutor.parse.precompute = function(bi,te) {
   # all work is done in the chunks inside
 }
 
-
-rtutor.parse.column = function(bi,te) {
-  restore.point("rtutor.parse.column")
-  bdf = te$bdf; br = bdf[bi,];
-  
-  children = bdf$parent == bi 
-  res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
-  
-  
-  ui.li = res$ui.li
-  args = parse.block.args(arg.str = br$arg.str)
-
-  if (is.null(args$width)) args$width = 6 
-  if (is.null(args$offset)) args$offset = 0 
-  ui = column(width = args$width, offset=args$offset,
-    ui.li
-  )
-  
-  set.bdf.ui(ui,bi,te)
-}
 
 rtutor.parse.portrait = function(bi,te) {
   restore.point("rtutor.parse.image")
@@ -404,34 +398,100 @@ rtutor.parse.image = function(bi,te, download.image=TRUE) {
 
  
 rtutor.parse.solved = function(bi,te) {
-  restore.point("rtutor.parse.success")
-  res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE)
-  ui.li = res$ui.li
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
-
-  id = paste0("solved_block__",bi)
-  te$bdf$obj[[bi]] = list(ui = ui.li, id=id)
-  set.bdf.ui(uiOutput(id),bi,te)
+  restore.point("rtutor.parse.solved")
+  rtutor.parse.as.container(bi,te)
 }
 
 
+rtutor.parse.column = function(bi,te) {
+  restore.point("rtutor.parse.column")
+  bdf = te$bdf; br = bdf[bi,];
+  args = parse.block.args(arg.str = br$arg.str)
+  if (is.null(args$width)) args$width = 6 
+  if (is.null(args$offset)) args$offset = 0 
+  ui.fun = function(ui) {
+    column(width = args$width, offset=args$offset,ui)
+  }
+  rtutor.parse.as.container(bi,te, is.static=TRUE, ui.fun=ui.fun)
+}
+
 rtutor.parse.row = function(bi,te) {
   restore.point("rtutor.parse.row")
-  bdf = te$bdf; br = bdf[bi,];
-  
-  children = bdf$parent == bi 
-  res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE, children=children)
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(res$shown.rmd),merge.lines(res$sol.rmd),merge.lines(res$out.rmd))
-  
-  ui.li = res$ui.li
-  ui = fluidRow(
-    ui.li
-  )
-  set.bdf.ui(ui,bi,te)
+  rtutor.parse.as.container(bi,te, is.static=TRUE, ui.fun=fluidRow)
 }
 
 
 rtutor.parse.frame = function(bi,te) {
+  restore.point("rtutor.parse.frame")
+  bdf = te$bdf; br = bdf[bi,];
+  args = parse.block.args(arg.str = te$bdf$arg.str[[bi]])
+  rtutor.parse.as.container(bi,te,args = args, rmd.prefix="## Frame")
+  if (is.null(args$title.offset)) args$title.offset=0
+  if (!is.null(args$name)) {
+    title = fluidRow(column(offset=args$title.offset,width=12-args$title.offset,h4(args$name)))
+  } else {
+    title = NULL
+  }
+  te$bdf$obj[[bi]] = list(title = args$name, args=args)
+}
+
+
+rtutor.parse.as.container = function(bi, te,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, always.reload=FALSE, is.static=FALSE, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL) {
+  restore.point("rtutor.parse.as.container")
+  bdf = te$bdf; br = bdf[bi,];
+  if (is.null(inner.ui) | is.null(rmd.li)) {
+    res = get.children.and.fragments.ui.list(bi,te,keep.null=TRUE)
+    if (is.null(inner.ui))
+      inner.ui = res$ui.li
+    if (is.null(rmd.li)) rmd.li = res
+  }
+  if (!is.null(ui.fun)) {
+    inner.ui = ui.fun(inner.ui)
+  }
+  if (!is.null(inner.ui)) {
+    inner.ui = tagList(
+      inner.ui,
+      if (highlight.code) highlight.code.script() else NULL
+    )
+  }
+  
+  set.bdf.rmd(bi, te, rmd.li=rmd.li, rmd.prefix=rmd.prefix, rmd.postfix=rmd.postfix)
+  
+  # A dynamic container will be loaded in an uiOutput
+  if (!is.static) {
+    te$bdf$inner.ui[[bi]] = inner.ui
+    set.container.div.and.output(bi,te)
+  
+  # A static container will not be loaded in a uiOutput
+  } else {
+    te$bdf$div.id[[bi]] = div.id = paste0(te$prefix, br$id,"_div")
+    div.class = "rtutor-static-container-div"
+    te$bdf$ui[[bi]] = div(id=div.id,class=div.class, 
+      inner.ui
+    )
+  }
+  te$bdf$is.container[[bi]] = TRUE
+}
+
+set.container.div.and.output = function(bi, te, always.reload=FALSE) {
+  bdf = te$bdf; br = bdf[bi,];
+  
+  te$bdf$div.id[[bi]] = div.id = paste0(te$prefix, br$id,"_div")
+  te$bdf$output.id[[bi]] = output.id = paste0(te$prefix, br$id,"_output")
+  te$bdf$always.reload[[bi]] = always.reload
+  div.class = "rtutor-container-div"
+  te$bdf$ui[[bi]] = div(id=div.id,class=div.class, 
+    uiOutput(output.id)
+  )
+  
+}
+
+get.container.default.rmd = function(bi,te) {
+  title = paste0("## Frame ", args$name)
+
+}
+
+parse.container.inner.ui.and.rmd = function(bi, te) {
   restore.point("rtutor.parse.frame")
   #stop()
   bdf = te$bdf; br = bdf[bi,];
@@ -439,12 +499,12 @@ rtutor.parse.frame = function(bi,te) {
   
   children = bdf$parent == bi 
   res = get.children.and.fragments.ui.list(bi,te, children=children, keep.null=TRUE)
-  title = paste0("## Frame ", args$name)
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(title,res$shown.rmd)),merge.lines(c(title,res$sol.rmd)),merge.lines(c(title,res$out.rmd)))
   
   ui.li = res$ui.li
   is.child = !res$is.frag
 
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(title,res$shown.rmd)),merge.lines(c(title,res$sol.rmd)),merge.lines(c(title,res$out.rmd)))
+  
   if (is.null(args$title.offset)) args$title.offset=0
   if (!is.null(args$name)) {
     title = fluidRow(column(offset=args$title.offset,width=12-args$title.offset,h4(args$name)))
@@ -457,48 +517,28 @@ rtutor.parse.frame = function(bi,te) {
   )
   te$bdf$obj[[bi]] = list(title = args$name, args=args)
   set.bdf.ui(ui,bi,te)
+  
 }
 
-rtutor.parse.info = rtutor.parse.note =  function(bi,te) {
+
+rtutor.parse.info = function(bi,te) {
   restore.point("rtutor.parse.info")
-  #stop()
-  bdf = te$bdf; br = bdf[bi,];
-  args = parse.block.args(arg.str = br$arg.str)
-  
-  children = bdf$parent == bi 
-  res = get.children.and.fragments.ui.list(bi,te, children=children, keep.null=TRUE)
-  
-  ui.li = res$ui.li
-  is.child = !res$is.frag
+  parse.as.collapse(bi,te,title.prefix="Info")
+}
 
-  if (!is.null(args$name)) {
-    title = args$name
-  } else {
-    title = "Info"
-  }
-  ui = make.rtutor.collapse.note(id=paste0("info_collapse_",bi),content=ui.li, title=title)  
-  set.bdf.ui(ui,bi,te)
-  
-  head = paste0("### ", title)
-  foot = paste0("---")
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,res$shown.rmd,foot)),merge.lines(c(head,res$sol.rmd,foot)),merge.lines(c(head,res$out.rmd,foot)))
-
+rtutor.parse.note = function(bi,te) {
+  restore.point("rtutor.parse.note")
+  parse.as.collapse(bi,te)
 }
 
 rtutor.parse.award = function(bi,te) {
   restore.point("rtutor.parse.award")
+
   res = get.children.and.fragments.ui.list(bi,te, keep.null=FALSE)
-  ui.li = res$ui.li
-  award.name = 
   out.rmd = merge.lines(c("---\n### Award",res$out.rmd,"---"))
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c("","",out.rmd)
-
-  id = paste0("award__",bi)
-  te$bdf$obj[[bi]] = list(ui = ui.li, id=id)
-  set.bdf.ui(uiOutput(id),bi,te)
+  rmd.li = c("","",out.rmd)
+  parse.as.collapse(bi,te, rmd.li=rmd.li, title.prefix="Award ", is.static=TRUE)
 }
-
-
 
 rtutor.parse.references = function(bi,te) {
   restore.point("references.block.render")
@@ -506,15 +546,38 @@ rtutor.parse.references = function(bi,te) {
   if (isTRUE(te$lang=="de")) {
     title = "Referenzen"
   }
-  str = get.bi.te.str(bi,te)
-  html = md2html(str)
-  ui = make.rtutor.collapse.note(id=paste0("ref_collapse_",bi),html=html, title)
-  set.bdf.ui(ui,bi,te)  
+  parse.as.collapse(bi,te, title=title, is.static=TRUE)
+}
 
-  head = paste0("### ", title)
-  foot = paste0("---")
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)),merge.lines(c(head,str,foot)))
+rtutor.parse.as.collapse  =  function(bi,te,title.prefix=NULL, title=NULL, rmd.head=paste0("### ", title), rmd.foot="---",is.static=TRUE,always.reload=FALSE,...) {
+  restore.point("rtutor.parse.as.collapse")
+  #stop()
+  bdf = te$bdf; br = bdf[bi,];
+  args = parse.block.args(arg.str = br$arg.str)
+  children = bdf$parent == bi 
+  res = get.children.and.fragments.ui.list(bi,te, children=children, keep.null=TRUE)
+  
+  ui.li = res$ui.li
+  is.child = !res$is.frag
 
+  if (is.null(title)) title = paste0(title.prefix, " ",args$name)
+  if (is.null(title)) title = bs$type[[bi]]
+  inner.ui = make.rtutor.collapse.note(id=paste0(te$bdf$type[[bi]],"_collapse_",bi),content=ui.li, title=title)  
+  rmd.li = list(
+    shown.rmd = merge.lines(c(rmd.head,res$shown.rmd,rmd.foot),
+    sol.rm  = merge.lines(c(rmd.head,res$sol.rmd,rmd.foot)),
+    out.rmd = merge.lines(c(rmd.head,res$out.rmd,rmd.foot)))
+  )
+  rtutor.parse.as.container(bi,te,args=args, inner.ui=inner.ui, rmd.li=rmd.li, is.static=is.static, always.reload=always.reload,...)
+}
+
+
+set.bdf.rmd = function(bi, te, shown.rmd=rmd.li$shown.rmd, sol.rmd=rmd.li$sol.rmd, out.rmd = rmd.li$out.rmd, rmd.li=NULL, rmd.prefix="", rmd.postfix) {
+  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(
+    merge.lines(c(rmd.prefix,shown.rmd,rmd.postfix)),
+    merge.lines(c(rmd.prefix,sol.rmd,rmd.postfix)),
+    merge.lines(c(rmd.prefix,out.rmd,rmd.postfix))
+  )
 }
 
 get.bi.te.str = function(bi,te, remove.header.footer=TRUE) {
@@ -691,63 +754,6 @@ fast.name.rmd.chunks = function(txt,prefix = "chunk_", chunk.lines = NULL, metho
   new =  paste0("```{r ",name,right)
   txt[chunk.lines] = new
   txt
-}
-
-bdf.frame.filter = function(line=NULL,frame.ind=NULL,type.ind=frame.ind,bdf.ind=NULL,type,keep.precompute=TRUE) {
-  bdf.type.filter(line,type.ind,bdf.ind,type="frame", keep.precompute=keep.precompute)
-}
-
-bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type,keep.precompute=TRUE) {
-  outer.type = type
-  
-  types.to.keep = NULL
-  if (keep.precompute) {
-    types.to.keep = "precompute"
-  }
-  function(bdf, te=NULL) {
-    restore.point("in.bdf.type.filer")
-    
-    bdf.ind = get.bdf.ind(line=line,type.ind=type.ind,bdf.ind=bdf.ind,bdf=bdf,te=te,type=type)
-    if (is.null(bdf.ind)) return(bdf)
-    
-    child.ind = which(bdf[,paste0("parent_",type)] == bdf.ind)
-    keep = bdf$type %in% types.to.keep & bdf$index <= bdf.ind
-    for (ktype in types.to.keep) {
-      keep = keep | (bdf[,paste0("parent_",ktype)] >0 & bdf$index <= bdf.ind)
-    }
-    keep.ind = which(keep)
-    
-    rows = sort(unique(c(keep.ind,bdf.ind,child.ind)))
-    bdf[rows,,drop=FALSE]
-  }
-  
-}
-
-get.bdf.ind = function(line=NULL,type.ind=NULL, bdf.ind=NULL, bdf=NULL, type=NULL, te=NULL) {
-  if (!is.null(bdf.ind)) return(bdf.ind)
-  if (!is.null(type.ind)) {
-    return(bdf$index[bdf$type==type][type.ind]) 
-  }
-  if (!is.null(line)) {
-    return(line.to.bdf.ind(line=line,bdf=bdf, type=type,te=te))
-  }
-  return(NULL)
-}
-
-line.to.bdf.ind = function(line,bdf,type=NULL,txt.start = if (is.null(te$txt.start)) 1 else te$txt.start, te=NULL) {
-  restore.point("line.to.bdf.ind")
-  
-  line = line-txt.start+1
-  if (!is.null(type)) {
-    df = bdf[bdf$type==type,,drop=FALSE]
-  } else {
-    df = bdf
-  }
-  rows = which(df$start <= line & df$end >= line)
-  if (length(rows)>1) {
-    return(df$index[rows[which.max(df$start[rows])]])
-  }
-  return(df$index[rows])
 }
 
 get.yaml.block.args = function(bi,te) {

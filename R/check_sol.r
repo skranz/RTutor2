@@ -252,11 +252,6 @@ extract.rmd.exercise.code = function(ex.name,stud.code = ps$stud.code, ps=get.ps
   paste0(str, collapse="\n")
 }
 
-
-
-
-
-
 get.stud.chunk.code = function(txt = ps$stud.code,chunks = ps$cdt$chunk.name, ps = get.ps()) {
   restore.point("get.stud.chunk.code")
   chunk.start = which(str.starts.with(txt,"```{"))

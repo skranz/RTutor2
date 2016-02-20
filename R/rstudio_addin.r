@@ -1,8 +1,17 @@
 previewRTutorFrameAddin = function(...) {
+  preview.rtutor.frames.addin(single.frame=TRUE)
+}
+
+previewRTutorAllFramesAddin = function(...) {
+  preview.rtutor.frames.addin(single.frame=FALSE)
+}
+
+
+preview.rtutor.frames.addin = function(single.frame=TRUE,...) {
   library(rstudioapi)
   library(RTutor2)
   doc = rstudioapi::getActiveDocumentContext()
-  restore.point("previewRTutorFrameAddin")
+  restore.point("preview.rtutor.frames.addin")
   cat("\nView frame")
   
   file = basename(doc$path)
@@ -18,12 +27,13 @@ previewRTutorFrameAddin = function(...) {
     return()
   }
   
-  ps = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(line=line))
-  bdf = te$bdf
-  show.frame.ps(ps)
-  
-# ui = make.te.ui(te=te)
-# cat("\nView frame...")
-# view.html(ui=ui)
-
-}
+  if (single.frame) {
+    ps = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(line=line))
+    frame.ind = 1
+  } else {
+    ps = rtutor.make.frame.ps.te(txt)
+    frame.ind = line.to.type.ind(line, type="frame", bdf=ps$bdf)
+  }
+  bdf = ps$bdf
+  show.frame.ps(ps,frame.ind = frame.ind)
+} 

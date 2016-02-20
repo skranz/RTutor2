@@ -78,14 +78,19 @@ hint = function(..., ps=get.ps()) {
 # run hint for chunk uk; uses no ps information
 # TO DO: Need to think about good envir, uk and opts will be drawn
 #        from the parent.frame
-run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts()) {
-  restore.point("hint")
+run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts(), no.hint.if.passed=!is.false(opts$no.hint.if.passed)) {
+  restore.point("run.chunk.hint")
 
   ck = uk$ck
   uk$hint.was.shown = FALSE
   chunk.ind = ck$chunk.ind
   do.log = TRUE
 
+  if (no.hint.if.passed & isTRUE(uk$passed)) {
+    cat("\nEverything looks correct when checking your code. So there is no need for a hint. Just check your code to continue.")
+    return(invisible(""))
+  }
+  
   #env = new.env(parent.env=envir)
   #env$uk=uk
   #env$opts=opts
@@ -101,17 +106,11 @@ run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts()) {
     eval.fun = base::eval
   }
   
-  # get hint for expression where last call to check.chunk
-  # failed...
-  if (uk$e.ind == 0) {
-    hint.expr = uk$ck$chunk.hint
-  } else {
-    hint.expr = uk$ck$hint.expr[[uk$e.ind]]
-  }
-
+  chunk.hint = uk$ck$chunk.hint
+  
   # No expression set
   if (uk$e.ind == 0) {
-    if (!is.null(hint.expr)) {
+    if (!is.null(chunk.hint)) {
       eval.fun(chunk.hint)
       log.event(type="hint",chunk.ind=chunk.ind, e.ind=uk$e.ind)
       if (ck$num.e>0) {
@@ -128,6 +127,7 @@ run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts()) {
     
   # hint for expression uk$e.ind
   } else {
+    hint.expr = uk$ck$hint.expr[[uk$e.ind]]
     if (length(hint.expr)==0) {
       if (!is.null(chunk.hint)) {
         eval.fun(hint.expr)
@@ -151,11 +151,13 @@ run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts()) {
 
 # update ups since a hint has been shown
 update.ups.hint.shown = function(uk) {
+  restore.point("update.ups.hint.shown")
+  
   # Update ups statistics
-  if (uk$hint.was.shown) {
+  if (isTRUE(uk$hint.was.shown)) {
     chunk.ind = uk$ck$chunk.ind
     ups = get.ups()
-    update = !ups$cu$solved[chunk.ind]
+    update = isTRUE(try(!ups$cu$solved[chunk.ind]))
     
     if (update) {
       ups$cu$num.hint[chunk.ind] = ups$cu$num.hint[chunk.ind]+1
@@ -218,18 +220,27 @@ hint.for.function = function(code, ...,uk=parent.frame()$uk, opts=parent.frame()
 
 #' Default hint for a call
 #' @export
-hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, from.assign=!is.null(lhs), lhs = NULL, call.obj = NULL,s3.method=NULL, start.char="\n", end.char="\n") {
+hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, from.assign=!is.null(lhs), lhs = NULL, call.obj = NULL,s3.method=NULL, start.char="\n", end.char="\n", noeval=opts$noeval) {
   
   if (!is.null(call.obj)) {
     call = call.obj
   } else {
     call = substitute(call)
   }
+  if (noeval) {
+    mco.env = make.base.env()
+    stud.env = emptyenv()
+    check.arg.by.value=FALSE
+    ok.if.same.val = FALSE
+  } else {
+    mco.env = stud.env
+  }
+
   restore.point("hint.for.call")
 
   part.str = ifelse(is.null(part),"",paste0(" in part ", part))
 
-  ce = match.call.object(call, envir=match.call.object.env(),s3.method=s3.method)
+  ce = match.call.object(call, envir=mco.env,s3.method=s3.method)
   cde = describe.call(call.obj=ce)
   check.na = cde$name
 
@@ -336,18 +347,27 @@ scramble.text = function(txt, scramble.char="?", share=0.5, keep.char=" ") {
 
 #' Default hint for an assignment
 #' @export
-hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, s3.method=NULL, expr.object=NULL,start.char="\n", end.char="\n",...) {
+hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, s3.method=NULL, expr.object=NULL,start.char="\n", end.char="\n",noeval=opts$noeval,...) {
   if (!is.null(expr.object)) {
     expr = expr.object
   } else {
     expr = substitute(expr)
   }
+  if (noeval) {
+    mco.env = make.base.env()
+    stud.env = emptyenv()
+    check.arg.by.value=FALSE
+    ok.if.same.val = FALSE
+  } else {
+    mco.env = stud.env
+  }
+  
   restore.point("hint.for.assign")
 
-  ce = match.call.object(expr,s3.method=s3.method, envir=match.call.object.env())
+  ce = match.call.object(expr,s3.method=s3.method, envir=mco.env)
   ce = standardize.assign(ce)
 
-  ce.rhs = match.call.object(ce[[3]],s3.method=s3.method, envir=match.call.object.env())
+  ce.rhs = match.call.object(ce[[3]],s3.method=s3.method, envir=mco.env)
   dce.rhs = describe.call(call.obj=ce.rhs)
 
   stud.expr.li = lapply(stud.expr.li, standardize.assign)
@@ -358,7 +378,7 @@ hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opt
   stud.var = sapply(stud.expr.li, function(e) deparse1(e[[2]]))
   stud.expr.li = stud.expr.li[stud.var == var]
 
-  se.rhs.li = lapply(stud.expr.li, function(e) match.call.object(e[[3]], envir=match.call.object.env(),s3.method=s3.method))
+  se.rhs.li = lapply(stud.expr.li, function(e) match.call.object(e[[3]], envir=mco.env,s3.method=s3.method))
 
   hint.for.call(call.obj=ce.rhs, uk=uk, opts=opts,env=env, stud.expr.li=se.rhs.li,part=part, lhs=var,s3.method=s3.method, start.char=start.char, end.char=end.char)
 }
@@ -424,13 +444,14 @@ is.dplyr.fun = function(na) {
   na %in% c("mutate","filter","select","arrange","summarise","summarize")
 }
 
-inner.hint.for.call.chain = function(stud.expr.li, cde,uk=parent.frame()$uk,opts=parent.frame()$opts, ce=NULL, assign.str=assign.str,start.char="\n", end.char="\n", env=uk$stud.env,...) {
+inner.hint.for.call.chain = function(stud.expr.li, cde,uk=parent.frame()$uk,opts=parent.frame()$opts, ce=NULL, assign.str=assign.str,start.char="\n", end.char="\n", env=uk$stud.env,noeval= (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval)),...) {
 
   restore.point("inner.hint.for.call.chain")
 
 
-  compare.vals = ! (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval))
-
+  compare.vals = ! noeval
+  if (noeval) env = emptyenv()
+  
   # if (isTRUE(ps$noeval)) {
   #   display("Sorry, the default hint requires to evaluate your code, but this is forbidden for security reasons on this server. I show you the complete solution instead:")
   #   sol.txt = ps$cdt$sol.txt[[ps$chunk.ind]]

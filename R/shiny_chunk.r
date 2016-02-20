@@ -239,7 +239,7 @@ run.line.shiny.chunk = function(uk, envir=uk$stud.env, cursor=NULL, selection=NU
   if (opts$in.R.console) {
     eval.in.console(txt, envir=envir)
   } else {
-    eval.in.ace.console(txt, envir=envir, consoleId=ps$nali$console,session=app$session)
+    eval.in.ace.console(txt, envir=envir, consoleId=uk$ck$nali$console)
   }
 }
 
@@ -342,6 +342,7 @@ hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=
   )
   txt = paste0("Hint: ", txt)
   updateAceEditor(app$session, uk$ck$nali$console, value=txt, mode="text")
+  update.ups.hint.shown(uk)
 }
 
 help.shiny.chunk = function(uk, cursor=NULL, selection="",..., app=getApp()) {
@@ -377,7 +378,7 @@ restore.shiny.chunk = function(uk,...,app=getApp()) {
   uk$is.solved = FALSE
 
   updateAceEditor(app$session, uk$ck$nali$editor, value=uk$stud.code, mode="r")
-  updateAceEditor(app$session, uk$ck$$console, value="restored originally shown code...", mode="text")
+  updateAceEditor(app$session, uk$ck$console, value="restored originally shown code...", mode="text")
 }
 
 

@@ -296,7 +296,7 @@ inner.rtutor.eval.to.string = function(expr.li, envir) {
 }
 
 
-eval.in.ace.console = function(code,envir=parent.frame(), consoleId, session) {
+eval.in.ace.console = function(code,envir=parent.frame(), consoleId,session=app$session, app=getApp()) {
   restore.point("eval.in.ace.console")
   out = rtutor.eval.to.string(code,envir, convert=TRUE)
 
@@ -304,9 +304,7 @@ eval.in.ace.console = function(code,envir=parent.frame(), consoleId, session) {
   if (length(out)==0)
     out = ""
 
-  #browser()
   # remove special characters that cause errors in ACE console
-
   tryCatch(updateAceEditor(session, consoleId, value=out,mode="r"),
            error = function(e) {message(e)}
   )
