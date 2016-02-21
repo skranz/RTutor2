@@ -66,6 +66,7 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_, opts=te$o
   te$bdf$is.container[[bi]] = TRUE
   set.container.div.and.output(bi,te)
   te$bdf$always.reload[[bi]] = TRUE
+  te$bdf$is.static[[bi]] = FALSE
 
   invisible(ck)
 }

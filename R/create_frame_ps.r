@@ -37,7 +37,12 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   txt = res$txt
 
   txt = fast.name.rmd.chunks(txt)
+  # add outer container
+  txt = c("#< ps",txt,"#>")
+  
   te$txt = txt
+  
+  
   
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
@@ -58,6 +63,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
     is.task = FALSE,task.ind = 0,
     prefixed=FALSE,
     is.container=FALSE,container.ind = 0, always.reload=FALSE,
+    is.static = TRUE,
     div.id = "",output.id=  "",   
     
  
@@ -113,8 +119,7 @@ rtutor.make.frame.ps.te = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd
   # specify containers
   te$bdf$container.ind = cumsum(te$bdf$is.container) * te$bdf$is.container
   
-  # TO DO: repair get.levels.parents, only returns 0.
-  te$bdf$parent_container = get.levels.parents(bdf$level, bdf$is.container) 
+  te$bdf$parent_container = get.levels.parents(te$bdf$level, te$bdf$is.container) 
   
   
   te
@@ -420,6 +425,11 @@ rtutor.parse.row = function(bi,te) {
   rtutor.parse.as.container(bi,te, is.static=TRUE, ui.fun=fluidRow)
 }
 
+rtutor.parse.ps = function(bi,te) {
+  restore.point("rtutor.parse.row")
+  rtutor.parse.as.container(bi,te, is.static=TRUE)
+}
+
 
 rtutor.parse.frame = function(bi,te) {
   restore.point("rtutor.parse.frame")
@@ -427,11 +437,6 @@ rtutor.parse.frame = function(bi,te) {
   args = parse.block.args(arg.str = te$bdf$arg.str[[bi]])
   rtutor.parse.as.container(bi,te,args = args, rmd.prefix="## Frame")
   if (is.null(args$title.offset)) args$title.offset=0
-  if (!is.null(args$name)) {
-    title = fluidRow(column(offset=args$title.offset,width=12-args$title.offset,h4(args$name)))
-  } else {
-    title = NULL
-  }
   te$bdf$obj[[bi]] = list(title = args$name, args=args)
 }
 
@@ -456,6 +461,7 @@ rtutor.parse.as.container = function(bi, te,args=NULL, inner.ui = NULL, rmd.li=N
   }
   
   set.bdf.rmd(bi, te, rmd.li=rmd.li, rmd.prefix=rmd.prefix, rmd.postfix=rmd.postfix)
+  te$bdf$is.static[[bi]] = is.static
   
   # A dynamic container will be loaded in an uiOutput
   if (!is.static) {
