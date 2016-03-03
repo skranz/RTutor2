@@ -1,14 +1,23 @@
 # Parse a traditional RTutor chunk that allows
 # interactive user input, hints and check of solution
-rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_, opts=te$opts) {
+rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
   restore.point("rtutor.parse.task.chunk")
   
-  bdf = te$bdf; br = bdf[bi,];
-  #code = te$txt[(br$start+1):(br$end-1)]
- 
+  #code = ps$txt[(br$start+1):(br$end-1)]
+
+  # a task chunk is a container
+  ps$bdf$is.container[[bi]] = TRUE
+  set.container.div.and.output(bi,ps)
+  ps$bdf$always.reload[[bi]] = TRUE
+  ps$bdf$is.static[[bi]] = FALSE
+
+  # only assign after container definitions are done
+  bdf = ps$bdf; br = bdf[bi,];
+
+   
   # get text of fragments and children
   child.ind = which(bdf$parent == bi)
-  res = get.child.and.fragment.txt.li(bi=bi,te = te,keep.header.footer = FALSE)
+  res = get.child.and.fragment.txt.li(bi=bi,ps = ps,keep.header.footer = FALSE)
   txt.li = res$txt.li
   is.frag = res$is.frag
 
@@ -23,14 +32,13 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_, opts=te$o
   ck$bi = bi
   ck$id = br$id
   ck$chunk.name = ck$id
-  ck$chunk.ind = chunk.ind
   ck$stype = "task_chunk"
   ck$shown.txt = ck$sol.txt = NULL
   
   # parse all blocks and create shown.txt, sol.txt,
   # expression lists and hint and test markers in ck
   for (i in seq_along(txt.li)) {
-    add.chunk.block(ck=ck,type=types[i], str=txt.li[[i]],cbi=i,bi=bi,te=te)
+    add.chunk.block(ck=ck,type=types[i], str=txt.li[[i]],cbi=i,bi=bi,ps=ps)
   }
   
   # Collapse, since txt from aceEditor is also collapsed
@@ -51,22 +59,17 @@ rtutor.parse.task.chunk  = function(bi,te,args, chunk.ind=NA_integer_, opts=te$o
   # clean up
   ck$test.hint.marker = NULL
   
-  # add info to te$bdf
-  te$bdf$obj[[bi]]$ck = ck
-  te$bdf$is.task[[bi]] = TRUE
+  # add info to ps$bdf
+  ps$bdf$obj[[bi]]$ck = ck
+  ps$bdf$is.task[[bi]] = TRUE
 
   shown.txt = paste0(ck$shown.txt, collapse="\n")
   sol.txt = paste0(ck$sol.txt, collapse = "\n")
-  te$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(
+  ps$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(
     shown.txt, sol.txt, sol.txt  
   )
-  ck$nali = make.chunk.nali(id=ck$id)
+  ck$nali = make.chunk.nali(id=ck$id, output.id = br$output.id)
 
-  # a task chunk is a container
-  te$bdf$is.container[[bi]] = TRUE
-  set.container.div.and.output(bi,te)
-  te$bdf$always.reload[[bi]] = TRUE
-  te$bdf$is.static[[bi]] = FALSE
 
   invisible(ck)
 }
@@ -94,8 +97,9 @@ init.user.chunk = function(uk) {
 }
 
 # Names for task chunk shiny widgets
-make.chunk.nali = function(prefix=paste0(id,"_"), id) {
+make.chunk.nali = function(prefix=paste0(id,"_"), id, output.id=NULL) {
   restore.point("make.chunk.nali")
+  if (output.id =="") stop()
   base.names = c(
     "chunkUI", "editor","console","chunkout",
     "runLineKey","runKey","checkKey","hintKey","helpKey",
@@ -107,6 +111,7 @@ make.chunk.nali = function(prefix=paste0(id,"_"), id) {
   nali = paste0(prefix,"_",base.names)
   names(nali) =  base.names
   nali = as.list(c(nali))
+  if (!is.null(output.id)) nali$chunkUI = output.id
   nali
 }
 
@@ -121,7 +126,7 @@ init.state.task.chunk = function(ck) {
   ))
 }
 
-add.chunk.block = function(ck,type,str, add.enter.code.here=FALSE,cbi, bi,te) {
+add.chunk.block = function(ck,type,str, add.enter.code.here=FALSE,cbi, bi,ps) {
   restore.point("add.chunk.block")
   if (is.null(str)) return()
   

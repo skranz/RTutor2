@@ -4,42 +4,72 @@ examples.frame.ps = function() {
   library(EconCurves)
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.rmd", warn=FALSE)
+  #txt = readLines("test.rmd", warn=FALSE)
   frame.ind = NULL
-  ps = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE)
-  ps$lang = "de"
-  app = slidesApp(ps)
+  
+  static.types = "frame"
+  static.types = NULL
+  slides = !TRUE
+  ps = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE, static.types=static.types, slides=slides)
+  bdf = ps$bdf
+  #app = slidesApp(ps)
+  app = rtutorApp(ps)
   viewApp(app)
 }
 
-slidesApp = function(ps, slide.type="frame", start.slide=1, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2) {
-  restore.point("slidesApp")
+# Init ps for a new session
+init.ps.session = function(ps, app=getApp(), rendered=FALSE, hidden=FALSE) {
+  restore.point("init.ps.session")
+  
+  # make shallow copy of ps
+  ps = as.environment(as.list(ps))
+  
+  # init user state of chunks
+  init.ps.user.objects(ps)
+  # container state
+  if (is.null(ps$cont.state)) {
+    n = NROW(ps$bdf)
+    ps$cont.state = data_frame(
+      rendered = rep(rendered,length.out=n),
+      hidden = rep(hidden,length.out=n)
+    )
+  }
+
+  ps
+}
+
+# general initialisation independent of app type
+initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline) {
+  restore.point("initRTutorApp")
   library(shinyjs)
   
   app = eventsApp()
+  
+  
   app$ps = ps
+  ps$offline = offline
+  ps$use.mathjax = use.mathjax
   
   set.ps(ps)
   opts = default.ps.opts(catch.errors=catch.errors)
   set.ps.opts(opts=opts)
-  init.ps.user.objects(ps)
+
   bdf = ps$bdf
+    
+  try(shiny::addResourcePath("figure",paste0(dir,"/figure")), silent=TRUE)  
+
+  app
+}
+
+
+slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2) {
+  restore.point("slidesApp")
   
-  ps$offline = offline
-  ps$use.mathjax = !offline
-  ps$slide.type = slide.type
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline)
+  
   ps$slide.ind = start.slide
-  ps$num.slides = sum(ps$bdf$type==slide.type)
-  
-  # container state
-  if (is.null(ps$constate)) {
-    n = NROW(ps$bdf)
-    ps$constate = data_frame(
-      rendered = rep(FALSE,n),
-      hidden = rep(FALSE,n)
-    )
-  }
-  
   ps.content.ui = ps$bdf$ui[[1]]   
+   
   resTags = rtutor.html.ressources()
   app$ui = tagList(
     useShinyjs(),
@@ -53,33 +83,102 @@ slidesApp = function(ps, slide.type="frame", start.slide=1, dir=getwd(), offline
       )
     )
   )
-  try(shiny::addResourcePath("figure",paste0(dir,"/figure")), silent=TRUE)  
   add.slide.navigate.handlers()
   
-  set.slide(ps=ps)
+  # Each time the problem set is restarted
+  # reinit the problem set
+  appInitHandler(app=app,function(app,...) {
+    ps = init.ps.session(ps=ps,app=app)
+    ps$slide.ind = start.slide
+    app$ps = ps 
+    init.ps.handlers(ps)
+    set.slide(ps=ps)
+  })
+
   
   app
 }
 
-is.cont.rendered = function(bi, ps) {
-  if (is.null(ps$constate)) return(FALSE)
-  ps$constate$rendered[[bi]]
-}
-
-
-render.as.slide = function(ps, type=ps$slide.type, type.ind=1, bi=NULL, slide.ind=type.ind, title=NULL,num.slides=ps$num.slides, output.id=NULL, ...) {
-  restore.point("render.as.slide")
- if (is.null(bi))
-    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
+rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2,...) {
+  restore.point("rtutorApp")
   
-  if (is.null(title)) {
-    title = ps$bdf$obj[[bi]]$title
+  if (isTRUE(ps$slides)) {
+    return(slidesApp(ps=ps,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,...))
   }
   
-  render.container(ps=ps,type=type,type.ind=type.ind, bi=bi,output.id=output.id, ..., ui.fun = as.slide.ui.fun, title=title, num.slides=num.slides, slide.ind=slide.ind)
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline)
+  
+  
+  
+  ps.content.ui = ps$bdf$ui[[1]]
+  n = NROW(ps$bdf)
+  
+  resTags = rtutor.html.ressources()
+  app$ui = tagList(
+    useShinyjs(),
+    resTags,
+    rtutorClickHandler(),
+    fluidPage(
+      fluidRow(
+        column(width=12-2*margin, offset=margin,
+          withMathJax(ps.content.ui)
+        )
+      )
+    )
+  )
+  # Each time the problem set is restarted
+  # reinit the problem set
+  appInitHandler(app=app,function(app,...) {
+    ps = init.ps.session(ps=ps,app=app)
+    app$ps = ps 
+    init.ps.handlers(ps)
+    render.container.descendants(ps=ps,type.ind=1, use.mathjax=ps$use.mathjax, skip.if.rendered=FALSE)
+  })
+  
+  
+  app
 }
 
-as.slide.ui.fun = function(ui, bi,ps, slide.ind,title,num.slides=ps$num.slides...) {
+init.ps.handlers = function(ps) {
+  restore.point("init.ps.handler")
+  
+  # Add handlers for task chunks
+  for (uk in ps$uk.li) {
+    make.chunk.handlers(uk)
+  }
+  
+  # Add handlers for addons
+  rows = which(ps$bdf$is.addon) 
+  for (bi in rows) {
+    type = ps$bdf$type[[bi]]
+    ao = ps$bdf$obj[[bi]]$ao
+    # TO DO: Distinguish between global handlers
+    # initialization and per user initilization
+    ps$Addons[[type]]$shiny.init.handlers.fun(ao)
+  }
+  
+}
+
+is.cont.rendered = function(bi, ps) {
+  restore.point("is.cont.rendered")
+  
+  if (is.null(ps$cont.state)) return(FALSE)
+  isTRUE(ps$cont.state$rendered[[bi]])
+}
+
+
+render.as.slide = function(ps, type=ps$slide.type, type.ind=1, bi=NULL, slide.ind=type.ind, output.id=NULL, ...) {
+  restore.point("render.as.slide")
+  if (is.null(bi))
+    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
+  
+  render.container(ps=ps,type=type,type.ind=type.ind, bi=bi,output.id=output.id)
+}
+
+# not actively used anymore
+as.slide.ui.fun = function(ui, bi,ps,...) {
+  return(ui)
+  
   header.ui = slide.title.bar.ui(title=title, slide.ind=slide.ind, num.slides=ps$num.slides)    
   tagList(div(
     id = paste0(ps$bdf$id[[bi]],"_rtutor_slide_div"),
@@ -88,102 +187,6 @@ as.slide.ui.fun = function(ui, bi,ps, slide.ind,title,num.slides=ps$num.slides..
     ui
   ))
   
-}
-
-show.container = function(ps,type="ps",  type.ind=1, bi=NULL,anim=!FALSE) {
-  restore.point("show.container")
-  bdf = ps$bdf
-  if (is.null(bi))
-    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
-  
-  div.id = ps$bdf$div.id[[bi]]
-  shinyjs::show(div.id,anim=anim)
-}
-
-hide.container = function(ps,type="ps",  type.ind=1, bi=NULL, anim=!FALSE,animType="fade") {
-  restore.point("hide.container")
-  bdf = ps$bdf
-  if (is.null(bi))
-    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
-  
-  div.id = ps$bdf$div.id[[bi]]
-  shinyjs::hide(div.id,anim=anim, animType="animType")
-}
-
-
-render.container = function(ps, type="ps",  type.ind=1, bi=NULL, output.id=NULL, use.mathjax=isTRUE(ps$use.mathjax), render.desc = TRUE, skip.if.rendered=NA, skip.desc.if.rendered=FALSE, is.rendered=is.cont.rendered(bi=bi,ps=ps), add.navigation=FALSE, only.return.ui=FALSE, ui.fun = NULL,...) {
-  restore.point("render.container")
-  
-  bdf = ps$bdf
-  if (is.null(bi))
-    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
-  
-  is.static = bdf$is.static[bi]
-  if (is.na(skip.if.rendered)) {
-    skip.if.rendered = is.null(output.id) & !bdf$always.reload[bi]
-  }
-  
-  # For static container only render descendants if output.id is not given
-  no.render = (!only.return.ui) &
-              ((is.static & is.null(output.id)) | 
-              (skip.if.rendered & is.rendered))
-  
-  if (no.render) {
-    
-    if (render.desc) {
-      render.container.descendants(ps=ps,bi=bi,output.id=NULL, use.mathjax=use.mathjax, skip.if.rendered=skip.desc.if.rendered, skip.desc.if.rendered=skip.desc.if.rendered)
-    }
-    return()
-  }
-  
-  if (is.null(output.id)) {
-    output.id = bdf$output.id[[bi]]   
-  }
-  
-  stype = bdf$stype[[bi]]
-  if (stype == "task_chunk") {
-    render.rtutor.task.chunk(ps,bi=bi)
-    return()
-  }
-  if (bdf$is.addon[[bi]]) {
-    render.rtutor.addon(ps,bi=bi)
-    return()
-  }
-  if (!is.static) {
-    inner.ui = bdf$inner.ui[[bi]]
-  } else {
-    inner.ui = bdf$ui[[bi]]
-  }
-  if (!is.null(ui.fun)) {
-    inner.ui = ui.fun(ui=inner.ui, bi=bi, ps=ps,...)
-  }
-  if (use.mathjax)
-    inner.ui = withMathJax(inner.ui)
-
-  if (only.return.ui) {
-    return(inner.ui)
-  }
-  setUI(output.id, inner.ui)
-  ps$constate$rendered[bi] = TRUE
-
-  if (render.desc) {
-    render.container.descendants(ps=ps,bi=bi,output.id=NULL, use.mathjax=use.mathjax, skip.if.rendered=skip.desc.if.rendered, skip.desc.if.rendered=skip.desc.if.rendered)
-  }
-  
-
-}
-
-render.container.descendants = function(ps, type="ps",  type.ind=1, bi=NULL, output.id=NULL, use.mathjax=TRUE, render.desc = TRUE, skip.if.rendered=NA, skip.desc.if.rendered=FALSE, is.rendered=is.cont.rendered(bi=bi,ps=ps), add.navigation=FALSE,...) {
-  restore.point("render.container.descendants")
-  bdf = ps$bdf
-  if (is.null(bi))
-    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
-
-  child.inds = which(bdf$parent_container==bi) 
-  
-  for (cbi in child.inds) {
-    render.container(ps=ps,bi=cbi,output.id=NULL, use.mathjax=use.mathjax, skip.if.rendered=skip.if.rendered, skip.desc.if.rendered=skip.desc.if.rendered)
-  }
 }
 
 get.ps.uk = function(ps, bi=NULL, stype.ind=NULL, chunk.ind=stype.ind) {
@@ -297,10 +300,12 @@ set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathja
   
   ps$slide.ind = slide.ind
   bdf = ps$bdf
+  
   bi = which(bdf$type==ps$slide.type)[ps$slide.ind]
   ps$slide.bi = bi
+  br = bdf[bi,]
   
-  is.rendered = ps$constate$rendered[bi]
+  is.rendered = ps$cont.state$rendered[bi]
   if (!is.null(ps$old.slide.bi)) {
     hide.container(ps,bi=ps$old.slide.bi)
   }
@@ -311,19 +316,4 @@ set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathja
   }
 }
 
-
-slide.title.bar.ui = function(title, slide.ind, num.slides) {
- 
-   div(class="rtutor-slide-title-bar",
-    HTML("<table width='100%'><tr><td>"),
-    h4(title),
-    HTML("</td><td align='right' valign='top' nowrap>"),
-    HTML("<table><tr><td valign='center' nowrap>"),    
-    rtutor.navigate.btns(),
-    HTML("</td><td valign='center' nowrap style='padding-left: 5px'>"),
-    HTML(paste0(slide.ind, " of ",num.slides)),      
-    HTML("</td></tr></table>"),
-    HTML("</td></tr></table>")
-  )  
-}
 

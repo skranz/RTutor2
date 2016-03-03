@@ -168,7 +168,7 @@ check.chunk.eval.part = function(uk,log, stud.env, opts, store.output) {
 
       # test failed
       if (ret==FALSE) {
-        log.event(type="check_chunk",chunk.ind=ck$chunk.ind, e.ind=e.ind,code=stud.code, ok=FALSE,message=log$failure.message)
+        log.event(type="check_chunk",chunk.ind=ck$chunk.ind, e.ind=e.ind,code=uk$stud.code, ok=FALSE,message=log$failure.message)
         log$test.log = c(log$test.log, log$failure.message)
         return(uk$passed)
       } else if (ret=="warning") {

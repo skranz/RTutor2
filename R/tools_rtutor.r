@@ -2,6 +2,14 @@
 mutate_.NULL = select_.NULL = arrange_.NULL = filter_.NULL = function(...) NULL
 
 
+first.non.null = function(...) {
+  args = list(...)
+  for (arg in args) {
+    if (!is.null(arg)) return(arg)
+  }
+  return(NULL)
+}
+
 substitute.call = function (x, env=parent.frame()) 
 {
   call <- substitute(substitute(x, env), list(x = x))

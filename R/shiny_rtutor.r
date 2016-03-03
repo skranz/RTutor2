@@ -189,7 +189,7 @@ init.shiny.ps = function(ps.name,dir=getwd(), user.name="Seb",  sav.file=NULL, l
   # init addons for shiny
   for (ao in ps$rps$addons) {
     Addon = ps$rps$Addons[[ao$rta$type]]
-    Addon$shiny.init.fun(ao=ao,ps=ps)
+    Addon$shiny.init.handlers.fun(ao=ao,ps=ps)
   }
 
   ups.init.shiny.ps(ps=ps, ups=ps$ups, sample.solution=sample.solution, ups.save=ups.save)  
