@@ -7,6 +7,20 @@ show.container = function(ps,type="ps",  type.ind=1, bi=NULL,anim=FALSE) {
   
   div.id = ps$bdf$div.id[[bi]]
   shinyjs::show(div.id,anim=anim)
+  
+  if (!is.null(ps$cont.state))
+    ps$cont.state$hidden[bi] = FALSE
+
+}
+
+hide.containers = function(ps, type, type.ind=NULL, bi=NULL) {
+  if (is.null(bi)) {
+    bis = which(ps$bdf$type == type)
+    if (!is.null(type.ind)) bis = bis[type.ind]
+  }
+  for (bi in bis) {
+    hide.container(ps,bi=bi,anim=FALSE)
+  }
 }
 
 hide.container = function(ps,type="ps",  type.ind=1, bi=NULL, anim=FALSE,animType="fade") {
@@ -17,6 +31,9 @@ hide.container = function(ps,type="ps",  type.ind=1, bi=NULL, anim=FALSE,animTyp
   
   div.id = ps$bdf$div.id[[bi]]
   shinyjs::hide(div.id,anim=anim, animType="animType")
+  if (!is.null(ps$cont.state))
+    ps$cont.state$hidden[bi] = TRUE
+  
 }
 
 
@@ -36,6 +53,10 @@ render.container = function(ps, type="ps",  type.ind=1, bi=NULL, output.id=NULL,
   if (is.na(is.rendered)) {
     is.rendered = isTRUE(try(is.cont.rendered(bi=bi,ps=ps)))   
   }
+  
+  if (!is.null(ps$cont.state))
+    ps$cont.state$rendered[bi] = TRUE
+
   
   # For static container only render descendants if output.id is not given
   no.render = (!only.return.ui) &

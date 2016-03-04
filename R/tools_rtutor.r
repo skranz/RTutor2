@@ -1,6 +1,14 @@
 
 mutate_.NULL = select_.NULL = arrange_.NULL = filter_.NULL = function(...) NULL
 
+compute.value.index = function(x, values=unique(x)) {
+  ind = rep(NA_integer_, length(x))
+  for (val in values) {
+    rows = which(x == val)
+    ind[rows] = seq_along(rows)
+  }
+  ind
+}
 
 first.non.null = function(...) {
   args = list(...)

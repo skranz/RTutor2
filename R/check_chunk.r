@@ -19,7 +19,7 @@ empty.log = function() {
 #' @param uk the user chunk object; an environment that will be adapted
 #' @details Returns the modified uk with all information from the check. uk$passed denotes whether all checks where passed or not. Note that the uk object and only the uk object will be modified to store all relevant information from the check. Saving ups or giving awards must be separately performed afterwards
 #' @export
-check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(uk), opts=ps.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=FALSE, use.secure.eval = opts$use.secure.eval) {
+check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=FALSE, use.secure.eval = opts$use.secure.eval) {
   restore.point("check.chunk")
 
   opts$noeval = noeval
@@ -198,7 +198,7 @@ give.awards.after.check.chunk = function(uk) {
 }
 
 # Can be called after check.chunk
-update.ups.after.check.chunk = function(uk, ups=get.ups(), opts=ps.opts(), save=TRUE, ps=get.ps()) {
+update.ups.after.check.chunk = function(uk, ups=get.ups(), opts=rt.opts(), save=TRUE, ps=get.ps()) {
   restore.point("update.ups.after.check.chunk")
   ck = uk$ck
   
@@ -242,7 +242,7 @@ update.log.test.result = function(...) {
   return()
 }
 
-stepwise.eval.stud.expr = function(stud.expr, stud.env = uk$stud.env, log=uk$log, uk=NULL, seed=NULL, store.output = TRUE, source=NULL) {
+stepwise.eval.stud.expr = function(stud.expr, stud.env = uk$stud.env, log=uk$log, uk=NULL, seed=NULL, store.output = TRUE, source=NULL, opts=rt.opts()) {
   restore.point("stepwise.eval.stud.expr")
   if (!is.null(seed))
     set.seed(seed)

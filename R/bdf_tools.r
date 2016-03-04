@@ -3,15 +3,25 @@ bdf.frame.filter = function(line=NULL,frame.ind=NULL,type.ind=frame.ind,bdf.ind=
   bdf.type.filter(line,type.ind,bdf.ind,type="frame", keep.precompute=keep.precompute)
 }
 
-bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type,keep.precompute=TRUE) {
-  outer.type = type
-  
+bdf.part.filter = function(line=NULL,ranked.types=c("frame","subsubsection","subsection","section"),keep.precompute=TRUE) {
+  bdf.type.filter(line=line,ranked.types=ranked.types, keep.precompute=keep.precompute)
+}
+
+
+bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, keep.precompute=TRUE) {
   types.to.keep = NULL
   if (keep.precompute) {
     types.to.keep = "precompute"
   }
   function(bdf, te=NULL) {
     restore.point("in.bdf.type.filer")
+    
+    # if we have multiple types, pick the first type that exists
+    if (!is.null(ranked.types)) {
+      for (type in ranked.types) {
+        if (sum(bdf$type == type)>0) break
+      }
+    }
     
     bdf.ind = get.bdf.ind(line=line,type.ind=type.ind,bdf.ind=bdf.ind,bdf=bdf,te=te,type=type)
     if (is.null(bdf.ind)) return(bdf)

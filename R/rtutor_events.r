@@ -2,7 +2,7 @@
 # Add javascript to deal with clicks on free html area,
 # i.e. not on inputs, buttons, links or images
 # can be used to proceed with slides
-rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts = ps.opts()) {
+rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts = rt.opts()) {
   code =  '$(document).on("click", function (e) {'
 
   # Variable definitions

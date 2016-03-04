@@ -78,7 +78,7 @@ hint = function(..., ps=get.ps()) {
 # run hint for chunk uk; uses no ps information
 # TO DO: Need to think about good envir, uk and opts will be drawn
 #        from the parent.frame
-run.chunk.hint = function(uk,envir=uk$stud.env, opts=ps.opts(), no.hint.if.passed=!is.false(opts$no.hint.if.passed)) {
+run.chunk.hint = function(uk,envir=uk$stud.env, opts=rt.opts(), no.hint.if.passed=!is.false(opts$no.hint.if.passed)) {
   restore.point("run.chunk.hint")
 
   ck = uk$ck

@@ -1,13 +1,13 @@
-previewRTutorFrameAddin = function(...) {
-  preview.rtutor.frames.addin(single.frame=TRUE)
+showRTutorPartAddin = function(...) {
+  preview.rtutor.frames.addin(single.part=TRUE)
 }
 
-previewRTutorAllFramesAddin = function(...) {
-  preview.rtutor.frames.addin(single.frame=FALSE)
+showRTutorAddin = function(...) {
+  preview.rtutor.frames.addin(single.part=FALSE)
 }
 
 
-preview.rtutor.frames.addin = function(single.frame=TRUE,...) {
+preview.rtutor.part.addin = function(single.part=TRUE,...) {
   library(rstudioapi)
   library(RTutor2)
   doc = rstudioapi::getActiveDocumentContext()
@@ -27,12 +27,14 @@ preview.rtutor.frames.addin = function(single.frame=TRUE,...) {
     return()
   }
   
-  if (single.frame) {
-    ps = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(line=line))
-    frame.ind = 1
+  if (single.part) {
+    ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.part.filter(line=line))
+    start.slide = 1
   } else {
-    ps = rtutor.make.frame.ps.te(txt)
-    frame.ind = line.to.type.ind(line, type="frame", bdf=ps$bdf)
+    ps = rtutor.make.frame.ps(txt)
+  }
+  if (ps$slides) {
+    
   }
   bdf = ps$bdf
   show.frame.ps(ps,frame.ind = frame.ind)

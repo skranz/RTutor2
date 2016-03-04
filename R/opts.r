@@ -1,5 +1,8 @@
 
 default.ps.opts = function(
+  # which part types shall have static html
+  static.types = c("section", "subsection","subsubsection","frame"),
+  nav.levels = c("section","subsection","frame"),  
   is.shiny = TRUE,
   catch.errors = TRUE,
   # parameters related to ups
@@ -31,19 +34,11 @@ default.ps.opts = function(
   args
 }
 
-set.ps.opts = function(...,opts=ps.opts(), ps=get.ps()) {
-  args = list(...)
-  opts[names(args)] = args
-  ps[["rtutor.opts"]] = opts
+set.rt.opts = function(opts) {
+  options(.RTUTOR.OPTS=opts)
 }
 
 # Default problem set options
-ps.opts = function(..., ps=get.ps()) {
-  opts = ps[["rtutor.opts"]]
-  if (is.null(opts)) {
-    opts = default.ps.opts()
-  }
-  args = list(...)
-  opts[names(args)] = args
-  opts
+rt.opts = function() {
+  getOption(".RTUTOR.OPTS")
 }

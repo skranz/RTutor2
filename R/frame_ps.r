@@ -9,10 +9,8 @@ examples.frame.ps = function() {
   
   static.types = "frame"
   static.types = NULL
-  slides = !TRUE
-  ps = rtutor.make.frame.ps.te(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE, static.types=static.types, slides=slides)
+  ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE, static.types=static.types, slides=TRUE,slide.type = "section")
   bdf = ps$bdf
-  #app = slidesApp(ps)
   app = rtutorApp(ps)
   viewApp(app)
 }
@@ -27,11 +25,16 @@ init.ps.session = function(ps, app=getApp(), rendered=FALSE, hidden=FALSE) {
   # init user state of chunks
   init.ps.user.objects(ps)
   # container state
+  
   if (is.null(ps$cont.state)) {
     n = NROW(ps$bdf)
+  
+    rendered = rep(rendered,length.out=n)
+    hidden = rep(hidden,length.out=n)
+    hidden[ps$bdf$type %in% ps$hidden.container.types] = TRUE
     ps$cont.state = data_frame(
-      rendered = rep(rendered,length.out=n),
-      hidden = rep(hidden,length.out=n)
+      rendered = rendered,
+      hidden = TRUE
     )
   }
 
@@ -39,20 +42,20 @@ init.ps.session = function(ps, app=getApp(), rendered=FALSE, hidden=FALSE) {
 }
 
 # general initialisation independent of app type
-initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline) {
+initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list()) {
   restore.point("initRTutorApp")
   library(shinyjs)
   
   app = eventsApp()
   
+  ps$opts[names(opts)] = opts
   
   app$ps = ps
   ps$offline = offline
   ps$use.mathjax = use.mathjax
+  set.rt.opts(ps$opts)
   
   set.ps(ps)
-  opts = default.ps.opts(catch.errors=catch.errors)
-  set.ps.opts(opts=opts)
 
   bdf = ps$bdf
     
@@ -62,10 +65,10 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
 }
 
 
-slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2) {
+slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
   restore.point("slidesApp")
   
-  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline)
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, opts=opts)
   
   ps$slide.ind = start.slide
   ps.content.ui = ps$bdf$ui[[1]]   
@@ -99,14 +102,14 @@ slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.
   app
 }
 
-rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2,...) {
+rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2,opts=list(),...) {
   restore.point("rtutorApp")
   
   if (isTRUE(ps$slides)) {
-    return(slidesApp(ps=ps,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,...))
+    return(slidesApp(ps=ps,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,opts=opts,...))
   }
   
-  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline)
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, opts=opts)
   
   
   
@@ -120,12 +123,30 @@ rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, cat
     rtutorClickHandler(),
     fluidPage(
       fluidRow(
+        column(width=margin, ps$navbar.ui),
         column(width=12-2*margin, offset=margin,
           withMathJax(ps.content.ui)
         )
       )
     )
   )
+  app$ui = tagList(
+    useShinyjs(),
+    resTags,
+    rtutorClickHandler(),
+    header.content.page(
+      ps$navbar.ui,
+      fluidPage(
+        fluidRow(
+          column(width=12-2*margin, offset=margin,
+            withMathJax(ps.content.ui)
+          )
+        )
+      )
+    )
+  )
+
+  
   # Each time the problem set is restarted
   # reinit the problem set
   appInitHandler(app=app,function(app,...) {
@@ -137,6 +158,53 @@ rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, cat
   
   
   app
+}
+
+fixed.header = function(ui, height="30px") {
+  ui = div(
+    style="
+ width:100%;
+ height:50px;
+ position:fixed;
+ top:0px;",            
+    ui
+  )
+}
+
+header.content.page = function(header, content, header.height = "50px") {
+  restore.point("header.content.page")
+  ui = div(style="margin: 0em 0 0em 0; width: 100%",
+    div(
+      style="width:100%; height:3em; position:fixed; top:0px;",
+      header      
+    ),
+    div(
+      style="top:3.1em; bottom:1em; overflow:auto; position: fixed; width: 100%",
+      content     
+    )
+  )
+  return(ui)
+    
+  ui= tagList(
+    HTML('<section style="display: flex; flex-flow: column; height: 100%">'),
+    HTML('<header>'),
+    header,
+    HTML('</header>'),
+    div(style="flex: 1;", content),
+    HTML('</section>')
+  )
+  return(ui)
+  
+  div(style = "height:100vh; display:table; width:100%;",
+    div(
+      style = "display:table-row;",
+      header
+    ),
+    div(
+      style = "display:table-row; height: 100%; overflow: auto;",
+      content
+    )
+  )
 }
 
 init.ps.handlers = function(ps) {
@@ -164,29 +232,6 @@ is.cont.rendered = function(bi, ps) {
   
   if (is.null(ps$cont.state)) return(FALSE)
   isTRUE(ps$cont.state$rendered[[bi]])
-}
-
-
-render.as.slide = function(ps, type=ps$slide.type, type.ind=1, bi=NULL, slide.ind=type.ind, output.id=NULL, ...) {
-  restore.point("render.as.slide")
-  if (is.null(bi))
-    bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
-  
-  render.container(ps=ps,type=type,type.ind=type.ind, bi=bi,output.id=output.id)
-}
-
-# not actively used anymore
-as.slide.ui.fun = function(ui, bi,ps,...) {
-  return(ui)
-  
-  header.ui = slide.title.bar.ui(title=title, slide.ind=slide.ind, num.slides=ps$num.slides)    
-  tagList(div(
-    id = paste0(ps$bdf$id[[bi]],"_rtutor_slide_div"),
-    class="rtutor-slide-div",
-    header.ui,
-    ui
-  ))
-  
 }
 
 get.ps.uk = function(ps, bi=NULL, stype.ind=NULL, chunk.ind=stype.ind) {
@@ -266,7 +311,7 @@ slide.prev = function(ps=app$ps, app=getApp(),...) {
 }
 
 slide.next = function(ps=app$ps, app=getApp(),...) {
-  restore.point("proceed.with.frame")
+  restore.point("slide.next")
   if (ps$slide.ind >= ps$num.slides) return()
   set.slide(ps$slide.ind+1)
 }
@@ -306,13 +351,16 @@ set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathja
   br = bdf[bi,]
   
   is.rendered = ps$cont.state$rendered[bi]
+  hidden = ps$cont.state$hidden[bi]
   if (!is.null(ps$old.slide.bi)) {
     hide.container(ps,bi=ps$old.slide.bi)
   }
   if (is.rendered) {
     show.container(ps=ps,bi=bi)  
   } else {
-    render.as.slide(ps,type=ps$slide.type,type.ind=slide.ind, bi=bi)
+    render.container(ps=ps,bi=bi)
+    if (hidden)
+      show.container(ps=ps,bi=bi)
   }
 }
 

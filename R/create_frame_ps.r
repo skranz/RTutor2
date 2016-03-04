@@ -3,18 +3,18 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   
-  setwd("D:/libraries/RTutor2/examples/auction")
-  txt = readLines("auction_new_sol.Rmd")
-  frame.ind = NULL
-  
-  opts=default.ps.opts(
-    show.solution.btn = TRUE
+  #setwd("D:/libraries/RTutor2/examples/auction")
+  #txt = readLines("auction_new_sol.Rmd")
+  popts=default.ps.opts(
+    show.solution.btn = TRUE,
+    slides = FALSE,
+    static.type = NULL,
+    lang = "de"
   )
-
-  ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind),catch.errors = FALSE, lang="de", slides=TRUE, slide.type="section", opts=opts)
+  ps = rtutor.make.frame.ps(txt,catch.errors = FALSE, priority.opts=popts)
 
   bdf = ps$bdf
-  restore.point.options(display.restore.point = !TRUE)
+  restore.point.options(display.restore.point = TRUE)
   
   app = rtutorApp(ps)
   viewApp(app)
@@ -22,19 +22,15 @@ examples.frame.ps = function() {
 }
 
 
-rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),catch.errors=TRUE,ps.id = "",opts=default.ps.opts(), static.types = c("section", "subsection","subsubsection","frame"), slides=FALSE, slide.type="frame", lang="en", ...) {
+
+rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),catch.errors=TRUE,ps.id = "",opts=default.ps.opts(), priority.opts=list(),  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
-  ps$lang = lang
   ps$addons = addons
   ps$Addons = make.addons.list(addons)
   ps$dir = dir
   ps$figure.dir = figure.dir
-  ps$opts = opts
-  ps$static.types = static.types
-  
-  ps$slides = slides
   
   if (length(txt)==1)  
     txt = sep.lines(txt)
@@ -51,22 +47,49 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
 
   txt = fast.name.rmd.chunks(txt)
   # add outer container
-  txt = c("#< ps",txt,"#>")
-  
-  
-  
+  txt = c("#. ps",txt)
   
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
   
+  # all rows that will be deleted 
+  # in this precompilation state
+  del.lines = NULL
+ 
+  # settings in rmd file overwrite opts
+  bis = which(df$type == "settings")
+  for (bi in bis) {
+    yaml = paste0(txt[(df$start[bi]+1):(df$end[bi]-1)], collapse="\n")
+    so = read.yaml(text=yaml, keep.quotes=FALSE)
+    opts[names(so)] = so
+    del.lines = c(del.lines, df$start[bi]:df$end[bi])
+  }
+
+  # priority opts overwrite settings and opts
+  opts[names(priority.opts)] = priority.opts
+  
+  set.rt.opts(opts)
+  ps$opts = opts
+  ps$static.types = opts$static.types
+  ps$slides = opts$slides
+  ps$slide.type = opts$slide.type
+  
+  if (ps$slides & ps$slide.type %in% ps$static.types) {
+    ps$hidden.container.types = ps$slide.type 
+  }
+    
   # remove content in ignore blocks
   ig.rows = which(df$type=="ignore")
   if (length(ig.rows)>0) {
-    ig.lines = unique(unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.rows])))
-    txt = txt[-ig.lines]
-    df = find.rmd.nested(txt, dot.levels)
+    del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.rows])))
   }  
 
+  if (length(del.lines)>0) {
+    del.lines =unique(del.lines)
+    txt = txt[-del.lines]
+    df = find.rmd.nested(txt, dot.levels)
+  }
+  
   ps$txt = txt
   
   df = adapt.for.back.to.blocks(df,ps=ps)
@@ -75,7 +98,7 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
   
   
   df$parent_addon = get.levels.parents(df$level, df$is.addon)
-  parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info")
+  parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","section","subsection")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
   bdf$obj = bdf$ui = bdf$inner.ui = vector("list", NROW(bdf))
@@ -111,9 +134,8 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
   
 
   # Additional information for slides
-  if (slides) {
-    ps$slide.type = slide.type
-    ps$num.slides = sum(ps$bdf$type==slide.type)
+  if (ps$slides) {
+    ps$num.slides = sum(ps$bdf$type==ps$slide.type)
   }
 
   
@@ -133,11 +155,13 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
       res = rtutor.parse.block(bi,ps)  
     }
   }
+  ps$bdf$stype.ind = compute.value.index(ps$bdf$stype)
+
+  
   ps$bdf$task.ind = cumsum(ps$bdf$is.task) * ps$bdf$is.task
   # store task.chunks in a list ck.li and the
   # corresponding user chunks in uk
   chunk.rows = which(ps$bdf$stype == "task_chunk")
-  ps$bdf$stype.ind[chunk.rows] = seq_along(chunk.rows)
   ps$ck.li = lapply(chunk.rows, function(bi) {
     ps$bdf$obj[[bi]]$ck
   })
@@ -150,6 +174,8 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
   
   ps$bdf$parent_container = get.levels.parents(ps$bdf$level, ps$bdf$is.container) 
   
+  
+  ps$navbar.ui = rtutor.navbar(ps=ps, nav.levels = opts$nav.levels)
   
   ps
 }
@@ -207,6 +233,7 @@ shorten.bdf.index = function(bdf, new = 1:NROW(bdf), old = bdf$index) {
 
 rtutor.dot.levels = function() {
   dot.levels = c(
+    ps = -1000,
     section = -3,
     subsection = -2,
     subsubsection = -1,
@@ -219,7 +246,9 @@ rtutor.dot.levels = function() {
   )
   backto = dot.levels+1
   names(backto) = paste0("back_to_",names(dot.levels))
-  c(dot.levels, backto)  
+  lev = c(dot.levels, backto)  
+  lev = rank(lev,ties.method = "min")
+  lev
 }
 
 rtutor.parse.block = function(bi,ps) {
@@ -409,7 +438,7 @@ rtutor.parse.row = function(bi,ps) {
 }
 
 rtutor.parse.ps = function(bi,ps) {
-  restore.point("rtutor.parse.row")
+  restore.point("rtutor.parse.ps")
   rtutor.parse.as.container(bi,ps, is.static=TRUE)
 }
 
@@ -504,9 +533,12 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   
   # A static container will not be loaded in a uiOutput
   } else {
+    style = ""
+    if (type %in% ps$hidden.container.types) style = "display: none;"
+    
     ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
     div.class = "rtutor-static-container-div"
-    ps$bdf$ui[[bi]] = div(id=div.id,class=div.class, 
+    ps$bdf$ui[[bi]] = div(id=div.id,class=div.class,  style=style,
       inner.ui
     )
   }
@@ -588,7 +620,7 @@ rtutor.parse.award = function(bi,ps) {
 rtutor.parse.references = function(bi,ps) {
   restore.point("references.block.render")
   title = "References"
-  if (isTRUE(ps$lang=="de")) {
+  if (isTRUE(ps$opts$lang=="de")) {
     title = "Referenzen"
   }
   rtutor.parse.as.collapse(bi,ps, title=title, is.static=TRUE)
@@ -813,6 +845,76 @@ get.yaml.block.args = function(bi,ps) {
   args
 }
 
+default.navbar.link.fun = function(title, level, bi=NULL) {
+  return(title)
+  #paste0("<a role='button'>", title,"</a>")
+}
+
+default.navbar.li.fun = function(titles, child.li, levels=NULL,bis=NULL) {
+  restore.point("default.navbar.li.fun")
+  
+  li = lapply(seq_along(titles), function(i) {
+    child.ui = child.li[[i]]
+    tabPanel(title = titles[i],value = paste0("rtutor_menu_tab_",bis[i]), child.ui)
+  })
+  ui = do.call(tabsetPanel,li)
+  return(ui)
+  #inner = paste0("<li>", titles, "\n", child.li, "</li>")
+  #paste0("<ul>", paste0(inner, collapse="\n"),"</ul>")
+
+}
+
+default.navbar.outer.fun = function(inner) {
+  inner
+}
+
+rtutor.navbar = function(ps, nav.levels = c("section","subsection","frame"), link.fun = default.navbar.link.fun, li.fun=default.navbar.li.fun, outer.fun=default.navbar.outer.fun) {
+  restore.point("rtutor.navbar")
+  
+  bdf = ps$bdf
+  nav.levels = intersect(nav.levels, bdf$type)
+  
+  get.level.li = function(nav.levels=nav.levels, parent.bi=NULL, level=1) {
+    restore.point("rtutor.navbar.get.level.li")
+    
+    if (is.null(parent.bi)) {
+      bis = which(bdf$type == nav.levels[1])
+    } else {
+      bis = which(bdf$parent_container==parent.bi)
+    }
+    types = bdf$type[bis]
+    ignore = !types %in% nav.levels
+    bis = bis[!ignore]
+    types = types[!ignore]
+    bi.levels = match(types, nav.levels)
+  
+    
+    child.li = vector("list",length(bis))
+    if (level < length(nav.levels)) {
+      for (i in seq_along(bis)) {
+        bi = bis[i]
+        if (isTRUE(bi.levels[i]<length(nav.levels))) {
+          child.li[[i]] = get.level.li(nav.levels=nav.levels, parent.bi = parent.bi, level=bi.levels[i])
+        }
+      }
+    }
+    titles = lapply(seq_along(bis), function(i) {
+      bi = bis[i]
+      obj = bdf$obj[[bi]]
+      if (is.null(obj$title)) {
+        title = paste0(bdf$type[[bi]]," ",bdf$stype.ind[[bi]])
+      } else {
+        title = obj$title
+      }
+      link.fun(title, bi.levels[i],bi=bi[[i]])
+    })
+    li.fun(titles, child.li,levels=bi.levels, bis=bis)
+  }
+  
+  inner = get.level.li(nav.levels=nav.levels)
+  outer.fun(inner)
+  
+} 
 
 slide.title.bar.ui = function(title, slide.ind, num.slides) {
  

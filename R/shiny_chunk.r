@@ -30,7 +30,7 @@ get.chunk.ui = function(uk) {
   }
 }
 
-make.chunk.input.ui = function(uk, theme="textmate", height=NULL, code.lines=NULL, fontSize=12, console.height=height, opts=ps.opts()) {
+make.chunk.input.ui = function(uk, theme="textmate", height=NULL, code.lines=NULL, fontSize=12, console.height=height, opts=rt.opts()) {
   restore.point("make.chunk.input.ui")
 
   ck = uk$ck
@@ -107,7 +107,7 @@ make.chunk.input.ui = function(uk, theme="textmate", height=NULL, code.lines=NUL
   )
 }
 
-make.chunk.output.ui = function(uk, opts = ps.opts()) {
+make.chunk.output.ui = function(uk, opts = rt.opts()) {
   restore.point("make.chunk.output.ui")
   ck = uk$ck; nali = ck$nali
   code = uk$stud.code
@@ -191,7 +191,7 @@ make.chunk.output.ui = function(uk, opts = ps.opts()) {
 }
 
 
-make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=ps.opts()) {
+make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
   restore.point("make.chunk.handlers")
 
   buttonHandler(nali$checkBtn, check.shiny.chunk, uk=uk)
@@ -215,7 +215,7 @@ make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=ps.opts()) {
   buttonHandler(nali$editBtn, edit.shiny.chunk, uk=uk)
 }
 
-run.shiny.chunk = function(uk, envir = uk$stud.env, code=uk$stud.code, opts=ps.opts(),...) {
+run.shiny.chunk = function(uk, envir = uk$stud.env, code=uk$stud.code, opts=rt.opts(),...) {
   restore.point("run.shiny.chunk")
   ck = uk$ck
   if (opts$in.R.console) {
@@ -243,7 +243,7 @@ run.line.shiny.chunk = function(uk, envir=uk$stud.env, cursor=NULL, selection=NU
   }
 }
 
-check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FALSE, opts=ps.opts(), app=getApp(),...) {
+check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FALSE, opts=rt.opts(), app=getApp(),...) {
   uk$stud.code = getInputValue(uk$ck$nali$editor)
   restore.point("check.shiny.chunk")
   ck = uk$ck
@@ -284,7 +284,7 @@ check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FAL
 
 
 
-proceed.with.successfuly.checked.chunk = function(uk,opts=ps.opts()) {
+proceed.with.successfuly.checked.chunk = function(uk,opts=rt.opts()) {
   restore.point("proceed.with.successfuly.checked.chunk")
   ck = uk$ck
   uk$is.solved = TRUE
@@ -325,7 +325,7 @@ proceed.with.successfuly.checked.chunk = function(uk,opts=ps.opts()) {
 }
 
 
-hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=ps.opts(),app=getApp()) {
+hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=rt.opts(),app=getApp()) {
   restore.point("hint.shiny.chunk")
   
   uk$stud.code = code
@@ -393,7 +393,7 @@ solution.shiny.chunk = function(uk,...,app=getApp()) {
 
 
 # edit button is pressed
-edit.shiny.chunk = function(uk, opts = ps.opts(),...) {
+edit.shiny.chunk = function(uk, opts = rt.opts(),...) {
   restore.point("edit.shiny.chunk")
   ck = uk$ck
   #browser()
@@ -429,7 +429,7 @@ save.shiny.chunk = function(uk,...,ps=get.ps(),app=getApp()) {
   )
 }
 
-chunk.to.html = function(uk,txt = uk$stud.code, opts=ps.opts(), envir=get.chunk.env(uk), eval=TRUE, success.message=isTRUE(uk$is.solved), echo=TRUE, nali=NULL, quiet=TRUE) {
+chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.chunk.env(uk), eval=TRUE, success.message=isTRUE(uk$is.solved), echo=TRUE, nali=NULL, quiet=TRUE) {
   restore.point("chunk.to.html")
   if (is.null(txt))
     return("")
