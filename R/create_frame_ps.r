@@ -3,8 +3,8 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   
-  #setwd("D:/libraries/RTutor2/examples/auction")
-  #txt = readLines("auction_new_sol.Rmd")
+  setwd("D:/libraries/RTutor2/examples/auction")
+  txt = readLines("auction_new_sol.Rmd")
   popts=default.ps.opts(
     show.solution.btn = TRUE,
     slides = FALSE,
