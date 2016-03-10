@@ -102,7 +102,6 @@ make.chunk.nali = function(prefix=paste0(id,"_"), id, output.id=NULL) {
   if (output.id =="") stop()
   base.names = c(
     "chunkUI", "editor","console","chunkout",
-    "runLineKey","runKey","checkKey","hintKey","helpKey",
     "runLineBtn","runBtn","checkBtn","hintBtn","helpBtn","dataBtn",
     "outputBtn", "restoreBtn", "saveBtn",
     "editBtn","solutionBtn","alertOut",
@@ -110,7 +109,9 @@ make.chunk.nali = function(prefix=paste0(id,"_"), id, output.id=NULL) {
   )
   nali = paste0(prefix,"_",base.names)
   names(nali) =  base.names
-  nali = as.list(c(nali))
+  keys = c("runLineKey","runKey","checkKey","hintKey","helpKey")
+  names(keys)=keys
+  nali = as.list(c(nali,keys))
   if (!is.null(output.id)) nali$chunkUI = output.id
   nali
 }

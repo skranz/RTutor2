@@ -1,5 +1,9 @@
 
 default.ps.opts = function(
+  # menu
+  show.together = "section",
+  menu.levels = c("section", "subsection"),
+  menu.placement = c("top","fixed"),
   # which part types shall have static html
   static.types = c("section", "subsection","subsubsection","frame"),
   nav.levels = c("section","subsection","frame"),  
@@ -27,7 +31,7 @@ default.ps.opts = function(
   chunk.out.args = default.chunk.out.args(),
   # Turn off graphics when checking chunk
   use.null.device = TRUE,
-  
+  verbose = FALSE,
   ...
 ) {
   args = c(as.list(environment()),list(...))

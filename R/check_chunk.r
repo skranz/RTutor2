@@ -19,7 +19,7 @@ empty.log = function() {
 #' @param uk the user chunk object; an environment that will be adapted
 #' @details Returns the modified uk with all information from the check. uk$passed denotes whether all checks where passed or not. Note that the uk object and only the uk object will be modified to store all relevant information from the check. Saving ups or giving awards must be separately performed afterwards
 #' @export
-check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=FALSE, use.secure.eval = opts$use.secure.eval) {
+check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=opts$verbose, use.secure.eval = opts$use.secure.eval) {
   restore.point("check.chunk")
 
   opts$noeval = noeval
@@ -104,7 +104,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
   # relevant for hint
   uk$e.ind = 0
 
-  res = check.chunk.eval.part(uk=uk, log=log, stud.env=stud.env,opts=opts, store.output=store.output)
+  res = check.chunk.eval.part(uk=uk, log=log, stud.env=stud.env,opts=opts, store.output=store.output, verbose=verbose)
   
   if (uk$passed) {
     log.event(type="check_chunk",chunk.ind=ck$chunk.ind, e.ind=0,code=stud.code, ok=TRUE,message="")
@@ -123,7 +123,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
 # the part of check chunk that performs evaluations of student code
 # we put in a separate function in order to easier wrap it inside a 
 # secure.eval call when RAppArmor is used.
-check.chunk.eval.part = function(uk,log, stud.env, opts, store.output) {
+check.chunk.eval.part = function(uk,log, stud.env, opts, store.output,verbose=FALSE) {
   restore.point("check.chunk.eval.part")
   ck = uk$ck
   # run student code in student.env

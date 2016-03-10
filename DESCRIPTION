@@ -9,7 +9,7 @@ Description: Temporary package: complete rewrite of RTutor internals
 License: Programm code: GPL >= 2.0
     Contributed problem sets: Creative Commons (CY)
 Depends:
-    shinyEvents,markdown,whisker,
+    shinyEvents,shinyEventsUI,markdown,whisker,
     stringr,
     stringtools,
     data.table,

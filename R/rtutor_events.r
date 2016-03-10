@@ -16,7 +16,7 @@ rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts =
   if (button.handler) {
     code = paste0(code,'
       if (tag === "BUTTON") {
-        Shiny.onInputChange("shinyEventButtonClick", {id: e.target.id, eventId:"shinyEventButtonClick", tag: tag, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
+        Shiny.onInputChange("buttonHandlerEvent", {id: e.target.id, eventId:"buttonHandlerEvent", tag: tag, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
         return;
       }
     ')
@@ -45,7 +45,7 @@ rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts =
     ')
     # if not returned, register doc_click handler
     code = paste0(code,'
-      Shiny.onInputChange("doc_click", {id: e.target.id, tag: tag, class: eclass, pClass: pn.className, gpClass: gpn.className, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
+      Shiny.onInputChange("documentClickHandlerEvent", {id: e.target.id, tag: tag, class: eclass, pClass: pn.className, gpClass: gpn.className, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
     ')
   }
   
@@ -54,17 +54,7 @@ rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts =
   ')
 
   res = tags$script(code)  
-  #registerEventIdHandler("doc_click")
-  
-  eventId = "shinyEventButtonClick"
-  registerEventIdHandler("shinyEventButtonClick")
-  
-  # ca = substitute(env = list(eventId=eventId),
-  # observeEvent(input[[eventId]],{
-  #   value = input[[eventId]]
-  #   shiny.events.button.click.handler(value)
-  # })
-  # )
-  # addEventHandlerToApp(id=eventId,call=ca,type="change",app=getApp())
+  registerEvent("documentClickHandlerEvent", jscript="", overwrite=TRUE)
+  registerEvent("buttonHandlerEvent", jscript="", overwrite=TRUE)
   return(res)
 }

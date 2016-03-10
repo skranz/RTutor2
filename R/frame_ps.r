@@ -5,11 +5,7 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.rmd", warn=FALSE)
   #txt = readLines("test.rmd", warn=FALSE)
-  frame.ind = NULL
-  
-  static.types = "frame"
-  static.types = NULL
-  ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.frame.filter(frame.ind=frame.ind), catch.errors=FALSE, static.types=static.types, slides=TRUE,slide.type = "section")
+  ps = rtutor.make.frame.ps(txt, catch.errors=FALSE)
   bdf = ps$bdf
   app = rtutorApp(ps)
   viewApp(app)
@@ -60,6 +56,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   bdf = ps$bdf
     
   try(shiny::addResourcePath("figure",paste0(dir,"/figure")), silent=TRUE)  
+  nestedSelectorHandler("rtNavbarSelector",fun = select.ps.part.handler)
 
   app
 }
@@ -117,36 +114,30 @@ rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, cat
   n = NROW(ps$bdf)
   
   resTags = rtutor.html.ressources()
-  app$ui = tagList(
-    useShinyjs(),
-    resTags,
-    rtutorClickHandler(),
-    fluidPage(
-      fluidRow(
-        column(width=margin, ps$navbar.ui),
-        column(width=12-2*margin, offset=margin,
-          withMathJax(ps.content.ui)
-        )
-      )
-    )
-  )
-  app$ui = tagList(
-    useShinyjs(),
-    resTags,
-    rtutorClickHandler(),
-    header.content.page(
-      ps$navbar.ui,
-      fluidPage(
-        fluidRow(
-          column(width=12-2*margin, offset=margin,
-            withMathJax(ps.content.ui)
-          )
-        )
-      )
-    )
-  )
 
   
+  
+  app$ui = tagList(
+    useShinyjs(),
+    resTags,
+    rtutorClickHandler(),
+    bootstrapPage(
+    freezeHeaderPage(
+      freeze.header = isTRUE(opts$menu.freeze),
+      header.style="", #content.style="",
+      header = div(
+        style="margin-left: 0px; margin-right: 0px;",
+        ps$navbar.ui
+      ),
+      div(
+        #style="margin-left: 10%; margin-right: 10%; overflow: auto; height: 100%;",
+        style="margin-left: 10%; margin-right: 10%;",
+        withMathJax(ps.content.ui)
+      )
+    ))
+  )
+
+
   # Each time the problem set is restarted
   # reinit the problem set
   appInitHandler(app=app,function(app,...) {
@@ -207,9 +198,25 @@ header.content.page = function(header, content, header.height = "50px") {
   )
 }
 
+select.ps.part.handler = function(value, shown_contents, app=getApp(), ps=app$ps, ...) {
+  restore.point("select.ps.part.handler")
+  
+  bis = as.numeric(unlist(value))
+  render.container(bi=bis[1],render.desc = TRUE, ps=ps)
+  
+  #cont.bi = which(ps$bdf$div.id %in% shown_contents)
+  for (cbi in bis)
+    show.container(bi = cbi,ps=ps)
+}
+
 init.ps.handlers = function(ps) {
   restore.point("init.ps.handler")
   
+  # Add menu bar handler
+  
+  nestedSelectorHandler("rtNavbarSelector",fun = select.ps.part.handler)
+  
+  make.global.chunk.hotkey.handlers()
   # Add handlers for task chunks
   for (uk in ps$uk.li) {
     make.chunk.handlers(uk)
@@ -287,7 +294,7 @@ add.slide.navigate.handlers = function() {
   buttonHandler("rtPrevBtn",slide.prev)
   buttonHandler("rtNextBtn",slide.next)
   buttonHandler("rtForwardBtn",slide.forward)
-  changeHandler("doc_click",slide.click)
+  eventHandler(eventId="documentClickHandlerEvent", slide.click)
 }
 
 

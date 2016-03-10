@@ -190,23 +190,51 @@ make.chunk.output.ui = function(uk, opts = rt.opts()) {
   )
 }
 
+make.global.chunk.hotkey.handlers = function(opts=rt.opts()) {
+  aceHotkeyHandler("checkKey", shiny.chunk.hotkey)
+  aceHotkeyHandler("hintKey", shiny.chunk.hotkey)
+  if (!opts$noeval) {
+    aceHotkeyHandler("runKey", shiny.chunk.hotkey)
+    aceHotkeyHandler("runLineKey", shiny.chunk.hotkey)
+    aceHotkeyHandler("helpKey", shiny.chunk.hotkey)
+  }
+}
+
+shiny.chunk.hotkey = function(keyId,editorId,selection,cursor,text,...,app=getApp(),ps=app$ps, opts=rt.opts()) {
+  args = list(...)
+  restore.point("shiny.chunk.hotkey")
+  bi = as.numeric(str.between(editorId,"__","__"))
+  chunk.ind = ps$bdf$stype.ind[bi]
+  uk = ps$uk.li[[chunk.ind]]
+  if (is.null(uk)) {
+    restore.point("shiny.chunk.hotkey.null.uk")
+    warning("shiny.chunk.hotkey: null uk")
+  }
+  noeval = opts$noeval
+  if (keyId=="checkKey") {
+    check.shiny.chunk(uk=uk)
+  } else if (keyId=="hintKey") {
+    hint.shiny.chunk(uk = uk,code=text)
+  } else if (keyId=="runKey" & !noeval) {
+    run.shiny.chunk(uk=uk,code=text)  
+  } else if (keyId=="runLineKey" & !noeval) {
+    run.line.shiny.chunk(uk=uk, cursor=cursor, selection=selection, code=text)
+  } else if (keyId=="helpKey" & !noeval) {
+    help.shiny.chunk(uk=uk, cursor=cursor, selection=selection, code=text)
+  }
+}
 
 make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
   restore.point("make.chunk.handlers")
 
   buttonHandler(nali$checkBtn, check.shiny.chunk, uk=uk)
-  aceHotkeyHandler(nali$checkKey, check.shiny.chunk, uk=uk,if.handler.exists = "skip")
   buttonHandler(nali$hintBtn, hint.shiny.chunk, uk=uk)
-  aceHotkeyHandler(nali$hintKey, hint.shiny.chunk, uk=uk,if.handler.exists = "skip")
   buttonHandler(nali$saveBtn, save.shiny.chunk, uk=uk)
 
   if (!opts$noeval) {
     buttonHandler(nali$runBtn, run.shiny.chunk, uk=uk)
-    aceHotkeyHandler(nali$runKey, run.shiny.chunk, uk=uk,if.handler.exists = "skip")
     if (isTRUE(opts$show.data.exp))
       buttonHandler(nali$dataBtn, data.shiny.chunk, uk=uk)
-    aceHotkeyHandler(nali$runLineKey, run.line.shiny.chunk, uk=uk,if.handler.exists = "skip")
-    aceHotkeyHandler(nali$helpKey, help.shiny.chunk, uk=uk,if.handler.exists = "skip")
   }
 
   if (isTRUE(opts$show.solution.btn))
@@ -225,7 +253,7 @@ run.shiny.chunk = function(uk, envir = uk$stud.env, code=uk$stud.code, opts=rt.o
   }
 }
 
-run.line.shiny.chunk = function(uk, envir=uk$stud.env, cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp()) {
+run.line.shiny.chunk = function(uk, envir=uk$stud.env, cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp(), opts=rt.opts()) {
   restore.point("run.line.shiny.chunk")
 
   uk$stud.code = code

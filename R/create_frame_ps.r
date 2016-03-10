@@ -1,21 +1,21 @@
 examples.frame.ps = function() {
-  library(EconCurves)
+  library(yaml)
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   
-  setwd("D:/libraries/RTutor2/examples/auction")
-  txt = readLines("auction_new_sol.Rmd")
+  #setwd("D:/libraries/RTutor2/examples/auction")
+  #txt = readLines("auction_sol.Rmd")
   popts=default.ps.opts(
     show.solution.btn = TRUE,
     slides = FALSE,
-    static.type = NULL,
+    static.type = c("section","subsection"),
     lang = "de"
   )
   ps = rtutor.make.frame.ps(txt,catch.errors = FALSE, priority.opts=popts)
 
   bdf = ps$bdf
   restore.point.options(display.restore.point = TRUE)
-  
+
   app = rtutorApp(ps)
   viewApp(app)
 
@@ -74,8 +74,14 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
   ps$slides = opts$slides
   ps$slide.type = opts$slide.type
   
-  if (ps$slides & ps$slide.type %in% ps$static.types) {
-    ps$hidden.container.types = ps$slide.type 
+  
+  
+  if (ps$slides) {
+    if (ps$slide.type %in% ps$static.types) {
+      ps$hidden.container.types = ps$slide.type 
+    }
+  } else {
+    ps$hidden.container.types = opts$menu.levels
   }
     
   # remove content in ignore blocks
@@ -553,11 +559,15 @@ container.title.html = function(title,type=NULL, ps=NULL) {
 set.container.div.and.output = function(bi, ps, always.reload=FALSE) {
   bdf = ps$bdf; br = bdf[bi,];
   
+  style = ""
+  if (br$type %in% ps$hidden.container.types) style = "display: none;"
+
+  
   ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
   ps$bdf$output.id[[bi]] = output.id = paste0(ps$prefix, br$id,"_output")
   ps$bdf$always.reload[[bi]] = always.reload
   div.class = "rtutor-container-div"
-  ps$bdf$ui[[bi]] = div(id=div.id,class=div.class, 
+  ps$bdf$ui[[bi]] = div(id=div.id,class=div.class, style=style,
     uiOutput(output.id)
   )
   
@@ -864,11 +874,82 @@ default.navbar.li.fun = function(titles, child.li, levels=NULL,bis=NULL) {
 
 }
 
-default.navbar.outer.fun = function(inner) {
-  inner
-}
+rtutor.navbar = function(ps, opts=rt.opts(), nav.levels = c("section","subsection","frame")) {
+  restore.point("rtutor.navbar")
+  
+  bdf = ps$bdf
+  nav.levels = intersect(nav.levels, bdf$type)
+  
 
-rtutor.navbar = function(ps, nav.levels = c("section","subsection","frame"), link.fun = default.navbar.link.fun, li.fun=default.navbar.li.fun, outer.fun=default.navbar.outer.fun) {
+  get.raw.selector = function(nav.levels=nav.levels, parent.bi=NULL, level=1, name=nav.levels[[1]]) {
+    restore.point("get.raw.selector")
+    #stop()
+    if (is.null(parent.bi)) {
+      bis = which(bdf$type == nav.levels[1])
+    } else {
+      bis = which(bdf$parent_container==parent.bi)
+    }
+    types = bdf$type[bis]
+    ignore = !types %in% nav.levels
+    bis = bis[!ignore]
+    types = types[!ignore]
+    if (length(bis)==0) {
+      return(NULL)
+    }
+    
+    titles = sapply(seq_along(bis), function(i) {
+      bi = bis[i]
+      obj = bdf$obj[[bi]]
+      title = first.non.null(obj$menu.title, obj$title, obj$name, paste0(bdf$type[[bi]]," ",bdf$stype.ind[[bi]]))
+      title
+    })
+    choices = bis
+    names(choices) = titles
+    
+    contents = bdf$div.id[bis]
+    children = as.list(paste0("s",bis))
+    names(children) = bis
+
+        
+    children.sel = lapply(bis, function(bi) {
+      child.sel.li = get.raw.selector(nav.levels=nav.levels,parent.bi = bi,level=level+1, name=paste0("s",bi))[[1]]  
+    }) 
+    names(children.sel) = paste0("s",bis)
+    is.child = !sapply(children.sel, is.null)
+    children = children[is.child]
+    children.sel = children.sel[is.child]
+    
+    sel = list(list(
+      bis = bis,
+      choices = choices,
+      children = children,
+      div = as.character(level),
+      contents = contents
+    ))
+    names(sel)=name
+    c(sel,children.sel)
+  }
+  
+  ps$menu.selectors = get.raw.selector(nav.levels=nav.levels, level=1, name="ps")
+  
+  ps$menu.sel.ui = nestedSelector(id="rtNavbarSelector", ps$menu.selectors, input.type="radioBtnGroup")
+  
+  title = first.non.null(opts$menu.title, "RTutor")
+  ps$navbar.ui = div(
+    style = "
+    background-color: #eeeeee;
+    box-shadow: 0 4px 4px -2px #777;
+    ",
+    HTML("<table><tr><td style='padding-left: 5px; padding-right: 10px;'>"),
+    h4(title),
+    HTML("</td><td>"),
+    ps$menu.sel.ui$ui  ,
+    HTML("</td></tr></table>")
+   )
+  ps$navbar.ui
+} 
+
+rtutor.navbar.old = function(ps, nav.levels = c("section","subsection","frame"), link.fun = default.navbar.link.fun, li.fun=default.navbar.li.fun, outer.fun=default.navbar.outer.fun) {
   restore.point("rtutor.navbar")
   
   bdf = ps$bdf
@@ -894,7 +975,7 @@ rtutor.navbar = function(ps, nav.levels = c("section","subsection","frame"), lin
       for (i in seq_along(bis)) {
         bi = bis[i]
         if (isTRUE(bi.levels[i]<length(nav.levels))) {
-          child.li[[i]] = get.level.li(nav.levels=nav.levels, parent.bi = parent.bi, level=bi.levels[i])
+          child.li[[i]] = get.level.li(nav.levels=nav.levels, parent.bi = bi, level=bi.levels[i])
         }
       }
     }
