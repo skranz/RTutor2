@@ -17,11 +17,17 @@
 #
 # - Tasks may or may not change the stud.env. This depends on task type and options.
 #
-# - Stored user data for task:
+# - task.state: user specific state of a task
 #
 #     - Minimum data storage for a task is solved, points, and score.
-#       This is stored in ups. We may display precompiled task.ui
-#       solely depending on solved or not, e.g. with preknitted chunks.
+#     - Task states are stored in app$task.list
+#     - ps$tt can contain some background information like max.points that
+#       speeds up computation of some statistics
+#     - After a task state has changed, we may want to update ups, but
+#       ups does not directly store task.state
+#     - update from and to ups is performed by the functions
+#       - update.task.state.from.ups
+#       - update.ups.from.task.state
 #     - Additionally tasks can have a task state ts that contains additional
 #       information. The structure of the task state depends on the task object.
 #       For a chunk, the task state could contain the user code and information
@@ -35,3 +41,219 @@
 #   have to provide a pretask environment, however.
 #   For example, in a lecture, we may push a quiz task from RTutor frames,
 #   as a live "clicker" quiz to students' mobile phones.
+#
+
+
+
+create.ps.tasks = function(ps) {
+  restore.point("create.ps.tasks")
+  
+  bdf = ps$bdf
+  bi = which(bdf$is.task)
+  df = bdf[bdf$is.task,]
+  
+  
+  task.ind = seq_along(bi)
+  ps$org.task.states = lapply(bi, make.org.task.state, ps=ps)
+  names(ps$org.task.states) = as.character(bi)  
+  
+  task.table = data_frame(
+    task.ind = task.ind,
+    bi = bi,
+    max.points = 0,
+    award.bi = NA_integer_
+  )
+  
+  # Match awards to tasks
+  award.bi = which(bdf$type=="award")
+  award.task.ind = findInterval(award.bi,bi)
+  task.table$award.bi[award.task.ind] = award.bi
+  
+  ps$task.table = task.table
+}
+
+get.ts = function(task.ind, app=getApp()) {
+  app$task.states[[task.ind]]
+}
+
+set.ts = function(task.ind,ts, app=getApp()) {
+  app$task.states[[task.ind]] = ts
+}
+
+init.ps.session.task.states = function(ps, ups=get.ups(), app=getApp()) {
+  restore.point("init.ps.session.task.states")
+
+  app$task.states = lapply(ps$org.task.states, init.task.state.with.ups, ups=ups)
+}
+
+init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts()) {
+  restore.point("init.task.state.without.ups")
+  
+  ts = as.environment(as.list(org.ts))
+  if (ts$stype=="task_chunk") {
+    ts$log = new.env()
+  } else {
+    Addon = ps$Addons[[ts$stype]]
+    Addon$init.task.state.without.ups(ts, opts=opts)
+  }
+  ts
+}
+
+init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts()) {
+  if (is.null(ups)) return(init.task.state.without.ups(org.ts,obj=obj, opts=opts))
+  restore.point("init.task.state.with.ups")
+  
+  task.ind = ts$task.ind
+  utr = ups$utt[task.ind,]
+  if (ts$stype=="task_chunk") {
+    ts = as.environment(org.ts)
+    ts$solved = utr$was.solved
+    ts$points = utr$point
+    ts$score = utr$score
+    if (!is.null(utr$sts$stud.code)) {
+      ts$stud.code = utr$sts$stud.code
+    } else if (ts$solved) {
+      ts$stud.code = ts$sol.txt
+    }
+  } else {
+    Addon = ps$Addons[[stype]]
+    ts = as.environment(as.list(org.ts))
+    ts = Addon$init.task.state.with.ups(org.ts,obj, ups=ups,opts=opts)
+  }
+  return(ts)
+}
+
+update.ups.with.task.state = function(ts, ups=get.ups()) {
+  
+}
+
+make.org.task.state = function(bi, ps, opts = rt.opts()) {
+  restore.point("make.org.task.state")
+  
+  task.ind = ps$bdf$task.ind[[bi]]
+  stype = ps$bdf$stype[bi]
+  
+  if (stype == "task_chunk") {
+    ck = ps$bdf$obj[[bi]]$ck
+    ts = make.user.chunk(ck)
+  } else {
+    Addon = ps$Addons[[stype]]
+    ao = ps$bdf$obj[[bi]]$ao
+    ts = Addon$make.org.task.state(ao)
+    ts$ao = ao
+  }
+  ts$task.ind = task.ind
+  ts$stype = stype
+  
+  ts = as.list(ts)
+  ts
+}
+
+stats = function(ups = get.ups(), ps=get.ps()) {
+  if (is.null(ps)) {
+    display("No problem set specified. You must check a problem before you can see your stats.")
+    return(invisible())
+  }
+}
+
+#' Shows your progress
+#' @export
+compute.stats = function(ups=get.ups(), ps=get.ps()) {
+  restore.point("compute.stats")
+
+  # Results of chunks
+  cu = as_data_frame(cbind(ups$cu, dplyr::select(rps$cdt,ex.ind, points)))
+  cu = mutate(cu, type="chunk", max.points = points, points=max.points*solved)
+
+  # Results of addons like quizes
+
+  if (NROW(ups$aou)>0) {
+    aou = as_data_frame(cbind(ups$aou, dplyr::select(rps$ao.dt, max.points, ex.name)))
+    aou$ex.ind = match(rps$ao.dt$ex.name, rps$edt$ex.name)
+    idf = rbind(
+      dplyr::select(aou,ex.ind,solved, num.hint, points, max.points),
+      dplyr::select(cu,ex.ind, solved, num.hint, points, max.points)
+    )
+
+  } else {
+    idf = dplyr::select(cu,ex.ind, solved, num.hint, points, max.points)
+  }
+
+
+
+  # Aggregate on exercise level
+  res = group_by(idf, ex.ind) %>%
+    summarise(
+      points = sum(points),
+      max.points = sum(max.points),
+      percentage = round(points/max.points*100),
+      hints = sum(num.hint)
+    )
+  res$ex.name = rps$edt$ex.name[res$ex.ind]
+  all.res = idf %>%
+    summarise(
+      ex.ind = 0,
+      points = sum(points),
+      max.points = sum(max.points),
+      percentage = round(points/max.points*100),
+      hints = sum(num.hint),
+      ex.name = "Total"
+    )
+  res = rbind(res, all.res)
+  sr = dplyr::select(res,ex.name,percentage, points, max.points, hints)
+  colnames(sr) = c("Excercise","Solved (%)","Points", "Max. Points", "Hints")
+  rownames(sr) = NULL
+
+
+  if (do.display) {
+    display(ups$user.name, "'s stats for problem set ",rps$ps.name,":\n")
+    print(as.data.frame(sr))
+    return(invisible(sr))
+  }
+  sr
+}
+
+task.solved.give.award = function(ts,ps=get.ps(), ups=get.ups(),...) {
+  restore.point("task.solved.give.award")
+  
+  tt = ps$task.table
+  award.bi = tt$award.bi[ts$task.ind]
+  if (is.na(award.bi)) return()
+  give.award(award.bi, ps=ps)
+}
+
+process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
+  restore.point("process.checked.task")
+
+  if (is.null(ups)) {
+    if (ts$solved) {
+      task.solved.give.award(ts)
+    }
+    return()
+  }
+  
+  restore.point("process.checked.task2")
+  
+  utr = ups$utt[ts$task.ind,]
+  
+  if (ts$solved & !utr$was.solved) {
+    task.solved.give.award(ts)
+
+    ups$utt$was.solved[ts$task.ind] = TRUE
+    ups$utt$points[ts$task.ind] = max(ups$utt$points[ts$task.ind], ts$points)
+    if (!is.null(ts$score)) {
+      if (!is.na(ts$score))
+        ups$utt$score[ts$task.ind] = max(c(ups$utt$score[ts$task.ind], ts$score), na.rm=TRUE)
+    }
+    update.ups(ups)
+  } else if (!utr$was.solved) {
+    ups$utt$num.failed[ts$task.ind] = ups$utt$num.failed[ts$task.ind]+1
+  }
+}
+
+process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {
+  restore.point("process.checked.addon")
+  process.checked.task(ts)
+  return()
+}
+

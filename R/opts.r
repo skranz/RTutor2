@@ -32,6 +32,11 @@ default.ps.opts = function(
   # Turn off graphics when checking chunk
   use.null.device = TRUE,
   verbose = FALSE,
+  # chunk tasks and other tasks
+  save.task.times = TRUE,
+  save.chunk.user.code = !replace.sol,
+  
+
   ...
 ) {
   args = c(as.list(environment()),list(...))

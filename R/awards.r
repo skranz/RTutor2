@@ -1,95 +1,65 @@
 
-#' Used in a solution file. Give an award to a student who made it so far
-#' @export
-give.award = function(award.name, award = ps$rps$awards[[award.name]] , ups = get.ups(), ps=get.ps()) {
+give.award = function(award.bi, ups = get.ups(), ps=get.ps()) {
   restore.point("give.award")
 
-  if (has.award(award.name, ups))
-    return(TRUE)
+  if (has.award(award.bi)) return()
   
-  message(paste0('
+  ps$given.awards.bi = c(ps$given.awards.bi, award.bi)
+  
+  if (!isTRUE(ps$is.shiny)) {
+    message(paste0('
 **********************************************************
 * Congrats, you earned the award "', award.name, '"
 **********************************************************
 
 PS: awards() shows all your awards
 '))
-  ups$awards[[award.name]] = list(award.name=award.name) 
-  update.ups(award=award.name)
-  show.award(award)
+  }
+  show.award(award.bi)
   return(TRUE)
 }
 
-show.award = function(award, award.name = award$award.name, html=award$html, txt=award$txt, ps=get.ps()) {
-  if (isTRUE(ps$is.shiny)) return()
-  if (!is.null(html)) {
-    htmlFile <- tempfile(fileext=".html")
-    writeLines(html,htmlFile )
-    if (require(rstudioapi)) {
-      rstudioapi::viewer(htmlFile)
-    } else {
-      cat(paste0("\n*** ",award.name, " ***\n", txt,"\n"))
-    }
+has.award = function(award.bi, ps=get.ps()) {
+  award.bi %in% ps$given.awards.bi
+}
+
+get.award = function(award.bi, ps =get.ps()) {
+  ps$bdf$obj[[bi]]  
+}
+
+show.award = function(award.bi, ps=get.ps()) {
+  restore.point("show.award")
+  
+  
+  if (isTRUE(ps$is.shiny)) {
+    show.container(ps=ps,bi=award.bi)
+    return()
+  }
+  
+  award = get.award(award.bi)
+  htmlFile <- tempfile(fileext=".html")
+  writeLines(award$html,htmlFile )
+  if (require(rstudioapi)) {
+    rstudioapi::viewer(htmlFile)
   } else {
-    cat(paste0("\n*** ",award.name, " ***\n", txt,"\n"))
+    cat(paste0("\n*** ",award$award.name, " ***\n", award$txt,"\n"))
   }
-}
-
-get.award.ui.id = function(award.name,ps=get.ps()) {
-  award.ind = which(names(ps$rps$awards) == award.name)
-  paste0("awardUI__",award.ind)
-}
-
-show.shiny.awards = function(ps=get.ps(), ups=get.ups()) {
-  awards = intersect(names(ps$rps$awards), names(ups$awards))
-  for (award.name in awards) {
-    show.shiny.award(award.name)
-  }
-}
-
-show.shiny.award = function(award.name) {
-  html = shiny.award.ui(award.name=award.name)
-  id = get.award.ui.id(award.name)
-  setUI(id, html)
-}
-
-shiny.award.ui = function(award.name, ps=get.ps(), ups = get.ups()) {
-  restore.point("shiny.award.ui")
-  
-  award = ps$rps$awards[[award.name]]
-  html = award$html
-  
-  if (is.null(html)) return(NULL)
-  restore.point("shiny.award.ui")
-  
-  award.ind = which(names(ups$awards) == award.name)[1] 
-  
-  collapseId = paste0("collapse_award_",award.ind)
-  collapsePanelId = paste0("collapse_panel_award_",award.ind) 
-  ahtml = bsCollapse(open = NULL, id = collapseId,
-    bsCollapsePanel(paste0("Award: ",award.name),value=collapsePanelId, HTML(html) )
-  )
-  # GOLD: #DFC463
-  txt = gsub(
-    '<div class="panel-heading"',
-    '<div class="panel-heading" style="background-color: #DFC463;box-shadow: 2px 2px 2px #888888;"',
-    as.character(ahtml), fixed=TRUE
-  )
-  return(HTML(txt))  
-  ahtml
 }
 
 
 #' Show all your awards
 #' @export
-awards = function(ups = get.ups(), as.html=FALSE, details=TRUE, ps = get.ps()) {
+awards = function(as.html=FALSE, details=TRUE, ps = get.ps()) {
   restore.point("awards")
   
-  awards = ps$rps$awards[names(ups$awards)]
+  awards.bi = ps$given.awards.bi
+  awards = lapply(awards.bi, get.award)
+    
   if (!as.html) {
-    cat(paste0("Hi ",ups$user.name,", you have earned ", length(ups$awards)," awards:\n"))
+    cat(paste0("You have earned ", length(awards.bi)," awards:\n"))
     if (!details) {
-      print(names(ups$awards))
+      award.names = sapply(awards, function(award) award$award.name)
+      print(award.names)
     } else {
       for (ad in awards) {
         cat(paste0("\n*** ",ad$award.name, " ***\n", ad$txt,"\n"))
@@ -97,14 +67,14 @@ awards = function(ups = get.ups(), as.html=FALSE, details=TRUE, ps = get.ps()) {
     }
   } else {
     if (!details) {
-      txt = paste0("<h4>",names(ups$awards),"...</h4>")
-      
+      award.names = sapply(awards, function(award) award$award.name)
+      txt = paste0("<h4>",awards.names,"...</h4>")
     } else {
       txt = sapply(awards, function(ad) {
         paste0(ad$html)
       })
     }
-    txt = c(paste0("<h3>You have earned ", length(ups$awards)," awards</h3>"),txt)
+    txt = c(paste0("<h3>You have earned ", length(awards.bi)," awards</h3>"),txt)
 
     txt = HTML(paste0(txt, collapse="\n"))
     txt

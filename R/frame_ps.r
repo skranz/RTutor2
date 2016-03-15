@@ -19,7 +19,8 @@ init.ps.session = function(ps, app=getApp(), rendered=FALSE, hidden=FALSE) {
   ps = as.environment(as.list(ps))
   
   # init user state of chunks
-  init.ps.user.objects(ps)
+  ups = NULL
+  init.ps.session.task.states(ps=ps, ups=ups)
   # container state
   
   if (is.null(ps$cont.state)) {
@@ -49,6 +50,10 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   app$ps = ps
   ps$offline = offline
   ps$use.mathjax = use.mathjax
+  ps$is.shiny = TRUE
+  ps$opts$is.shiny=TRUE
+  
+  ps$given.awards.bi = NULL
   set.rt.opts(ps$opts)
   
   set.ps(ps)
@@ -141,6 +146,8 @@ rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, cat
   # Each time the problem set is restarted
   # reinit the problem set
   appInitHandler(app=app,function(app,...) {
+    restore.point("rtApp.appInitHandler")
+    #setApp(app)
     ps = init.ps.session(ps=ps,app=app)
     app$ps = ps 
     init.ps.handlers(ps)
@@ -229,7 +236,7 @@ init.ps.handlers = function(ps) {
     ao = ps$bdf$obj[[bi]]$ao
     # TO DO: Distinguish between global handlers
     # initialization and per user initilization
-    ps$Addons[[type]]$shiny.init.handlers.fun(ao)
+    ps$Addons[[type]]$init.handlers(ao)
   }
   
 }
@@ -250,36 +257,26 @@ get.ps.uk = function(ps, bi=NULL, stype.ind=NULL, chunk.ind=stype.ind) {
 
 render.rtutor.task.chunk = function(ps, bi) {
   restore.point("render.rtutor.task.chunk")
-  
-  uk = get.ps.uk(ps,bi=bi)
+  uk = get.ts(task.ind=ps$bdf$task.ind[bi])
+  make.chunk.handlers(uk)
+  #  get.ps.uk(ps,bi=bi)
   update.chunk.ui(uk)
 }
 
 render.rtutor.addon = function(ps, bi) {
-  cat("Render add on not yet implemented.")
+  restore.point("render.rtutor.addon")
+  task.ind = ps$bdf$task.ind[bi]
+  ts = get.ts(task.ind)
+  ao = ts$ao
+  type = ps$bdf$type[[bi]]
+  Ao = ps$Addons[[type]]
+  ui = Ao$ui.fun(ts=ts)
+  output.id = ps$bdf$output.id[[bi]]  
+  setUI(output.id, ui)
+  Ao$init.handlers(ao=ao,ts=ts)
+  cat("render add on not yet implemented.")
 }
 
-
-init.ps.user.objects = function(ps) {
-  ps$uk.li = lapply(ps$org.uk.li, init.user.chunk)
-}
-
-show.dyn.ui = function(bi,ps=NULL) {
-  restore.point("show.dyn.ui")
-  
-  # TO DO: store whether UI really needs an update...
-  bdf = ps$bdf
-  stype = bdf$stype[[bi]]
-  if (stype=="task_chunk") {
-    uk = ps$uk.li[[ bdf$stype.ind[[bi]] ]]
-    
-    if (!isTRUE(uk$handlers.initialized)) {
-      uk$handlers.initialized = TRUE
-      make.chunk.handlers(uk)
-    }
-    update.chunk.ui(uk=uk)
-  }
-}
 
 rtutor.navigate.btns = function() {
   btns = tagList(

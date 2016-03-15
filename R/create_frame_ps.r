@@ -14,7 +14,7 @@ examples.frame.ps = function() {
   ps = rtutor.make.frame.ps(txt,catch.errors = FALSE, priority.opts=popts)
 
   bdf = ps$bdf
-  restore.point.options(display.restore.point = TRUE)
+  restore.point.options(display.restore.point = !TRUE)
 
   app = rtutorApp(ps)
   viewApp(app)
@@ -23,12 +23,11 @@ examples.frame.ps = function() {
 
 
 
-rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),catch.errors=TRUE,ps.id = "",opts=default.ps.opts(), priority.opts=list(),  ...) {
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),addons=c("quiz"),catch.errors=TRUE,ps.id = "",opts=default.ps.opts(), priority.opts=list(),  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
-  ps$addons = addons
-  ps$Addons = make.addons.list(addons)
+  ps$Addons = list()
   ps$dir = dir
   ps$figure.dir = figure.dir
   
@@ -114,7 +113,7 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
     has.handler = FALSE,
     is.task = FALSE,task.ind = 0,
     prefixed=FALSE,
-    is.container=FALSE,container.ind = 0, always.reload=FALSE,
+    is.container=FALSE,container.ind = 0,
     is.static = TRUE,
     div.id = "",output.id=  "",   
     
@@ -167,13 +166,7 @@ rtutor.make.frame.ps = function(txt,addons="quiz",bdf.filter = NULL,dir=getwd(),
   ps$bdf$task.ind = cumsum(ps$bdf$is.task) * ps$bdf$is.task
   # store task.chunks in a list ck.li and the
   # corresponding user chunks in uk
-  chunk.rows = which(ps$bdf$stype == "task_chunk")
-  ps$ck.li = lapply(chunk.rows, function(bi) {
-    ps$bdf$obj[[bi]]$ck
-  })
-  ps$org.uk.li = lapply(ps$ck.li, function(ck) {
-    make.user.chunk(ck)
-  })
+  create.ps.tasks(ps=ps)
   
   # specify containers
   ps$bdf$container.ind = cumsum(ps$bdf$is.container) * ps$bdf$is.container
@@ -266,31 +259,63 @@ rtutor.parse.block = function(bi,ps) {
 
   
   type = ps$bdf$type[[bi]]
-  if (type %in% ps$addons) {
-    bdf = ps$bdf; br = bdf[bi,];
-    str = ps$txt[br$start:br$end]
-    Ao = ps$Addons[[type]]
-    
-    ao = Ao$parse.fun(str, id = paste0(type,"__",bi))
-    ui = Ao$shiny.ui.fun(ao)
-    set.bdf.ui(ui,bi,ps)
-    ps$bdf$obj[[bi]] = list(ao=ao)
-    ps$bdf$is.task[[bi]] = Ao$is.task
-    return()
-  }
   fun.name = paste0("rtutor.parse.",type)
+  
   if (!exists(fun.name)) {
-    cat(paste0("\nWe don't have a function ",fun.name," to deal with block type ", type))
-    bdf = ps$bdf; br = bdf[bi,];
-    str = ps$txt[br$start:br$end]
-    set.bdf.ui(HTML(str),bi,ps)
-    return()
+    is.addon = type %in% names(ps$Addons)
+    if (!is.addon) {
+      addon.fun = paste0("rtutor.addon.",type)
+      if (exists(addon.fun)) {
+        ps$Addons[[type]] = do.call(addon.fun,list())
+        is.addon = TRUE
+      }
+    }
+    if (is.addon) {
+      return(rtutor.parse.addon(bi=bi, ps=ps))
+    } else {
+      restore.point("rtutor.parse.block.error")
+      
+      cat(paste0("\nWe don't have a function ",fun.name," to deal with block type ", type,". Nor do we have a function ", addon.fun, " that identifies the block as an addon."))
+      stop()
+      bdf = ps$bdf; br = bdf[bi,];
+      str = ps$txt[br$start:br$end]
+      set.bdf.ui(HTML(str),bi,ps)
+      return()
+    }
+    
   }
   
   fun.call = parse(text=paste0("rtutor.parse.",type,"(bi,ps)"))
   res = eval(fun.call)
   res
   #fun(bi,ps)
+}
+
+rtutor.parse.addon = function(bi, ps) {
+  restore.point("rtutor.parse.addon")
+  
+  bdf = ps$bdf; br = bdf[bi,];
+  str = ps$txt[br$start:br$end]
+  type = br$type
+  Ao = ps$Addons[[type]]
+  
+  ao = Ao$parse.fun(str, id = paste0(type,"__",bi))
+  if (Ao$is.task) {
+    ps$bdf$is.task[[bi]] = Ao$is.task
+    ao$task.ind = sum(ps$bdf$is.task[1:bi])
+  }
+  if (isTRUE(Ao$is.static)) {
+    ui = Ao$ui.fun(ao=ao)
+    set.bdf.ui(ui,bi,ps)
+    ps$bdf$is.static[[bi]] = TRUE
+  } else {
+    # the addon will be put inside a container
+    ps$bdf$is.container[[bi]] = TRUE
+    set.container.div.and.output(bi,ps)
+    ps$bdf$is.static[[bi]] = FALSE
+  }
+  ps$bdf$obj[[bi]] = list(ao=ao)
+  return()
 }
 
 rtutor.parse.chunk = function(bi,ps) {
@@ -320,7 +345,6 @@ rtutor.parse.chunk = function(bi,ps) {
     ps$bdf$stype[[bi]] = "task_chunk"
     # a task chunk is the classic RTutor chunk
     rtutor.parse.task.chunk(bi=bi,ps=ps,args=args)
-    
   }
 }
 
@@ -492,7 +516,7 @@ rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section
 }
 
 
-rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, always.reload=FALSE, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title) {
+rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types) {
   restore.point("rtutor.parse.as.container")
   bdf = ps$bdf; br = bdf[bi,];
   if (is.null(inner.ui) | is.null(rmd.li)) {
@@ -514,6 +538,7 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   
   type = ps$bdf$type[[bi]]
   
+  header = NULL
   # Add slide header
   if (ps$slides & identical(ps$slide.type,type)) {
     slide.ind = sum(ps$bdf$type[1:bi]==ps$slide.type)
@@ -521,7 +546,8 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
     
   # Add title as header
   } else {
-    header = container.title.html(title = title)  
+    if (!is.null(title))
+      header = container.title.html(title = title)  
   } 
   if (!is.null(header)) {
     inner.ui = list(header, inner.ui)
@@ -535,12 +561,12 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   # A dynamic container will be loaded in an uiOutput
   if (!is.static) {
     ps$bdf$inner.ui[[bi]] = inner.ui
-    set.container.div.and.output(bi,ps)
+    set.container.div.and.output(bi,ps, is.hidden=is.hidden)
   
   # A static container will not be loaded in a uiOutput
   } else {
     style = ""
-    if (type %in% ps$hidden.container.types) style = "display: none;"
+    if (is.hidden) style = "display: none;"
     
     ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
     div.class = "rtutor-static-container-div"
@@ -556,16 +582,15 @@ container.title.html = function(title,type=NULL, ps=NULL) {
   h4(title)      
 }
 
-set.container.div.and.output = function(bi, ps, always.reload=FALSE) {
+set.container.div.and.output = function(bi, ps, is.hidden = ps$bdf$type[bi] %in% ps$hidden.container.types) {
   bdf = ps$bdf; br = bdf[bi,];
   
   style = ""
-  if (br$type %in% ps$hidden.container.types) style = "display: none;"
+  if (is.hidden) style = "display: none;"
 
   
   ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
   ps$bdf$output.id[[bi]] = output.id = paste0(ps$prefix, br$id,"_output")
-  ps$bdf$always.reload[[bi]] = always.reload
   div.class = "rtutor-container-div"
   ps$bdf$ui[[bi]] = div(id=div.id,class=div.class, style=style,
     uiOutput(output.id)
@@ -620,11 +645,22 @@ rtutor.parse.note = function(bi,ps) {
 
 rtutor.parse.award = function(bi,ps) {
   restore.point("rtutor.parse.award")
-
+  br = ps$bdf[bi,]
+  
+  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]])
+  award.name = args$name
+  
   res = get.children.and.fragments.ui.list(bi,ps, keep.null=FALSE)
   out.rmd = merge.lines(c("---\n### Award",res$out.rmd,"---"))
-  rmd.li = c("","",out.rmd)
-  rtutor.parse.as.collapse(bi,ps, rmd.li=rmd.li, title.prefix="Award ", is.static=TRUE)
+  rmd.li = list(shown.rmd="",sol.rmd="",out.rmd=out.rmd)
+  content.ui=res$ui.li
+  obj = list(award.bi =award.bi, award.name=award.name, html=as.character(tagList(content.ui)), txt = res$out.rmd)
+
+  title = paste0("Award: ",award.name) 
+  
+  inner.ui = tagList(br(),shinyBS::bsCollapse(id = paste0("award_collapse_",bi), myCollapsePanel(title=title,header.style="background-color: #DFC463;box-shadow: 2px 2px 2px #888888;",content.ui)))
+
+  rtutor.parse.as.container(bi=bi,ps=ps,args = args, inner.ui=inner.ui,rmd.li = rmd.li,highlight.code = TRUE,is.static = TRUE,title = NULL, is.hidden = TRUE)  
 }
 
 rtutor.parse.references = function(bi,ps) {
@@ -636,7 +672,7 @@ rtutor.parse.references = function(bi,ps) {
   rtutor.parse.as.collapse(bi,ps, title=title, is.static=TRUE)
 }
 
-rtutor.parse.as.collapse  =  function(bi,ps,title.prefix=NULL, title=NULL, rmd.head=paste0("### ", title), rmd.foot="---",is.static=TRUE,always.reload=FALSE,...) {
+rtutor.parse.as.collapse  =  function(bi,ps,title.prefix=NULL, title=NULL, rmd.head=paste0("### ", title), rmd.foot="---",is.static=TRUE,...) {
   restore.point("rtutor.parse.as.collapse")
   #stop()
   bdf = ps$bdf; br = bdf[bi,];
@@ -655,7 +691,7 @@ rtutor.parse.as.collapse  =  function(bi,ps,title.prefix=NULL, title=NULL, rmd.h
     sol.rmd  = merge.lines(c(rmd.head,res$sol.rmd,rmd.foot)),
     out.rmd = merge.lines(c(rmd.head,res$out.rmd,rmd.foot))
   )
-  rtutor.parse.as.container(bi,ps,args=args, inner.ui=inner.ui, rmd.li=rmd.li, is.static=is.static, always.reload=always.reload,...)
+  rtutor.parse.as.container(bi,ps,args=args, inner.ui=inner.ui, rmd.li=rmd.li, is.static=is.static,...)
 }
 
 

@@ -12,9 +12,6 @@
 #   - question: State pi up to 2 digits
 #     answer: 3.14
 #     roundto: 0.01
-# award:
-#   title: Quiz master
-#   text: You solved the quiz!
 # #>
 
 
@@ -25,51 +22,70 @@ rtutor.addon.quiz = function() {
     type = "quiz",
     mode = "block",
     is.task = TRUE,
+    is.static = FALSE,
     parse.fun = rtutor.quiz.block.parse,
-    shiny.init.handlers.fun = rtutor.quiz.init.shiny,
-    shiny.ui.fun = rtutor.quiz.shiny.ui,
+    make.org.task.state = rtutor.quiz.make.org.task.state,
+    init.task.state.with.ups = rtutor.quiz.init.task.state.with.ups,
+    init.task.state.without.ups = rtutor.quiz.init.task.state.without.ups,
+    init.handlers = rtutor.quiz.init.handlers,
+    ui.fun = rtutor.quiz.shiny.ui,
     shown.txt.fun = rtutor.quiz.shown.txt.fun,
     sol.txt.fun = rtutor.quiz.sol.txt.fun,
     out.txt.fun = rtutor.quiz.sol.txt.fun
   )
 }
 
-rtutor.quiz.shown.txt.fun = function(ao,solved=FALSE,...) {
-  quiz.md(ao,solution = solved)
+rtutor.quiz.make.org.task.state = function(ao) {
+  list(
+    part.solved=rep(FALSE,length(ao$parts)),
+    solved=FALSE,
+    points=0
+  )
+}
+
+rtutor.quiz.init.task.state.with.ups = function(ts,ups, task.ind=ts$task.ind,...) {
+  ts$solved = ups$utt$was.solved[task.ind]
+  ts$part.solved = rep(ts$solved)
+  ts
+}
+
+rtutor.quiz.init.task.state.without.ups = function(ts,ups, task.ind=ts$task.ind,...) {
+  ts
+}
+
+
+rtutor.quiz.shown.txt.fun = function(ts,solved=FALSE,...) {
+  quiz.md(ts$ao,solution = solved)
 } 
 
-rtutor.quiz.sol.txt.fun = function(ao,solved=TRUE,...) {
-  quiz.md(ao,solution = solved)
+rtutor.quiz.sol.txt.fun = function(ts,solved=TRUE,...) {
+  quiz.md(ts$ao,solution = solved)
 }
 
-rtutor.quiz.shiny.ui = function(ao, ...) {
-  quiz.ui(ao)  
+rtutor.quiz.shiny.ui = function(ts, ao=ts$ao, ...) {
+  quiz.ui(ao, solution=ts$solved)  
 }
 
-rtutor.quiz.init.shiny = function(ao,ps=get.ps(), app=getApp(),...) {
+rtutor.quiz.init.handlers = function(ao=ts$ao,ps=get.ps(), app=getApp(),ts=NULL,...) {
   add.quiz.handlers(qu=ao, quiz.handler=rtutor.quiz.handler)    
 }
 
-rtutor.quiz.block.parse = function(txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL,...) {
+rtutor.quiz.block.parse = function(txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL, task.ind=NULL,...) {
   restore.point("rtutor.quiz.block.parse")
   qu = shinyQuiz(id = id,yaml = merge.lines(txt), bdf = NULL,add.handler = FALSE)
-
-  rta = as.environment(list(
-    id=id,type=type,optional=TRUE, changes.env=FALSE, max.points=qu$max.points,
-    solved=FALSE, points=0, was.solved=FALSE, had.points=0
-  ))
-  qu$rta = rta
+  qu$task.ind = task.ind
   qu
 }
 
-rtutor.quiz.handler = function(app,qu,part.ind, part.solved, solved,...) {
+rtutor.quiz.handler = function(qu, part.solved, solved, ts=get.ts(qu$task.ind),app=getApp(),...) {
   restore.point("rtutor.quiz.handler")
-  
-  rta = qu$rta; state=qu$state
-  
-  rta$solved = state$solved
-  rta$points = (sum(state$part.solved) / length(state$part.solved))*rta$max.points
-  process.checked.addon(rta)
+
+  ## TO DO: Need to get ts
+    
+  ts$solved = solved
+  ts$part.solved = part.solved
+  ts$points = (sum(part.solved) / length(part.solved))*qu$max.points
+  process.checked.addon(ts=ts)
 }
 
 examples.quiz = function() {
@@ -134,7 +150,7 @@ quizDefaults = function(lang="en") {
 #' @param quiz.handler a function that will be called if the quiz is checked.
 #'        The boolean argument solved is TRUE if the quiz was solved
 #'        and otherwise FALSE
-shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, single.check.btn=TRUE, defaults=quizDefaults(lang=lang), lang="en") {
+shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, defaults=quizDefaults(lang=lang), lang="en") {
   restore.point("shinyQuiz")
 
   if (is.null(qu)) {
@@ -171,18 +187,12 @@ shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, block
   }
 
 
-  qu$single.check.btn = single.check.btn
-  if (qu$single.check.btn) {
-     qu$checkBtnId = paste0(qu$id,"__checkBtn")
-  }
-
+  qu$checkBtnId = paste0(qu$id,"__checkBtn")
   qu$parts = lapply(seq_along(qu$parts), function(ind) init.quiz.part(qu$parts[[ind]],ind,qu))
   np = length(qu$parts)
   
   qu$max.points = sum(sapply(qu$parts, function(part) part[["points"]]))
   
-  qu$state = as.environment(list(part.solved=rep(FALSE,np), solved=FALSE))
-
   qu$ui = quiz.ui(qu)
 
   if (add.handler)
@@ -190,7 +200,7 @@ shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, block
   qu
 }
 
-init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, has.check.btn=!qu$single.check.btn, defaults=quizDefaults()) {
+init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=quizDefaults()) {
   restore.point("init.quiz.part")
 
   part = copy.into.missing.fields(dest=part, source=defaults)
@@ -250,11 +260,6 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, has.check.b
 
   part$id = paste0(qu$id,"__part", part.ind)
   part$answerId = paste0(part$id,"__answer")
-  if (has.check.btn) {
-    part$checkBtnId = paste0(part$id,"__checkBtn")
-  } else {
-    part$checkBtnId = NULL
-  }
   part$resultId = paste0(part$id,"__resultUI")
   part$ui = quiz.part.ui(part)
   part$solved = FALSE
@@ -369,34 +374,13 @@ add.quiz.handlers = function(qu, quiz.handler=NULL, id=qu$id){
     return()
   }
 
-  if (!qu$single.check.btn) {
-    for (part.ind in seq_along(qu$parts)) {
-      part = qu$parts[[part.ind]]
-      buttonHandler(part$checkBtnId,fun = click.check.quiz, part.ind=part.ind, qu=qu, quiz.handler=quiz.handler)
-    }
-  } else {
-    buttonHandler(qu$checkBtnId,fun = click.check.quiz, part.ind=0, qu=qu, quiz.handler=quiz.handler)
-  }
+  buttonHandler(qu$checkBtnId,fun = click.check.quiz, qu=qu, quiz.handler=quiz.handler)
 }
 
-click.check.quiz = function(app=getApp(), part.ind, qu, quiz.handler=NULL, ...) {
-  restore.point("click.check.quiz")
-
-  # check all parts
-  if (part.ind == 0) {
-    for (part.ind in seq_along(qu$parts))
-      click.check.quiz(app=app, part.ind=part.ind,qu=qu, quiz.handler=NULL)
-
-    if (!is.null(quiz.handler)) {
-      quiz.handler(app=app, qu=qu, part.ind=0, part.correct=NA, solved=qu$state$solved)
-    }
-    return(qu$state$solved)
-  }
-
+check.quiz.part = function(part.ind,qu, app=getApp()) {
   part = qu$parts[[part.ind]]
   answer = getInputValue(part$answerId)
-  restore.point("click.check.quiz.inner")
-
+  restore.point("check.quiz.part")
 
   if (part$type =="numeric") {
     answer = as.numeric(answer)
@@ -405,17 +389,21 @@ click.check.quiz = function(app=getApp(), part.ind, qu, quiz.handler=NULL, ...) 
     correct = setequal(answer,part$answer)
   }
   if (correct) {
-    cat("Correct!")
+    #cat("Correct!")
     setUI(part$resultId,HTML(part$success))
   } else {
-    cat("Wrong")
+    #cat("Wrong")
     setUI(part$resultId,HTML(part$failure))
   }
-  qu$state$part.solved[part.ind] = correct
-  qu$state$solved = all(qu$state$part.solved)
+  return(correct)
+}
 
+click.check.quiz = function(app=getApp(), qu, quiz.handler=NULL, ...) {
+  restore.point("click.check.quiz")
+  part.solved = sapply(seq_along(qu$parts), check.quiz.part, qu=qu,app=app) 
+  solved = all(part.solved)
   if (!is.null(quiz.handler)) {
-    quiz.handler(app=app, qu=qu, part.ind=part.ind, part.correct=correct, solved=qu$state$solved)
+    quiz.handler(app=app, qu=qu, part.solved=part.solved, solved=solved)
   }
-
+  solved
 }

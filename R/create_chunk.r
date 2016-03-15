@@ -8,7 +8,6 @@ rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
   # a task chunk is a container
   ps$bdf$is.container[[bi]] = TRUE
   set.container.div.and.output(bi,ps)
-  ps$bdf$always.reload[[bi]] = TRUE
   ps$bdf$is.static[[bi]] = FALSE
 
   # only assign after container definitions are done
@@ -86,13 +85,6 @@ make.user.chunk = function(ck) {
     stud.env = NULL,
     log = NULL
   )
-  uk
-}
-
-init.user.chunk = function(uk) {
-  restore.point("init.user.chunk")
-  uk = as.environment(as.list(uk))
-  uk$log = new.env()
   uk
 }
 

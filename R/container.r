@@ -47,7 +47,7 @@ render.container = function(ps, type="ps",  type.ind=1, bi=NULL, output.id=NULL,
   
   is.static = bdf$is.static[bi]
   if (is.na(skip.if.rendered)) {
-    skip.if.rendered = is.null(output.id) & !bdf$always.reload[bi]
+    skip.if.rendered = TRUE
   }
   
   if (is.na(is.rendered)) {
