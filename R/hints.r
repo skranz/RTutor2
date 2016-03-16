@@ -155,13 +155,13 @@ update.ups.hint.shown = function(uk) {
   
   # Update ups statistics
   if (isTRUE(uk$hint.was.shown)) {
-    chunk.ind = uk$ck$chunk.ind
+    task.ind = uk$task.ind
     ups = get.ups()
-    update = isTRUE(try(!ups$cu$solved[chunk.ind]))
+    update = isTRUE(try(!ups$utt$was.solved[task.ind]))
     
     if (update) {
-      ups$cu$num.hint[chunk.ind] = ups$cu$num.hint[chunk.ind]+1
-      update.ups(hint=chunk.ind)
+      ups$utt$num.hints[task.ind] = ups$utt$num.hints[task.ind]+1
+      update.ups(hint=task.ind)
     }
   }
 }

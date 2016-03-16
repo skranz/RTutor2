@@ -63,7 +63,9 @@ rtutor.quiz.sol.txt.fun = function(ts,solved=TRUE,...) {
 }
 
 rtutor.quiz.shiny.ui = function(ts, ao=ts$ao, ...) {
-  quiz.ui(ao, solution=ts$solved)  
+  restore.point("rtutor.quiz.shiny.ui")
+  
+  quiz.ui(ao, solution=isTRUE(ts$solved))  
 }
 
 rtutor.quiz.init.handlers = function(ao=ts$ao,ps=get.ps(), app=getApp(),ts=NULL,...) {
@@ -274,6 +276,8 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
 quiz.ui = function(qu, solution=FALSE) {
   restore.point("quiz.ui")
   pli = lapply(seq_along(qu$parts), function(i) {
+    restore.point("quiz.ui.inner")
+    
     part = qu$parts[[i]]
     if (i < length(qu$parts)) {
       hr = hr()
@@ -285,6 +289,8 @@ quiz.ui = function(qu, solution=FALSE) {
       if (is.null(part$sol.ui)) {
         part$sol.ui = quiz.part.ui(part, solution=TRUE)
       }
+      setUI(part$resultId,HTML(part$success))
+
       return(list(part$sol.ui,hr))
     } else {
       return(list(part$ui,hr))
@@ -311,6 +317,8 @@ quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnI
     } else if (part$type=="sc") {
       answer = radioButtons(part$answerId, label=NULL,part$choices, selected=part$answer)
     }
+    #setUI(part$resultId,HTML(part$success))
+
   } else {
     if (part$type=="numeric") {
       answer = textInput(part$answerId, label = NULL,value = "")

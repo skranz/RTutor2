@@ -25,5 +25,6 @@ Depends:
     jsonlite,
     DT,
     memoise,
-    rmdtools
+    rmdtools,
+    yaml
 RoxygenNote: 5.0.0

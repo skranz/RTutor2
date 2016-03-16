@@ -160,7 +160,7 @@ make.rtutor.page.ui = function(inner, ps = get.ps(), title="RTutor") {
       tags$link(rel = 'stylesheet', type = 'text/css',
                 href = 'highlightjs/styles/github.min.css')
     ),
-    tabPanel(ps$name, mathJaxRTutor(inner))
+    tabPanel(ps$ps.name, mathJaxRTutor(inner))
   )
   
 }

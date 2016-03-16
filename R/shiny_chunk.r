@@ -48,7 +48,7 @@ make.chunk.input.ui = function(uk, theme="textmate", height=NULL, code.lines=NUL
     console.height = (fontSize * 1.25) * console.code.lines + 50
   }
 
-  if (uk$is.solved) {
+  if (uk$solved) {
     label = "was already solved"
   } else {
     label = "not yet solved"
@@ -135,9 +135,9 @@ make.chunk.output.ui = function(uk, opts = rt.opts()) {
     )
   }
 
-  is.solved = uk$is.solved
+  solved = uk$solved
   mode = uk$mode
-  if (is.solved) {
+  if (solved) {
     code = code
     args = ck$args
     
@@ -288,7 +288,7 @@ check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FAL
     if (!ret) {
       txt = merge.lines(c(uk$log$success, uk$log$failure.message,"Press Ctrl-H to get a hint."))
       updateAceEditor(app$session, ck$nali$console, value=txt, mode="text")
-      uk$is.solved = FALSE
+      uk$solved = FALSE
     } else {
       #restore.point("success test shiny chunk")
       
@@ -315,7 +315,7 @@ check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FAL
 proceed.with.successfuly.checked.chunk = function(uk,opts=rt.opts()) {
   restore.point("proceed.with.successfuly.checked.chunk")
   ck = uk$ck
-  uk$is.solved = TRUE
+  uk$solved = TRUE
 
   # If we have precomp=TRUE, it is often sensible to replace 
   # user solution with sample solution 
@@ -403,7 +403,7 @@ restore.shiny.chunk = function(uk,...,app=getApp()) {
   restore.point("restore.shiny.chunk")
 
   uk$stud.code = uk$ck$shown.txt
-  uk$is.solved = FALSE
+  uk$solved = FALSE
 
   updateAceEditor(app$session, uk$ck$nali$editor, value=uk$stud.code, mode="r")
   updateAceEditor(app$session, uk$ck$console, value="restored originally shown code...", mode="text")
@@ -457,7 +457,7 @@ save.shiny.chunk = function(uk,...,ps=get.ps(),app=getApp()) {
   )
 }
 
-chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.chunk.env(uk), eval=TRUE, success.message=isTRUE(uk$is.solved), echo=TRUE, nali=NULL, quiet=TRUE) {
+chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.chunk.env(uk), eval=TRUE, success.message=isTRUE(uk$solved), echo=TRUE, nali=NULL, quiet=TRUE) {
   restore.point("chunk.to.html")
   if (is.null(txt))
     return("")

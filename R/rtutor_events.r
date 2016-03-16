@@ -53,7 +53,7 @@ rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts =
   });  
   ')
 
-  res = tags$script(code)  
+  res = bottomScript(HTML(code))  
   registerEvent("documentClickHandlerEvent", jscript="", overwrite=TRUE)
   registerEvent("buttonHandlerEvent", jscript="", overwrite=TRUE)
   return(res)

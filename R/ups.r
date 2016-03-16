@@ -17,7 +17,7 @@
 #         awards that will be saved in a file .awards.ups)
 #
 # utt.times (task time table, optional)
-#   first.run.date 
+#   first.check.date 
 #   solved.date
 #
 # sts: (environment with small task states)
@@ -26,41 +26,26 @@
 # with endings like .t7.ups where the 7 stands for the
 # task.ind
 
-#' Specify which information will be automatically saved in ups
-default.ups.save = function(
-    chunks = TRUE,
-    awards = TRUE,
-    addons = TRUE,
-    code = FALSE | all,
-    chunk.ind = FALSE | all,
-    all = FALSE
-) {
-  nlist(
-    chunks,
-    awards,
-    addons,
-    code,
-    chunk.ind
-  )
-}
-
-
-get.user.name = function(ps=get.ps()) {
-  ps$user.name
-}
-
-init.ups = function(user.name=ps$user.name, ps = get.ps(), opts=rt.opts()) {
+init.ups = function(user.name=ps$user.name, nick=user.name, user.id=user.name, ps = get.ps(), opts=rt.opts()) {
   restore.point("init.ups")
 
   # current task, will be shown when reloaded
   task.ind = NULL
 
   # task table
-  n = NROW(ps$tt)
+  
+  n = NROW(ps$task.table)
+  
+  # problem set has no tasks
+  if (n==0) {
+    ups = as.environment(list(ps.name=ps$ps.name, user.name=user.name, nick=nick, task.ind = NULL, utt=NULL, utt.dates=NULL, sts=NULL))
+
+    save.ups(ups=ups,ps=ps)
+    return(ups)
+  }
   
   utt = data_frame(
-    is.solved = rep(FALSE,n),
-    was.solved = FALSE,
+    was.solved = rep(FALSE,n),
     points = 0L,
     score = 0,
     num.failed = 0L,
@@ -68,69 +53,17 @@ init.ups = function(user.name=ps$user.name, ps = get.ps(), opts=rt.opts()) {
   )
   
   utt.dates = data.frame(
-    first.run.date = rep(as.POSIXct(NA),n),
+    first.check.date = rep(as.POSIXct(NA),n),
     solved.date = as.POSIXct(NA)
   )
   
   # small task state: take initial sts from ps
-  sts = ps$tt$init.sts
+  sts = vector("list",n)
   
-  # awards, a vector of integers
-  awards = NULL
-
-  ups = as.environment(list(ps.name=ps$name, user.name=user.name, task.ind = task.ind, utt=utt, utt.dates=utt.dates, sts=sts, awards = awards))
+  ups = as.environment(list(ps.name=ps$ps.name, user.name=user.name, nick=nick,user.id=user.id, task.ind = task.ind, utt=utt, utt.dates=utt.dates, sts=sts))
 
   save.ups(ups=ups,ps=ps)
   ups
-}
-
-ups.init.shiny.ps = function(ps=get.ps(), ups=get.ups(), rerun=FALSE, sample.solution=FALSE, precomp=isTRUE(ps$precomp), replace.sol = isTRUE(ps$replace.sol), ups.save=ps$ups.save) {
-  restore.point("init.shiny.ps.from.ups")
-  
-  if (NROW(ps$cdt)==0) return()
-
-  chunk.ind = ups$chunk.ind
-  if (is.null(chunk.ind)) {
-    chunk.ind = 1
-  }
-  
-  is.solved = rep(FALSE, NROW(ps$cdt))
-  ps$cdt$mode = "output"
-  ps$cdt$mode[chunk.ind] = "input"
-  
-  if (!sample.solution) {
-    if (!is.null(ups$cu$stud.code) & !sample.solution) {
-      ps$cdt$stud.code = ups$stud.code
-    } else if (!sample.solution) {
-      ps$cdt$stud.code = ps$cdt$shown.txt
-    }
-    if (!is.null(ups$cu$solved)) {
-      is.solved = ups$cu$solved
-    } else {
-      is.solved =  rep(FALSE, NROW(ps$cdt))
-    }
-  } else {
-    ps$cdt$stud.code = ps$cdt$sol.txt
-    is.solved = rep(TRUE, NROW(ps$cdt))
-  }
-  if (ups.save$code & is.null(ups$cu$stud.code)) {
-    ups$cu$stud.code = ps$cdt$stud.code
-  }
-  
-  if (rerun) {
-    ps$cdt$is.solved = is.solved
-    rerun.solved.chunks(ps)
-    ps$cdt$mode[1] = "output"
-  } else if (precomp) {
-    ps$cdt$is.solved = is.solved
-  } else {
-    ps$cdt$is.solved = rep(FALSE, NROW(ps$cdt))
-  }
-
-  if (replace.sol) {
-    ps$cdt$stud.code[ps$cdt$is.solved] = ps$cdt$sol.txt[ps$cdt$is.solved]
-  }
-  
 }
 
 get.ups = function() {
@@ -143,29 +76,31 @@ set.ups = function(ups) {
   ps[["ups"]] = ups
 }
 
+get.user.name = function() {
+  get.ups()$user.name
+}
 
-load.ups = function(user.name, ps.name = ps$name, ps = get.ps(),...) {
+load.ups = function(user.name, nick=user.name, user.id=user.name, ps = get.ps(), dir=ps$ups.dir,...) {
   restore.point("load.ups")
   
-  dir = get.ps()$ups.dir
-  file = paste0(dir,"/",user.name,"_",ps$name,".ups")
-  
-  if (is.null(user.name)) stop("user.name is NULL. This is not allowed")
+  file = paste0(dir,"/",ps$ps.name,"_",user.id,".ups")
+  if (is.null(user.id)) stop("user.id is NULL. This is not allowed")
 
-  if (nchar(user.name)==0)
+  if (nchar(user.id)==0)
     return(NULL)
   
   
   if (!file.exists(file)) {
-    ups = init.ups(user.name = user.name, ps=ps,...)
+    ups = init.ups(user.name = user.name, nick=nick,user.id=user.id, ps=ps,...)
   } else {
     load(file=file)
   }
+  set.ups(ups)
   return(ups)
 }
 
 # need to rewrite
-update.ups = function(ups = get.ups(), ps=get.ps(), task.ind=NULL, addon=NULL, award=NULL,task=NULL, hint=NULL, ups.save = ps$ups.save) {
+update.ups = function(ups = get.ups(), ps=get.ps(), task.ind=NULL, addon=NULL, award=NULL,task=NULL, hint=NULL,...) {
   restore.point("update.ups")
   
   if (!is.null(task.ind)) {
@@ -174,31 +109,28 @@ update.ups = function(ups = get.ups(), ps=get.ps(), task.ind=NULL, addon=NULL, a
   save.ups(ups=ups,ps=ps)
 }
 
-save.ups = function(ups = get.ups(), ps=get.ps()) {
+save.ups = function(ups = get.ups(), ps=get.ps(), opts=rt.opts(), dir=ps$ups.dir) {
   restore.point("save.ups")
   
-  if (isTRUE(ps$save.nothing)) return()
-
-  if (is.null(ups$chunk.ind))
-    ups$chunk.ind = ps$chunk.ind
+  if (isTRUE(opts$save.nothing)) return()
   
-  dir = ps$ups.dir
-  file = paste0(dir,"/",ups$user.name,"_",ps$name,".ups")
-  #cat("save ups to file: ", file)
-  
+  file = paste0(dir,"/",ps$ps.name,"_",ups$user.id,".ups")
   suppressWarnings(save(ups,file=file))
 }
 
 # remove old ups files when new problem set structure is generated
-remove.ups = function(ps.name = get.ps()$name, dir = get.ps()$ups.dir) {
+remove.existing.ups = function(ps.name = get.ps()$ps.name, dir = get.ps()$ups.dir) {
+  restore.point("remove.existing.ups")
+  
   set.ups(NULL)
 
   if (is.null(dir)) dir =getwd()
 
-  files = list.files(path = dir,full.names = TRUE)
-  files = files[str.ends.with(files,paste0("_",ps.name,".ups"))]
+  files = list.files(path = dir, pattern=glob2rx("*.ups"),full.names = TRUE)
+  files = files[has.substr(files,paste0(ps.name,"_")) & str.ends.with(files,".ups")]
   if (length(files)>0) {
     file.remove(files)
+    cat("\n",length(files),"old .ups files removed.\n")
   }
 }
 

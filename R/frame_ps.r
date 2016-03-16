@@ -1,25 +1,26 @@
 # To DO: More effective click handler in shinyEvents: register only a single javascript handler... dispatch in R to the corresponding function.
 
 examples.frame.ps = function() {
-  library(EconCurves)
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.rmd", warn=FALSE)
   #txt = readLines("test.rmd", warn=FALSE)
   ps = rtutor.make.frame.ps(txt, catch.errors=FALSE)
   bdf = ps$bdf
+  
   app = rtutorApp(ps)
   viewApp(app)
 }
 
 # Init ps for a new session
-init.ps.session = function(ps, app=getApp(), rendered=FALSE, hidden=FALSE) {
+init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered=FALSE, hidden=FALSE) {
   restore.point("init.ps.session")
   
   # make shallow copy of ps
   ps = as.environment(as.list(ps))
   
+  ups = load.ups(user.name=user.name, nick=user.name)
+  
   # init user state of chunks
-  ups = NULL
   init.ps.session.task.states(ps=ps, ups=ups)
   # container state
   
@@ -39,15 +40,18 @@ init.ps.session = function(ps, app=getApp(), rendered=FALSE, hidden=FALSE) {
 }
 
 # general initialisation independent of app type
-initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list()) {
+initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list(), dir=getwd(), ups.dir=dir) {
   restore.point("initRTutorApp")
   library(shinyjs)
   
   app = eventsApp()
+  setAppHasBottomScript(TRUE, app=app)
   
   ps$opts[names(opts)] = opts
   
   app$ps = ps
+  ps$dir = dir
+  ps$ups.dir = ups.dir
   ps$offline = offline
   ps$use.mathjax = use.mathjax
   ps$is.shiny = TRUE
@@ -67,10 +71,10 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
 }
 
 
-slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
+slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=1, dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
   restore.point("slidesApp")
   
-  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, opts=opts)
+  app = initRTutorApp(ps=ps, user.name=user.name, catch.errors = catch.errors,offline = offline, dir=dir, ups.dir=ups.dir, opts=opts)
   
   ps$slide.ind = start.slide
   ps.content.ui = ps$bdf$ui[[1]]   
@@ -93,7 +97,7 @@ slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.
   # Each time the problem set is restarted
   # reinit the problem set
   appInitHandler(app=app,function(app,...) {
-    ps = init.ps.session(ps=ps,app=app)
+    ps = init.ps.session(ps=ps,user.name=user.name, nick=nick,app=app)
     ps$slide.ind = start.slide
     app$ps = ps 
     init.ps.handlers(ps)
@@ -104,14 +108,14 @@ slidesApp = function(ps, start.slide=1, dir=getwd(), offline=FALSE, just.return.
   app
 }
 
-rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2,opts=list(),...) {
+rtutorApp = function(ps, user.name = "John Doe", nick=user.name, dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2,opts=list(),...) {
   restore.point("rtutorApp")
   
   if (isTRUE(ps$slides)) {
-    return(slidesApp(ps=ps,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,opts=opts,...))
+    return(slidesApp(ps=ps,user.name=user.name, nick=nick,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,opts=opts, dir=dir, ups.dir=ups.dir,...))
   }
   
-  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, opts=opts)
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline,dir=dir, ups.dir=ups.dir, opts=opts)
   
   
   
@@ -120,9 +124,7 @@ rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, cat
   
   resTags = rtutor.html.ressources()
 
-  
-  
-  app$ui = tagList(
+    app$ui = tagList(
     useShinyjs(),
     resTags,
     rtutorClickHandler(),
@@ -142,13 +144,62 @@ rtutorApp = function(ps, dir=getwd(), offline=FALSE, just.return.html=FALSE, cat
     ))
   )
 
+  
+    json.opts =
+'
+defaults: {
+  //spacing_open: 4
+},
+north: {
+  size: "auto",
+  resizable: false,
+  //spacing_open: 4,
+  spacing_closed: 10
+},
+east: {
+  closable: true,
+  resizable: true
+}
+'
+  style = tags$style(HTML('
+.ui-layout-north {
+	background:	#FFF;
+	border:		none;
+	padding:	0px;
+	overflow:	auto;
+}'
+  ))
+
+  app$ui = tagList(
+    useShinyjs(),
+    resTags,
+    rtutorClickHandler(),
+    bootstrapPage(
+    jqueryLayoutPage(style=style,
+      north = div(
+        style="margin-left: 2px; margin-right: 2px;",
+        ps$navbar.ui
+      ),
+      center = div(
+        #style="margin-left: 10%; margin-right: 10%; overflow: auto; height: 100%;",
+        style="margin-left: 10%; margin-right: 10%;",
+        withMathJax(ps.content.ui)
+      ),
+      east = div()
+    ))
+  )
+
+ 
+  
+
+  
 
   # Each time the problem set is restarted
   # reinit the problem set
   appInitHandler(app=app,function(app,...) {
     restore.point("rtApp.appInitHandler")
     #setApp(app)
-    ps = init.ps.session(ps=ps,app=app)
+    ps = init.ps.session(ps=ps,,user.name=user.name, nick=nick,app=app)
     app$ps = ps 
     init.ps.handlers(ps)
     render.container.descendants(ps=ps,type.ind=1, use.mathjax=ps$use.mathjax, skip.if.rendered=FALSE)

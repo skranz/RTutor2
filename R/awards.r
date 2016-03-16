@@ -2,6 +2,8 @@
 give.award = function(award.bi, ups = get.ups(), ps=get.ps()) {
   restore.point("give.award")
 
+  if (length(award.bi)==0) return()
+  
   if (has.award(award.bi)) return()
   
   ps$given.awards.bi = c(ps$given.awards.bi, award.bi)

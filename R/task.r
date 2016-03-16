@@ -103,29 +103,33 @@ init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts
   if (is.null(ups)) return(init.task.state.without.ups(org.ts,obj=obj, opts=opts))
   restore.point("init.task.state.with.ups")
   
+  ts = org.ts
   task.ind = ts$task.ind
   utr = ups$utt[task.ind,]
   if (ts$stype=="task_chunk") {
+    restore.point("init.task.state.with.ups.task.chunk")
+    
     ts = as.environment(org.ts)
     ts$solved = utr$was.solved
     ts$points = utr$point
     ts$score = utr$score
-    if (!is.null(utr$sts$stud.code)) {
+    if (!is.null(utr$sts[[1]]$stud.code)) {
       ts$stud.code = utr$sts$stud.code
-    } else if (ts$solved) {
-      ts$stud.code = ts$sol.txt
-    }
+    } else {
+      # only overwrite if solved
+      if (ts$solved) {
+        ts$stud.code = ts$ck$sol.txt
+      }
+    } 
   } else {
-    Addon = ps$Addons[[stype]]
+    restore.point("init.task.state.with.ups.addon")
     ts = as.environment(as.list(org.ts))
-    ts = Addon$init.task.state.with.ups(org.ts,obj, ups=ups,opts=opts)
+    Addon = ps$Addons[[ts$stype]]
+    ts = Addon$init.task.state.with.ups(ts, ups=ups,opts=opts)
   }
   return(ts)
 }
 
-update.ups.with.task.state = function(ts, ups=get.ups()) {
-  
-}
 
 make.org.task.state = function(bi, ps, opts = rt.opts()) {
   restore.point("make.org.task.state")
@@ -233,8 +237,11 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
   }
   
   restore.point("process.checked.task2")
-  
+  ups$task.ind = ts$task.ind
   utr = ups$utt[ts$task.ind,]
+  if (!is.null(ups$utt.dates))
+    if (!is.na(ups$utt.dates$first.check.date[ts$task.ind]))
+      ups$utt.dates$first.check.date[ts$task.ind] = Sys.time()
   
   if (ts$solved & !utr$was.solved) {
     task.solved.give.award(ts)
@@ -245,10 +252,12 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
       if (!is.na(ts$score))
         ups$utt$score[ts$task.ind] = max(c(ups$utt$score[ts$task.ind], ts$score), na.rm=TRUE)
     }
-    update.ups(ups)
+    if (!is.null(ups$utt.dates))
+      ups$utt.dates$solved.date[ts$task.ind] = Sys.time()
   } else if (!utr$was.solved) {
     ups$utt$num.failed[ts$task.ind] = ups$utt$num.failed[ts$task.ind]+1
   }
+  update.ups(ups)
 }
 
 process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {

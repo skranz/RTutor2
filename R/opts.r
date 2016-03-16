@@ -9,8 +9,6 @@ default.ps.opts = function(
   nav.levels = c("section","subsection","frame"),  
   is.shiny = TRUE,
   catch.errors = TRUE,
-  # parameters related to ups
-  ups.save=default.ups.save(),
   # parameters related to chunk points
   e.points = 1,
   min.chunk.points=0,

@@ -3,8 +3,8 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   
-  #setwd("D:/libraries/RTutor2/examples/auction")
-  #txt = readLines("auction_sol.Rmd")
+  setwd("D:/libraries/RTutor2/examples/auction")
+  txt = readLines("auction_sol.Rmd")
   popts=default.ps.opts(
     show.solution.btn = TRUE,
     slides = FALSE,
@@ -23,10 +23,13 @@ examples.frame.ps = function() {
 
 
 
-rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),addons=c("quiz"),catch.errors=TRUE,ps.id = "",opts=default.ps.opts(), priority.opts=list(),  ...) {
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),addons=c("quiz"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(),  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
+  
+  ps$ps.name = ps.name
+  ps$ps.id = ps.id
   ps$Addons = list()
   ps$dir = dir
   ps$figure.dir = figure.dir
@@ -176,6 +179,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   
   ps$navbar.ui = rtutor.navbar(ps=ps, nav.levels = opts$nav.levels)
   
+  remove.existing.ups(ps.name=ps.name, dir=dir)
   ps
 }
 
@@ -654,7 +658,7 @@ rtutor.parse.award = function(bi,ps) {
   out.rmd = merge.lines(c("---\n### Award",res$out.rmd,"---"))
   rmd.li = list(shown.rmd="",sol.rmd="",out.rmd=out.rmd)
   content.ui=res$ui.li
-  obj = list(award.bi =award.bi, award.name=award.name, html=as.character(tagList(content.ui)), txt = res$out.rmd)
+  obj = list(award.bi =bi, award.name=award.name, html=as.character(tagList(content.ui)), txt = res$out.rmd)
 
   title = paste0("Award: ",award.name) 
   

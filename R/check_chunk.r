@@ -106,6 +106,8 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
 
   res = check.chunk.eval.part(uk=uk, log=log, stud.env=stud.env,opts=opts, store.output=store.output, verbose=verbose)
   
+  uk$solved = uk$passed
+  process.checked.task(uk)
   if (uk$passed) {
     log.event(type="check_chunk",chunk.ind=ck$chunk.ind, e.ind=0,code=stud.code, ok=TRUE,message="")
     if (isTRUE(uk$had.warning)) {
@@ -184,58 +186,10 @@ check.chunk.eval.part = function(uk,log, stud.env, opts, store.output,verbose=FA
     }
   }
   uk$passed = TRUE
-  uk$is.solved = TRUE
+  uk$solved = TRUE
 
 
   return(TRUE)
-}
-
-give.awards.after.check.chunk = function(uk) {
-  ck = uk$ck
-  if (uk$passed & !is.na(ck$award.name) & give.awards) {
-    give.award(ck$award.name)
-  }
-}
-
-# Can be called after check.chunk
-update.ups.after.check.chunk = function(uk, ups=get.ups(), opts=rt.opts(), save=TRUE, ps=get.ps()) {
-  restore.point("update.ups.after.check.chunk")
-  ck = uk$ck
-  
-  passed = uk$passed
-  chunk.ind = ck$chunk.ind
-  update = !ups$cu$solved[chunk.ind]
-
-  if (update) {
-    if (is.na(ups$cu$first.check.date[chunk.ind]))
-      ups$cu$first.check.date[chunk.ind] = Sys.time()
-
-    if (passed) {
-      ups$cu$solved.date[[chunk.ind]] <- Sys.time()
-      ups$cu$solved[chunk.ind] = TRUE
-    } else {
-      ups$cu$num.fail[chunk.ind] = ups$cu$num.fail[chunk.ind]+1
-    }
-  }
-  update.code = isTRUE(opts$ups.save$code)
-  if (update.code) {
-    ups$cu$stud.code[[chunk.ind]] = uk$stud.code
-  }
-  if (passed) {
-    ups.chunk.ind = chunk.ind +1
-    if (ups.chunk.ind > length(ps$chunks)) ups.chunk.ind = 1
-  } else {
-    ups.chunk.ind = chunk.ind
-  }
-  
-  if (update | update.code | isTRUE(opts$ups.save$chunk.ind)) {
-    update.ups(ups, 
-      chunk = if (update) chunk.ind else NULL,
-      code  = if (update.code) chunk.ind else NULL,
-      chunk.ind = ups.chunk.ind
-    )
-  }
-  
 }
 
 update.log.test.result = function(...) {
