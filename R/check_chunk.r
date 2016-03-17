@@ -107,6 +107,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
   res = check.chunk.eval.part(uk=uk, log=log, stud.env=stud.env,opts=opts, store.output=store.output, verbose=verbose)
   
   uk$solved = uk$passed
+  uk$points = uk$ck$max.points * uk$solved
   process.checked.task(uk)
   if (uk$passed) {
     log.event(type="check_chunk",chunk.ind=ck$chunk.ind, e.ind=0,code=stud.code, ok=TRUE,message="")

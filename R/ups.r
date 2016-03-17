@@ -68,12 +68,17 @@ init.ups = function(user.name=ps$user.name, nick=user.name, user.id=user.name, p
 
 get.ups = function() {
   ps = get.ps()
-  ps[["ups"]]
+  ups = ps[["ups"]]
+  if (is.null(ups)) {
+    return(get(".__rtutor_ups", ups, .GlobalEnv))
+  }
+  ups
 }
 
 set.ups = function(ups) {
   ps = get.ps()
   ps[["ups"]] = ups
+  assign(".__rtutor_ups", ups, .GlobalEnv)
 }
 
 get.user.name = function() {

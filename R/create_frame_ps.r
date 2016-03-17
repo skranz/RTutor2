@@ -22,8 +22,7 @@ examples.frame.ps = function() {
 }
 
 
-
-rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),addons=c("quiz"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(),  ...) {
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),addons=c("quiz"), plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(),  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
@@ -33,6 +32,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$Addons = list()
   ps$dir = dir
   ps$figure.dir = figure.dir
+  ps$plugins = plugins
   
   if (length(txt)==1)  
     txt = sep.lines(txt)
@@ -972,15 +972,14 @@ rtutor.navbar = function(ps, opts=rt.opts(), nav.levels = c("section","subsectio
   
   ps$menu.selectors = get.raw.selector(nav.levels=nav.levels, level=1, name="ps")
   
-  ps$menu.sel.ui = nestedSelector(id="rtNavbarSelector", ps$menu.selectors, input.type="radioBtnGroup")
+  ps$menu.sel.ui = nestedSelector(id="rtNavbarSelector", btn.size="xs", ps$menu.selectors, input.type="radioBtnGroup")
   
   title = first.non.null(opts$menu.title, "RTutor")
   ps$navbar.ui = div(
     style = "
     background-color: #eeeeee;
-    box-shadow: 0 4px 4px -2px #777;
     ",
-    HTML("<table><tr><td style='padding-left: 5px; padding-right: 10px;'>"),
+    HTML("<table><tr><td style='padding-left: 5px; padding-right: 10px; vertical-align: top;'>"),
     h4(title),
     HTML("</td><td>"),
     ps$menu.sel.ui$ui  ,

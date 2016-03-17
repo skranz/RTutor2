@@ -71,6 +71,8 @@ make.data.explorer.handlers = function(ps=get.ps()) {
 
 
 data.explorer.ui = function() {
+  return(NULL)
+  
   chunk.fluidRow(
     column(2,uiOutput("radioDataExplorerUI")),
     column(10,

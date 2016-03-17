@@ -39,7 +39,8 @@ rtutor.quiz.make.org.task.state = function(ao) {
   list(
     part.solved=rep(FALSE,length(ao$parts)),
     solved=FALSE,
-    points=0
+    points=0,
+    ao=ao
   )
 }
 

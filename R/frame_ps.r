@@ -13,12 +13,13 @@ examples.frame.ps = function() {
 
 # Init ps for a new session
 init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered=FALSE, hidden=FALSE) {
-  restore.point("init.ps.session")
   
   # make shallow copy of ps
   ps = as.environment(as.list(ps))
-  
+  set.ps(ps)
+
   ups = load.ups(user.name=user.name, nick=user.name)
+  restore.point("init.ps.session")
   
   # init user state of chunks
   init.ps.session.task.states(ps=ps, ups=ups)
@@ -36,6 +37,13 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
     )
   }
 
+  ps$active.plugin = ps$plugins[1]
+  for (plugin in ps$plugins) {
+    call.plugin.handler("init.handler",plugin=plugin)
+  }
+  call.plugin.handler("activate.handler",plugin=ps$active.plugin)
+  
+  
   ps
 }
 
@@ -60,7 +68,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   ps$given.awards.bi = NULL
   set.rt.opts(ps$opts)
   
-  set.ps(ps)
+  app$ps = ps
 
   bdf = ps$bdf
     
@@ -124,27 +132,6 @@ rtutorApp = function(ps, user.name = "John Doe", nick=user.name, dir=getwd(), up
   
   resTags = rtutor.html.ressources()
 
-    app$ui = tagList(
-    useShinyjs(),
-    resTags,
-    rtutorClickHandler(),
-    bootstrapPage(
-    freezeHeaderPage(
-      freeze.header = isTRUE(opts$menu.freeze),
-      header.style="", #content.style="",
-      header = div(
-        style="margin-left: 0px; margin-right: 0px;",
-        ps$navbar.ui
-      ),
-      div(
-        #style="margin-left: 10%; margin-right: 10%; overflow: auto; height: 100%;",
-        style="margin-left: 10%; margin-right: 10%;",
-        withMathJax(ps.content.ui)
-      )
-    ))
-  )
-
-  
     json.opts =
 '
 defaults: {
@@ -162,13 +149,48 @@ east: {
 }
 '
   style = tags$style(HTML('
+.ui-layout-east {
+	background:	#FFF;
+	border:		none;
+	padding:	0px;
+	overflow:	auto;
+}
+
+
 .ui-layout-north {
 	background:	#FFF;
 	border:		none;
 	padding:	0px;
 	overflow:	auto;
-}'
+}
+
+.ui-layout-center {
+	background:	#FFF;
+	border:		none;
+	padding:	2px;
+	overflow:	auto;
+}
+
+
+'
   ))
+
+    json.opts =
+'
+defaults: {
+  //spacing_open: 4
+},
+north: {
+  size: "auto",
+  resizable: false,
+  //spacing_open: 4,
+  spacing_closed: 10
+},
+east: {
+  closable: true,
+  resizable: true
+}
+'
 
   app$ui = tagList(
     useShinyjs(),
@@ -185,11 +207,11 @@ east: {
         style="margin-left: 10%; margin-right: 10%;",
         withMathJax(ps.content.ui)
       ),
-      east = div()
+      east = div(
+        sidebar.ui()
+      )
     ))
-  )
-
- 
+  ) 
   
 
   
@@ -198,11 +220,13 @@ east: {
   # reinit the problem set
   appInitHandler(app=app,function(app,...) {
     restore.point("rtApp.appInitHandler")
-    #setApp(app)
+    cat("app =",capture.output(app)," getApp() =",capture.output(getApp()))
     ps = init.ps.session(ps=ps,,user.name=user.name, nick=nick,app=app)
     app$ps = ps 
     init.ps.handlers(ps)
     render.container.descendants(ps=ps,type.ind=1, use.mathjax=ps$use.mathjax, skip.if.rendered=FALSE)
+    
+ 
   })
   
   

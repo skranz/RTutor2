@@ -4,15 +4,16 @@ default.ps.opts = function(
   show.together = "section",
   menu.levels = c("section", "subsection"),
   menu.placement = c("top","fixed"),
+  stats.aggregate.by = "section",
   # which part types shall have static html
   static.types = c("section", "subsection","subsubsection","frame"),
   nav.levels = c("section","subsection","frame"),  
   is.shiny = TRUE,
   catch.errors = TRUE,
   # parameters related to chunk points
-  e.points = 1,
-  min.chunk.points=0,
-  chunk.points=0,      
+  e.points = 2,
+  chunk.min.points=0,
+  chunk.points=1,      
   show.points = TRUE,
   # relevant for shiny_chunk
   show.line.numbers = TRUE,

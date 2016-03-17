@@ -1,4 +1,10 @@
 
+named.list = function(x, names) {
+  li = as.list(x)
+  names(li) = names
+  li
+}
+
 mutate_.NULL = select_.NULL = arrange_.NULL = filter_.NULL = function(...) NULL
 
 compute.value.index = function(x, values=unique(x)) {

@@ -56,14 +56,23 @@ create.ps.tasks = function(ps) {
   task.ind = seq_along(bi)
   ps$org.task.states = lapply(bi, make.org.task.state, ps=ps)
   names(ps$org.task.states) = as.character(bi)  
+  max.points = sapply(seq_along(bi), function(i) {
+    if (ps$org.task.states[[i]]$stype == "task_chunk") {
+      return(ps$org.task.states[[i]]$ck$max.points)
+    } else {
+      return(ps$org.task.states[[i]]$ao$max.points)
+    }
+  })
   
   task.table = data_frame(
     task.ind = task.ind,
     bi = bi,
-    max.points = 0,
+    max.points = max.points,
     award.bi = NA_integer_
   )
   
+
+ 
   # Match awards to tasks
   award.bi = which(bdf$type=="award")
   award.task.ind = findInterval(award.bi,bi)
@@ -100,7 +109,7 @@ init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts()) {
 }
 
 init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts()) {
-  if (is.null(ups)) return(init.task.state.without.ups(org.ts,obj=obj, opts=opts))
+  if (is.null(ups) | is.null(ups$utt)) return(init.task.state.without.ups(org.ts,obj=obj, opts=opts))
   restore.point("init.task.state.with.ups")
   
   ts = org.ts
@@ -153,70 +162,6 @@ make.org.task.state = function(bi, ps, opts = rt.opts()) {
   ts
 }
 
-stats = function(ups = get.ups(), ps=get.ps()) {
-  if (is.null(ps)) {
-    display("No problem set specified. You must check a problem before you can see your stats.")
-    return(invisible())
-  }
-}
-
-#' Shows your progress
-#' @export
-compute.stats = function(ups=get.ups(), ps=get.ps()) {
-  restore.point("compute.stats")
-
-  # Results of chunks
-  cu = as_data_frame(cbind(ups$cu, dplyr::select(rps$cdt,ex.ind, points)))
-  cu = mutate(cu, type="chunk", max.points = points, points=max.points*solved)
-
-  # Results of addons like quizes
-
-  if (NROW(ups$aou)>0) {
-    aou = as_data_frame(cbind(ups$aou, dplyr::select(rps$ao.dt, max.points, ex.name)))
-    aou$ex.ind = match(rps$ao.dt$ex.name, rps$edt$ex.name)
-    idf = rbind(
-      dplyr::select(aou,ex.ind,solved, num.hint, points, max.points),
-      dplyr::select(cu,ex.ind, solved, num.hint, points, max.points)
-    )
-
-  } else {
-    idf = dplyr::select(cu,ex.ind, solved, num.hint, points, max.points)
-  }
-
-
-
-  # Aggregate on exercise level
-  res = group_by(idf, ex.ind) %>%
-    summarise(
-      points = sum(points),
-      max.points = sum(max.points),
-      percentage = round(points/max.points*100),
-      hints = sum(num.hint)
-    )
-  res$ex.name = rps$edt$ex.name[res$ex.ind]
-  all.res = idf %>%
-    summarise(
-      ex.ind = 0,
-      points = sum(points),
-      max.points = sum(max.points),
-      percentage = round(points/max.points*100),
-      hints = sum(num.hint),
-      ex.name = "Total"
-    )
-  res = rbind(res, all.res)
-  sr = dplyr::select(res,ex.name,percentage, points, max.points, hints)
-  colnames(sr) = c("Excercise","Solved (%)","Points", "Max. Points", "Hints")
-  rownames(sr) = NULL
-
-
-  if (do.display) {
-    display(ups$user.name, "'s stats for problem set ",rps$ps.name,":\n")
-    print(as.data.frame(sr))
-    return(invisible(sr))
-  }
-  sr
-}
-
 task.solved.give.award = function(ts,ps=get.ps(), ups=get.ups(),...) {
   restore.point("task.solved.give.award")
   
@@ -229,10 +174,12 @@ task.solved.give.award = function(ts,ps=get.ps(), ups=get.ups(),...) {
 process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
   restore.point("process.checked.task")
 
+   
   if (is.null(ups)) {
     if (ts$solved) {
       task.solved.give.award(ts)
-    }
+      call.plugin.handler("task.checked.handler", ts=ts)
+   }
     return()
   }
   
@@ -243,6 +190,7 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
     if (!is.na(ups$utt.dates$first.check.date[ts$task.ind]))
       ups$utt.dates$first.check.date[ts$task.ind] = Sys.time()
   
+  # TO DO: REMOVE TRUE
   if (ts$solved & !utr$was.solved) {
     task.solved.give.award(ts)
 
@@ -258,6 +206,9 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
     ups$utt$num.failed[ts$task.ind] = ups$utt$num.failed[ts$task.ind]+1
   }
   update.ups(ups)
+  
+  call.plugin.handler("task.checked.handler", ts=ts)
+
 }
 
 process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {

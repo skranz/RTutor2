@@ -40,24 +40,27 @@ reset.ps = function(ps=get.ps()) {
 #' 
 #' @export
 get.ps = function(force.global = FALSE) {
+  if (force.global) {
+    gps = get(".__rtutor_ps",.GlobalEnv)
+    return(gps)
+    
+  }
+  
+  app = getApp()
+  if (!is.null(app[["ps"]]))
+    return(app[["ps"]])    
+
   if (!exists(".__rtutor_ps",.GlobalEnv))
     return(NULL)
   gps = get(".__rtutor_ps",.GlobalEnv)
-  if (force.global)
-    return(gps)
-  
-  if (isTRUE(gps$running.web.app)) {
-    # if we have a local variant; get the local problem set
-    app = getApp()
-    if (!is.null(app[["ps"]]))
-      return(app[["ps"]])    
-  }
   return(gps)
 }
 
 #' @export
-set.ps = function(ps) {
+set.ps = function(ps, app=getApp()) {
   assign(".__rtutor_ps", ps, .GlobalEnv)
+  if (!is.null(app))
+    app$ps = ps
 }
 
 #' @export
