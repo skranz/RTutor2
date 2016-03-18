@@ -3,6 +3,7 @@
 get.chunk.env = function(uk) {
   new.env(parent = globalenv())
 }
+
 get.fresh.chunk.env = function(uk) {
   new.env(parent = globalenv())
 }

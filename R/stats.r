@@ -63,6 +63,12 @@ rtutor.update.stats.panel = function(app = getApp(),ps=get.ps(),ups=get.ups(),..
   perc = df[NROW(df),2]
   html = html.table(df)
   html = paste0("<h4>You solved ", perc, "% ...</h3><br>\n", html)
-  setUI("uiProblemSetStats", HTML(html))
+  cat(paste0("
+*******************************************************
+    rtutor.update.stats.panel ", as.numeric(perc)," % 
+*******************************************************"))
+
+  # use dsetUI since the panel may be hidden
+  dsetUI("uiProblemSetStats", HTML(html))
 } 
 

@@ -18,10 +18,12 @@ sidebar.ui = function(ps=app$ps, app=getApp()) {
     hidden_div(id=paste0(plugins[i],"_plugin_div"),Plugins[[i]]$sidebar.ui())
   })
   
-  nestedSelectorHandler("plugin_sel", function(value,...) {
-    args = list(...)
+  nestedSelectorHandler("plugin_sel", function(value,..., ps=get.ps()) {
+    #args = list(...)
     restore.point("plugin_selHandler")
-    
+    plugin = value[[1]]
+    ps$active.plugin = plugin
+    call.plugin.handler("activate.handler",plugin=plugin)
   })
   
   tagList(
@@ -30,6 +32,15 @@ sidebar.ui = function(ps=app$ps, app=getApp()) {
       divs
     )
   )
+}
+
+get.plugin.state = function(plugin=ps$active.plugin, ps=get.ps()){
+  ps$plugin.states[[plugin]]
+}
+
+
+set.plugin.state = function(plugin=ps$active.plugin, pis=NULL, ps=get.ps()){
+  ps$plugin.states[[plugin]] = pis
 }
 
 

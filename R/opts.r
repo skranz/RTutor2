@@ -5,6 +5,9 @@ default.ps.opts = function(
   menu.levels = c("section", "subsection"),
   menu.placement = c("top","fixed"),
   stats.aggregate.by = "section",
+  # task.env
+  task.env.together = show.together,
+  
   # which part types shall have static html
   static.types = c("section", "subsection","subsubsection","frame"),
   nav.levels = c("section","subsection","frame"),  

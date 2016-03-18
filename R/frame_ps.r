@@ -37,6 +37,7 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
     )
   }
 
+  ps$plugin.states = vector("list", length(ps$plugins))
   ps$active.plugin = ps$plugins[1]
   for (plugin in ps$plugins) {
     call.plugin.handler("init.handler",plugin=plugin)

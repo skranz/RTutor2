@@ -45,7 +45,7 @@
 
 
 
-create.ps.tasks = function(ps) {
+create.ps.tasks = function(ps, opts=rt.opts()) {
   restore.point("create.ps.tasks")
   
   bdf = ps$bdf
@@ -54,6 +54,8 @@ create.ps.tasks = function(ps) {
   
   
   task.ind = seq_along(bi)
+  n = length(task.ind)
+  
   ps$org.task.states = lapply(bi, make.org.task.state, ps=ps)
   names(ps$org.task.states) = as.character(bi)  
   max.points = sapply(seq_along(bi), function(i) {
@@ -64,11 +66,47 @@ create.ps.tasks = function(ps) {
     }
   })
   
+
+  # Find the task that should be activated when
+  # the current task is successfully solved
+  ptype = paste0("parent_",opts$show.together)
+  if (ptype %in% colnames(bdf)) {
+    activate.next.task.bi = sapply(bi, function(b) {
+      next.bi = which(
+        bdf$is.task & 
+        bdf$index >b & 
+        bdf$parent_note == 0 & 
+        bdf[[ptype]] == bdf[[ptype]][b]
+      )
+      
+      if (length(next.bi)==0) return(NA_integer_)
+      next.bi[1]
+    })
+  } else {
+    activate.next.task.bi = rep(NA_integer_,n)    
+  }
+  
+  
+  
+  # Find the required tasks that have to be
+  # solved in order to edit the current task
+  required.task.bi = sapply(bi, function(b) {
+    req.bi = which(
+      bdf$is.task & 
+      bdf$index < b & 
+      is.true(bdf$task.env.line == bdf$task.env.line[b])
+    )
+    if (length(req.bi)==0) return(NA_integer_)
+    req.bi[1]
+  })
+  
   task.table = data_frame(
     task.ind = task.ind,
     bi = bi,
     max.points = max.points,
-    award.bi = NA_integer_
+    award.bi = NA_integer_,
+    activate.next.task.ind = match(activate.next.task.bi,bi),
+    required.task.ind =  match(required.task.bi,bi)
   )
   
 
@@ -81,7 +119,13 @@ create.ps.tasks = function(ps) {
   ps$task.table = task.table
 }
 
-get.ts = function(task.ind, app=getApp()) {
+get.task.env = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps()) {
+  ts = get.ts(task.ind)
+  if (ts$stype=="task_chunk") return(ts$stud.env)
+  return(NULL)
+}
+
+get.ts = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps()) {
   app$task.states[[task.ind]]
 }
 
@@ -217,3 +261,31 @@ process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {
   return()
 }
 
+
+create.bi.task.env.info = function(bi,ps, need.task.env=TRUE, change.task.env=TRUE, optional=FALSE, precomp.task.env=opts$precomp, opts=rt.opts()) {
+  restore.point("create.bi.task.env.info")
+  
+  if (!need.task.env) return()
+  
+  bdf = ps$bdf
+  
+  # determine task.env.line
+  line.type = opts$task.env.together
+  line.bi = bdf[[paste0("parent_",line.type)]][bi]
+
+  task.env.line = paste0(line.type,"_",line.bi)
+  if (need.task.env) {
+    task.start.env.bi = which(bdf$task.env.line==task.env.line & bdf$change.task.env)[1]      
+  } else {
+    task.start.env.bi = NA_integer_
+  }
+  if (optional) {
+    task.env.line = paste0("opt_",bi)
+  }
+  
+  ps$bdf$task.env.line[bi] = task.env.line
+  ps$bdf$need.task.env[bi] = need.task.env
+  ps$bdf$change.task.env[bi] = change.task.env
+  ps$bdf$task.start.env.bi[bi] = task.start.env.bi
+  ps$bdf$precomp.task.env[bi] = precomp.task.env
+}

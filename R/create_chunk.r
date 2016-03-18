@@ -70,6 +70,9 @@ rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
   ck$nali = make.chunk.nali(id=ck$id, output.id = br$output.id)
 
 
+  # set task env info
+  create.bi.task.env.info(bi=bi,ps=ps,need.task.env = TRUE,change.task.env = TRUE,optional = isTRUE(args$optional),precomp.task.env = opts$precomp)  
+  
   invisible(ck)
 }
 

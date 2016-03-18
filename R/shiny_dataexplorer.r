@@ -1,92 +1,60 @@
+data.explorer.ui = function() {
+  return(NULL)
 
-update.data.explorer.ui = function(ps=get.ps(), session=ps$session) {
+  tagList(
+    uiOutput("radioDataExplorerUI"),
+    tabsetPanel(
+      tabPanel("Data",DT::dataTableOutput("tableDataExplorer")),
+      tabPanel("Description",uiOutput("variablesDescrUI")),
+      #tabPanel("Summary", uiOutput("dataSummariseUI")),
+      tabPanel("Plot", uiOutput("dataPlotUI"))
+    )
+  )
   
-  restore.point("update.data.explorer.ui")
-  chunk.ind = ps$chunk.ind
-  cdt = ps$cdt
-  chunk.name = cdt$chunk.name[[chunk.ind]]
-  stud.env = ps$stud.env
-  data = ps$de.dat
-  
-  updateUI(session,"radioDataExplorerUI",{
-      cat("\noutput$radioDataExplorerUI")
-      variable.selector.ui(stud.env, chunk.name)    
+  radioBtnGroupHandler("radioDataExplorer", function(value,...,ps=get.ps()) {
+    update.data.explorer.data(var=value)
   })
 
-  make.data.explorer.handlers()
+}
+
+update.data.explorer.ui = function(ps=get.ps(), session=ps$session) {
+  restore.point("update.data.explorer.ui")
+  ts = get.ts()
+  task.env = get.task.env()
+
   vars = get.environment.data.var()
-  
+
+
   if (length(vars)>0) {
+    setUI("radioDataExplorerUI",
+      radioBtnGroup(id="radioDataExplorer",labels=vars, values=vars)
+    )
     var = vars[1]
     cat("\nupdate for var ", var)
     update.data.explorer.data(var)
   } else {
+    setUI("radioDataExplorerUI", HTML("The current task environment has no data frames or matrixes.")
+)
+    setUI("variablesDescrUI",NULL) 
     updateDataTable(session,"tableDataExplorer",NULL) 
-    updateUI(session,"variablesDescrUI",NULL) 
   }
-    
 }
 
-
-set.data.explorer.data  = function(var=NULL, env = ps$stud.env, ps=get.ps()) { 
-  if (is.null(var)) {
-    var = ps$session$input$radioDataExplorer
-  }
-  restore.point("set.data.explorer.data")
-  if (length(var)>0 & is.character(var)) {
-    if (exists(var, env)) {
-      ret = get(var,env)
-      if (is.matrix(ret)) {
-        ret = as.data.frame(ret)
-      }
-      ps$de.dat = ret
-    }
-  } else {
-    ps$de.dat = NULL
-  }
-  return(ps$de.dat)
-}
-
-update.data.explorer.data  = function(var, ps=get.ps(), session=ps$session) {
+update.data.explorer.data  = function(var, ps=get.ps(), session=app$session, app=getApp()) {
   restore.point("update.data.explorer.data")
-  #browser()
+
   data = set.data.explorer.data(var)
   updateDataTable(session,"tableDataExplorer",signif.cols(data,4),
       options = list(orderClasses = TRUE,
                      lengthMenu = c(5, 10, 25,50,100),
                      pageLength = 5)) 
-  updateUI(session,"variablesDescrUI",{make.var.descr.ui(data)}) 
-  updateUI(session,"dataPlotUI",{data.plot.ui(data)}) 
+  setUI("variablesDescrUI",make.var.descr.ui(data)) 
+  setUI("dataPlotUI",data.plot.ui(data)) 
   
 }
 
-#examples.rtutor.shiny()
-make.data.explorer.handlers = function(ps=get.ps()) {
-  restore.point("data.explorer.server")  
-  changeHandler("radioDataExplorer", function(value,...,ps=get.ps()) {
-    cat("changeRadioDataExplorer...")
-    update.data.explorer.data(var=value)
-  })
-}
 
-
-data.explorer.ui = function() {
-  return(NULL)
-  
-  chunk.fluidRow(
-    column(2,uiOutput("radioDataExplorerUI")),
-    column(10,
-        tabsetPanel(
-          tabPanel("Data",DT::dataTableOutput("tableDataExplorer")),
-          tabPanel("Description",uiOutput("variablesDescrUI")),
-          #tabPanel("Summary", uiOutput("dataSummariseUI")),
-          tabPanel("Plot", uiOutput("dataPlotUI"))
-        )
-    )
-  )
-}
-
-get.environment.data.var=function(env=ps$stud.env, ps=get.ps()) {
+get.environment.data.var=function(env=get.task.env(), ps=get.ps()) {
   vars = ls(env)
   dvars = unlist(lapply(vars, function(var) {
     x = env[[var]]
@@ -97,54 +65,53 @@ get.environment.data.var=function(env=ps$stud.env, ps=get.ps()) {
   dvars
 }
 
-variable.selector.ui = function(env=ps$stud.env, chunk.name,ps=get.ps()) {
-  restore.point("variable.selector.ui")
-  
-  dvars = get.environment.data.var(env)
-  if (length(dvars)>0) {
-    ret=radioButtons("radioDataExplorer", label = paste0("Chunk ", chunk.name), choices = as.list(dvars), selected = dvars[1] )
-  } else {
-   ret=HTML("The current chunk environment has no data frames or matrixes.")
+set.data.explorer.data  = function(var=NULL, env = get.task.env(), ps=get.ps()) { 
+  if (is.null(var)) {
+    var = getInputValue("radioDataExplorer")
   }
-  ret
+  restore.point("set.data.explorer.data")
+  ret = NULL
+  if (length(var)>0 & is.character(var)) {
+    if (exists(var, env)) {
+      ret = get(var,env)
+      if (is.matrix(ret)) {
+        ret = as.data.frame(ret)
+      }
+    }
+  }
+  set.plugin.state("dataexplorer",list(var=var, data=ret))
+  return(invisible(ret))
 }
 
-
-data.summarise.ui = function(data,session=ps$session,ps=get.ps()) {
+data.summarise.ui = function(data,ps=get.ps()) {
   if (is.null(data))
     return(NULL)
   
   vars = colnames(data)
   group_by_ui = selectizeInput("groupByInput",label="group by", choices=vars, multiple=TRUE)
   col_select_ui = selectizeInput("colSelectInput",label="variables", choices=vars, multiple=TRUE) 
-  #funs = c("mean","sd","min","max")
-  #fun_select_ui = selectizeInput("funSelectInput",label="functions", choices=funs, selected=funs, multiple=TRUE)
-  
+
   changeHandler("groupByInput",update.data.explorer.summarise)
   changeHandler("colSelectInput",update.data.explorer.summarise)
-  #changeHandler("funSelectInput",update.data.explorer.summarise)
+  update.data.explorer.summarise(data)
 
-  update.data.explorer.summarise()
-  chunk.fluidRow(
-    chunk.fluidRow(
-      column(4,group_by_ui),
-      column(4,col_select_ui)
-    ),
+  tagList(
+    group_by_ui,
+    col_select_ui,
     DT::dataTableOutput("tableDataSummarise")
   )
   
 }
 
-update.data.explorer.summarise = function(dat=ps$de.dat,input=ps$session$input,ps = get.ps(), session=ps$session,...) {
+update.data.explorer.summarise = function(data=get.plugin.state("dataexplorer")$data,ps = get.ps(), session=app$session,app=getApp(),...) {
   restore.point("update.data.explorer.summarise")
-  
   updateDataTable(session,"tableDataSummarise",{
     #browser()
     cat("\ntrigger new summarise...")
-    groups = isolate(input$groupByInput)
+    groups = getInputValue("groupByInput")
     if (length(groups)>0)
-      dat = s_group_by(dat, groups)
-    cols = isolate(input$colSelectInput)
+      data = s_group_by(data, groups)
+    cols =  getInputValue("colSelectInput")
     if (length(cols)==0)
       cols = colnames(dat)
         
@@ -155,7 +122,8 @@ update.data.explorer.summarise = function(dat=ps$de.dat,input=ps$session$input,p
 }
 
 
-data.plot.ui = function(data,session=ps$session, ps=get.ps()) {
+data.plot.ui = function(data,session=app$session, ps=get.ps(), app=getApp()) {
+  return(NULL)
   if (is.null(data))
     return(NULL)
   

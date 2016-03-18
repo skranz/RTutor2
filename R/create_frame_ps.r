@@ -3,8 +3,8 @@ examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
   txt = readLines("ex1.Rmd")
   
-  setwd("D:/libraries/RTutor2/examples/auction")
-  txt = readLines("auction_sol.Rmd")
+  #setwd("D:/libraries/RTutor2/examples/auction")
+  #txt = readLines("auction_sol.Rmd")
   popts=default.ps.opts(
     show.solution.btn = TRUE,
     slides = FALSE,
@@ -69,9 +69,9 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
 
   # priority opts overwrite settings and opts
   opts[names(priority.opts)] = priority.opts
-  
   set.rt.opts(opts)
   ps$opts = opts
+
   ps$static.types = opts$static.types
   ps$slides = opts$slides
   ps$slide.type = opts$slide.type
@@ -106,7 +106,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   
   
   df$parent_addon = get.levels.parents(df$level, df$is.addon)
-  parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","section","subsection")
+  parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","note", "section","subsection")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
   bdf$obj = bdf$ui = bdf$inner.ui = vector("list", NROW(bdf))
@@ -118,11 +118,15 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     prefixed=FALSE,
     is.container=FALSE,container.ind = 0,
     is.static = TRUE,
-    div.id = "",output.id=  "",   
-    
- 
-    shown.rmd = "", out.rmd = "",sol.rmd = ""
-
+    div.id = "",
+    output.id=  "",   
+    shown.rmd = "", out.rmd = "",sol.rmd = "",
+    # These arguments deal with task.envs
+    need.task.env = FALSE,
+    change.task.env = FALSE,
+    task.env.line = NA_character_,
+    precomp.task.env = opts$precomp,
+    task.start.env.bi = NA_integer_
   )
   
   
@@ -295,7 +299,7 @@ rtutor.parse.block = function(bi,ps) {
   #fun(bi,ps)
 }
 
-rtutor.parse.addon = function(bi, ps) {
+rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
   restore.point("rtutor.parse.addon")
   
   bdf = ps$bdf; br = bdf[bi,];
@@ -319,6 +323,9 @@ rtutor.parse.addon = function(bi, ps) {
     ps$bdf$is.static[[bi]] = FALSE
   }
   ps$bdf$obj[[bi]] = list(ao=ao)
+  
+  create.bi.task.env.info(bi=bi,ps=ps,need.task.env = isTRUE(Ao$need.task.env),change.task.env = isTRUE(Ao$change.task.env),optional = TRUE,precomp.task.env = opts$precomp, opts=opts)  
+  
   return()
 }
 
