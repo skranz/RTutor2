@@ -85,7 +85,7 @@ make.user.chunk = function(ck) {
     stud.code = ck$shown.txt,
     solved = FALSE,
     test.passed = length(ck$test.expr),
-    stud.env = NULL,
+    task.env = NULL,
     log = NULL
   )
   uk

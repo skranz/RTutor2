@@ -135,47 +135,47 @@ is.false = function(val) {
   val[is.na(val)] = TRUE  
   return(!val)
 }
-new.stud.env = function(chunk.ind, ps = get.ps()) {
-  restore.point("new.stud.env")
+new.task.env = function(chunk.ind, ps = get.ps()) {
+  restore.point("new.task.env")
   
-  stud.env = new.env(parent=ps$ps.baseenv)
+  task.env = new.env(parent=ps$ps.baseenv)
   
-  #stud.env = 
-  stud.env$..chunk.ind <- chunk.ind
-  class(stud.env) = c("StudEnv",class(stud.env))
+  #task.env = 
+  task.env$..chunk.ind <- chunk.ind
+  class(task.env) = c("StudEnv",class(task.env))
   #cat("\nnew.")
-  #print(stud.env)
-  #all.parent.env(stud.env)
+  #print(task.env)
+  #all.parent.env(task.env)
   #all.parent.env(ps$ps.baseenv)
   
-  stud.env
+  task.env
 }
 
-print.StudEnv = function(stud.env,...) {
-  cat("stud.env chunk", stud.env$..chunk.ind,":")
-  env = stud.env
+print.StudEnv = function(task.env,...) {
+  cat("task.env chunk", task.env$..chunk.ind,":")
+  env = task.env
   class(env) = "environment"
   print(env)
-  obj = ls(stud.env)
+  obj = ls(task.env)
   if (length(obj)>0) {
     cat("  objects: ", paste0(obj, collapse=", "))
   }
 }
 
-copy.stud.env = function(env, new.chunk.ind=env$..chunk.ind, ps = get.ps()) {
-  restore.point("copy.stud.env")
-  stud.env = as.environment(as.list(env, all.names=TRUE))
-  parent.env(stud.env) <- ps$ps.baseenv
+copy.task.env = function(env, new.chunk.ind=env$..chunk.ind, ps = get.ps()) {
+  restore.point("copy.task.env")
+  task.env = as.environment(as.list(env, all.names=TRUE))
+  parent.env(task.env) <- ps$ps.baseenv
 
-  #all.parent.env(stud.env)
+  #all.parent.env(task.env)
   #all.parent.env(ps$ps.baseenv)
   #all.parent.env(globalenv())
-  #parent.env(stud.env) <- parent.env(globalenv())
-  stud.env$..chunk.ind = new.chunk.ind
-  class(stud.env) = c("StudEnv",class(stud.env))
-  #cat(" copy.stud.env: ")
-  #print(stud.env)
-  stud.env
+  #parent.env(task.env) <- parent.env(globalenv())
+  task.env$..chunk.ind = new.chunk.ind
+  class(task.env) = c("StudEnv",class(task.env))
+  #cat(" copy.task.env: ")
+  #print(task.env)
+  task.env
 }
 
 as.named.env = function(env, name) {
@@ -190,7 +190,7 @@ print.named.env = function(env,...) {
 }
 
 copy.named.env = function(env, name = env$..name) {
-  as.named.env(as.environment(as.list(ps$stud.env, all.names=TRUE)), name)
+  as.named.env(as.environment(as.list(ps$task.env, all.names=TRUE)), name)
 }
 
 

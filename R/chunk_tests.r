@@ -12,7 +12,7 @@
 #' @param ok.if.same.val if TRUE (not default) the call will be considered as correct, if it yields the same resulting value as the solution, even if its arguments differ.
 #' @param only.check.assign.exists if TRUE (default = FALSE) only check if an assignemnt to the lhs variable exists no matter whether the assignment is correct. May be sensible if there are additional tests specified afterwards that check some characteristics of the assigned variable.
 #' @export
-check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = "You have not yet included correctly, all required R commands in your code...", ok.if.same.val = TRUE,call.object=NULL,  s3.method=NULL,uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, stud.env = uk$stud.env, stud.expr.li = uk$stud.expr.li, verbose=FALSE, only.check.assign.exists=FALSE, noeval=opts$noeval, ...) {
+check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = "You have not yet included correctly, all required R commands in your code...", ok.if.same.val = TRUE,call.object=NULL,  s3.method=NULL,uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, stud.expr.li = uk$stud.expr.li, verbose=FALSE, only.check.assign.exists=FALSE, noeval=opts$noeval, ...) {
 
 
   ck = uk$ck
@@ -27,11 +27,11 @@ check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ign
 
   if (noeval) {
     mco.env=make.base.env()
-    stud.env = emptyenv()
+    task.env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
   } else {
-    mco.env = stud.env
+    mco.env = task.env
   }
 
 
@@ -62,12 +62,12 @@ check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ign
 
   # Check if a student rhs has the same return value as ce.rhs
   if (ok.if.same.val & !noeval) {
-    check.val = eval(ce.rhs, stud.env)
+    check.val = eval(ce.rhs, task.env)
     ok = FALSE
     if (length(se.rhs.li)>1) {
       for (se.rhs in se.rhs.li) {
         tryCatch({
-          sval = eval(se.rhs,stud.env)
+          sval = eval(se.rhs,task.env)
           if (is.same(check.val,sval)) {
             ok <- TRUE
             break
@@ -76,7 +76,7 @@ check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ign
       }
     } else {
       tryCatch({
-          sval = eval(var.expr,stud.env)
+          sval = eval(var.expr,task.env)
           if (is.same(check.val,sval)) {
               ok <- TRUE
           }
@@ -89,7 +89,7 @@ check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ign
     }
   }
 
-  ret = internal.check.call(ce.rhs,dce.rhs, se.rhs.li,stud.env,allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
+  ret = internal.check.call(ce.rhs,dce.rhs, se.rhs.li,task.env,allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
   if (ret[[1]]==TRUE) {
      success.message = paste0("Great,",part.str," you correctly assigned ", var, " = ",ret[[2]],"!")
      add.success(log,success.message)
@@ -110,17 +110,17 @@ check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ign
 #' @param ignore.arg a vector of argument names that will be ignored when checking correctness
 #' @param ok.if.same.val if TRUE (not default) the call will be considered as correct, if it yields the same resulting value as the solution, even if its arguments differ.
 #' @export
-check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = NULL, ok.if.same.val = FALSE,s3.method=NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, stud.env = uk$stud.env, stud.expr.li = uk$stud.expr.li, verbose=FALSE, noeval=opts$noeval, ...) {
+check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, ignore.arg=NULL, success.message=NULL, failure.message = NULL,no.command.failure.message = NULL, ok.if.same.val = FALSE,s3.method=NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, stud.expr.li = uk$stud.expr.li, verbose=FALSE, noeval=opts$noeval, ...) {
 
   ck = uk$ck
   expr = call = substitute(call)
   if (noeval) {
     mco.env = make.base.env()
-    stud.env = emptyenv()
+    task.env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
   } else {
-    mco.env = stud.env
+    mco.env = task.env
   }
   # restore.point can lead to error
   restore.point("check.call")
@@ -138,11 +138,11 @@ check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, igno
 
   # Check if a student call with the same name has the same return value
   if (ok.if.same.val) {
-    check.val <- eval(ce, stud.env)
+    check.val <- eval(ce, task.env)
     ok = FALSE
     for (se in stud.expr.li) {
       tryCatch({
-        sval <- eval(se,stud.env)
+        sval <- eval(se,task.env)
         if (is.same(check.val,sval)) {
           ok <- TRUE
           break
@@ -159,7 +159,7 @@ check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, igno
   stud.expr.li = lapply(stud.expr.li, function(e) match.call.object(e, envir=mco.env, s3.method=s3.method))
 
 
-  ret = internal.check.call(ce,dce, stud.expr.li,stud.env, allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
+  ret = internal.check.call(ce,dce, stud.expr.li,task.env, allow.extra.arg=allow.extra.arg, ignore.arg=ignore.arg, check.arg.by.value=check.arg.by.value, noeval=noeval)
   if (ret[[1]]==TRUE) {
      success.message = paste0("Great,",part.str," you correctly called the command: ",ret[[2]])
      add.success(log,success.message)
@@ -173,7 +173,7 @@ check.call = function(call, check.arg.by.value=TRUE, allow.extra.arg=FALSE, igno
   }
 }
 
-internal.check.call = function(ce,dce, stud.expr.li,stud.env, allow.extra.arg=FALSE, ignore.arg=NULL,check.arg.by.value=TRUE, noeval=FALSE) {
+internal.check.call = function(ce,dce, stud.expr.li,task.env, allow.extra.arg=FALSE, ignore.arg=NULL,check.arg.by.value=TRUE, noeval=FALSE) {
   restore.point("internal.check.call")
   check.na = dce$name
   stud.na = sapply(stud.expr.li,  name.of.call)
@@ -198,7 +198,7 @@ internal.check.call = function(ce,dce, stud.expr.li,stud.env, allow.extra.arg=FA
     # Environment in which argument values shall be evaluated. Is a data frame
     # if the function is a dplyer function like mutate(dat,...)
     if (check.arg.by.value) {
-      val.env = stud.env
+      val.env = task.env
       if (is.dplyr.fun(check.na)) {
         val.env = eval(dce$arg[[".data"]],val.env)
       }
@@ -221,12 +221,12 @@ internal.check.call = function(ce,dce, stud.expr.li,stud.env, allow.extra.arg=FA
       return(list(FALSE, "not found"))
     }
 
-    check.val = eval(ce, stud.env)
+    check.val = eval(ce, task.env)
 
     se = stud.expr.li[[1]]
     for (se in stud.expr.li) {
       has.error = FALSE
-      tryCatch( stud.val <- eval(se, stud.env),
+      tryCatch( stud.val <- eval(se, task.env),
         error = function(e) has.error <<- TRUE
       )
       if (!has.error) {
@@ -274,9 +274,9 @@ check.function({
 #' @param check.args.order if TRUE make sure that the checked arguments appear in the same order in the user function than in the solution
 #' @param allow.extra.arg if TRUE the user function can have additional arguments (at the end) that are not in the solution
 #' @export
-check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, check.args.order=TRUE, allow.extra.arg = TRUE, ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE, part = NULL) {
+check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, check.args.order=TRUE, allow.extra.arg = TRUE, ps=get.ps(),task.env = ps$task.env, verbose=FALSE, part = NULL) {
 
-  test.calls = eval(substitute(alist(...)), stud.env)
+  test.calls = eval(substitute(alist(...)), task.env)
 
   code = substitute(code)
 
@@ -285,12 +285,12 @@ check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, ch
 
   part.str = if (isTRUE(ps$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
 
-  env = new.env(parent=stud.env)
+  env = new.env(parent=task.env)
   eval(code,env)
   fun.name = ls(env)[1]
   sol.fun = get(fun.name,env)
 
-  if (!exists(fun.name,stud.env, inherits=FALSE)) {
+  if (!exists(fun.name,task.env, inherits=FALSE)) {
     short.failure = paste0(fun.name, " does not exist.")
     failure.message = paste0("You have not yet created the function ",fun.name, part.str, ".")
     add.failure(log,short.failure,failure.message, var = var)
@@ -299,7 +299,7 @@ check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, ch
 
   # Check the function's arguments
 
-  stud.fun = get(fun.name,stud.env)
+  stud.fun = get(fun.name,task.env)
   stud.args = formals(stud.fun)
   sol.args = formals(sol.fun)
 
@@ -335,8 +335,8 @@ check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, ch
   }
 
   # Test calls
-  stud.tenv = new.env(parent=stud.env)
-  sol.tenv = new.env(parent=stud.env)
+  stud.tenv = new.env(parent=task.env)
+  sol.tenv = new.env(parent=task.env)
   assign(fun.name, sol.fun,sol.tenv)
 
   i = 1
@@ -416,7 +416,7 @@ check.file.exists = function(
 
 #' Check whether an object from a call to lm, glm or some other regression function is correct
 #' @export
-check.regression = function(var, str.expr, part=NULL, ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE,  failure.message = paste0("Hmm... your regression ", var," seems incorrect."), success.message = paste0("Great, your regression ", var," looks correct."), tol = 1e-10) {
+check.regression = function(var, str.expr, part=NULL, ps=get.ps(),task.env = ps$task.env, verbose=FALSE,  failure.message = paste0("Hmm... your regression ", var," seems incorrect."), success.message = paste0("Great, your regression ", var," looks correct."), tol = 1e-10) {
   restore.point("check.regression")
 
   ret = check.variable(var,str.expr=str.expr,check.all=FALSE,exists=TRUE, class=TRUE)
@@ -452,7 +452,7 @@ check.regression = function(var, str.expr, part=NULL, ps=get.ps(),stud.env = ps$
 check.expr = function(check.expr, correct.expr,
     failure.message = "{{check_expr}} has the wrong values!",
     success.message = "Great, {{check_expr}} seems correct.",
-    part =NULL, ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE,
+    part =NULL, ps=get.ps(),task.env = ps$task.env, verbose=FALSE,
     unsubst.check.expr = NULL, unsubst.correct.expr=NULL,
     str.check.expr=NULL,str.correct.expr=NULL,
     tol = .Machine$double.eps ^ 0.5) {
@@ -473,8 +473,8 @@ check.expr = function(check.expr, correct.expr,
     correct.expr = substitute(correct.expr)
   }
 
-  val.check = eval(check.expr,stud.env)
-  val.sol = eval(correct.expr,stud.env)
+  val.check = eval(check.expr,task.env)
+  val.sol = eval(correct.expr,task.env)
 
   check.expr.str = deparse1(check.expr)
 
@@ -502,7 +502,7 @@ check.expr = function(check.expr, correct.expr,
   return(TRUE)
 }
 
-check.class = function(expr, classes,unsubst.expr=NULL, str.expr=NULL, ps=get.ps(),stud.env = ps$stud.env, part=NULL) {
+check.class = function(expr, classes,unsubst.expr=NULL, str.expr=NULL, ps=get.ps(),task.env = ps$task.env, part=NULL) {
 
   if (!is.null(unsubst.expr)) {
     expr = unsubst.expr
@@ -512,7 +512,7 @@ check.class = function(expr, classes,unsubst.expr=NULL, str.expr=NULL, ps=get.ps
     expr = substitute(expr)
   }
 
-  class = class(eval(expr,envir=stud.env))
+  class = class(eval(expr,envir=task.env))
   if (any(class %in% classes))
     return(TRUE)
 
@@ -544,7 +544,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
     failure.values = "Column {{col}} of {{df}} has wrong values.",
     failure.message.add = NULL,
     success.message = "Great, column {{col}} of {{df}} has correct {{tests}}.",part=NULL,
-    ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE,unsubst.expr = NULL, str.expr = NULL) {
+    ps=get.ps(),task.env = ps$task.env, verbose=FALSE,unsubst.expr = NULL, str.expr = NULL) {
 
 
   if (!is.null(unsubst.expr)) {
@@ -561,7 +561,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
   ret = check.variable(df,check.all=FALSE,exists =TRUE)
   if (!ret) return(FALSE)
 
-  dat =  get(df,stud.env)
+  dat =  get(df,task.env)
 
   if (!is.null(failure.message.add)) {
     failure.exists = paste0(failure.exists,"\n", failure.message.add)
@@ -570,7 +570,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
     failure.values = paste0(failure.values,"\n", failure.message.add)
   }
 
-  var.sol = list(eval(expr,stud.env))
+  var.sol = list(eval(expr,task.env))
 
   if (exists != FALSE) {
     if (is.character(col)) {
@@ -628,8 +628,8 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
 }
 
 
-check.var.exists = function(var, ps=get.ps(),stud.env = ps$stud.env) {
-  if (!exists(var,stud.env, inherits=FALSE)) {
+check.var.exists = function(var, ps=get.ps(),task.env = ps$task.env) {
+  if (!exists(var,task.env, inherits=FALSE)) {
       msg = paste0("You have not yet generated the variable '", var,"'.")
       add.failure(log,msg, var = var)
       return(FALSE)
@@ -651,22 +651,22 @@ check.variable = function(var, expr, length=check.all,dim=check.all, class=check
   failure.class = "Your variable {{var}} has a wrong class. It should be {{class_sol}} but it is {{class_stud}}.",
   failure.values = "Your variable {{var}} has wrong values.",
   success.message = "Great, {{var}} has correct {{tests}}.",
-  ps=get.ps(),stud.env = ps$stud.env, verbose=FALSE, part=NULL) {
+  ps=get.ps(),task.env = ps$task.env, verbose=FALSE, part=NULL) {
 
   expr = substitute(expr)
   restore.point("check.variable")
 
 
-  if (!exists(var,stud.env, inherits=FALSE)) {
+  if (!exists(var,task.env, inherits=FALSE)) {
       short.message = paste0("{{var}} does not exist")
       add.failure(log,failure.exists, var = var)
       return(FALSE)
   }
 
-  sol.env = new.env(parent = stud.env)
+  sol.env = new.env(parent = task.env)
 
   var.sol = suppressWarnings(eval(expr,sol.env))
-  var.stud = get(var,stud.env)
+  var.stud = get(var,task.env)
   if (length != FALSE) {
     short.message = paste0("wrong length {{var}}: is {{length_stud}} must {{length_sol}}")
     if (!length(var.stud)==length(var.sol)) {
@@ -798,7 +798,7 @@ sigma.test = function (x, sigma = 1, sigmasq = sigma^2,
 
 #' Test whether a certain H0 can be significantly rejected
 #'
-#' @param test.expr an expression that calls a test which will be evaluated in stud.env. The test must return a list that contains a field "p.value"
+#' @param test.expr an expression that calls a test which will be evaluated in task.env. The test must return a list that contains a field "p.value"
 #' @param p.value Instead of providing test.expr, one can directly provide a p.value from a previously run test
 #' @param test.name an optional test.name that can be used to fill the {{test_name}} whiskers in warning or failure messages.
 #' @param alpha.failure default=0.001 the critical p.value below which the stud code is considered wrong
@@ -813,7 +813,7 @@ test.H0.rejected = function(test.expr,p.value,test.name="",
   warning.message="The null hypothesis from the test '{{test_name}}', should not be rejcected, but I get a fairly low p.value of {{p_value}}.",
   failure.message="I couldn't significantly reject the null hypothesis from the test '{{test_name}}', p.value = {{p_value}}",
   success.message = "Great, I could significantly reject the null hypothesis from the test '{{test_name}}', p.value = {{p_value}}!",
-  check.warning=TRUE, ps=get.ps(),stud.env = ps$stud.env, part=NULL,...)
+  check.warning=TRUE, ps=get.ps(),task.env = ps$task.env, part=NULL,...)
 {
 
 
@@ -824,7 +824,7 @@ test.H0.rejected = function(test.expr,p.value,test.name="",
     }
   }
   if (missing(p.value)) {
-    test.res = eval(test.expr, stud.env)
+    test.res = eval(test.expr, task.env)
     p.value = test.res$p.value
   }
   if (p.value > alpha.failure) {
@@ -843,7 +843,7 @@ test.H0.rejected = function(test.expr,p.value,test.name="",
 }
 
 #' Check whether a certain null hypothesis is not significantly rejected
-#' @param test.expr an expression that calls a test which will be evaluated in stud.env. The test must return a list that contains a field "p.value"
+#' @param test.expr an expression that calls a test which will be evaluated in task.env. The test must return a list that contains a field "p.value"
 #' @param p.value Instead of providing test.expr, one can directly provide a p.value from a previously run test
 #' @param test.name an optional test.name that can be used to fill the {{test_name}} whiskers in warning or failure messages.
 #' @param alpha.failure default=0.001 the critical p.value below which the stud code is considered wrong
@@ -858,7 +858,7 @@ test.H0 = function(test.expr,p.value,test.name="",
                    success.message = "Great, I could not significantly reject the null hypothesis from the test '{{test_name}}', p.value = {{p_value}}!",
 
                   check.warning=TRUE, part=NULL,
-                  ps=get.ps(),stud.env = ps$stud.env,...) {
+                  ps=get.ps(),task.env = ps$task.env,...) {
 
 
   #browser()
@@ -869,7 +869,7 @@ test.H0 = function(test.expr,p.value,test.name="",
     }
   }
   if (missing(p.value)) {
-    test.res = eval(test.expr, stud.env)
+    test.res = eval(test.expr, task.env)
     p.value = test.res$p.value
   }
   if (missing(short.message)) {
@@ -898,7 +898,7 @@ test.H0 = function(test.expr,p.value,test.name="",
 
 #' Test: The variance of the distribution from which a vector of random numbers has been drawn
 #' @export
-test.variance = function(vec, true.val, test = "t.test",short.message,warning.message,failure.message, success.message = "Great, I cannot statistically reject that {{var}} has the desired variance {{vari_sol}}!", ps=get.ps(),stud.env = ps$stud.env,part=NULL,...) {
+test.variance = function(vec, true.val, test = "t.test",short.message,warning.message,failure.message, success.message = "Great, I cannot statistically reject that {{var}} has the desired variance {{vari_sol}}!", ps=get.ps(),task.env = ps$task.env,part=NULL,...) {
   call.str = as.character(match.call())
 
   var.name = call.str[2]
@@ -922,7 +922,7 @@ test.variance = function(vec, true.val, test = "t.test",short.message,warning.me
 
 #' Test: The mean of the distribution from which a vector of random numbers has been drawn
 #' @export
-test.mean = function(vec, true.val, test = "t.test", short.message,warning.message,failure.message, success.message = "Great, I cannot statistically reject that {{var}} has the desired mean of {{mean_sol}}!", ps=get.ps(),stud.env = ps$stud.env,part=NULL,...) {
+test.mean = function(vec, true.val, test = "t.test", short.message,warning.message,failure.message, success.message = "Great, I cannot statistically reject that {{var}} has the desired mean of {{mean_sol}}!", ps=get.ps(),task.env = ps$task.env,part=NULL,...) {
   call.str = as.character(match.call())
 
   stopifnot(test=="t.test")
@@ -945,7 +945,7 @@ test.mean = function(vec, true.val, test = "t.test", short.message,warning.messa
 
 #' Test: Has a vector of random numbers been drawn from a normal distribution?
 #' @export
-test.normality = function(vec,short.message,warning.message,failure.message,ps=get.ps(),stud.env = ps$stud.env, success.message = "Great, I cannot statistically reject that {{var}} is indeed normally distributed!",part=NULL,...) {
+test.normality = function(vec,short.message,warning.message,failure.message,ps=get.ps(),task.env = ps$task.env, success.message = "Great, I cannot statistically reject that {{var}} is indeed normally distributed!",part=NULL,...) {
   call.str = as.character(match.call())
   restore.point("test.normality")
 
@@ -971,7 +971,7 @@ test.normality = function(vec,short.message,warning.message,failure.message,ps=g
 
 #' Test: Does a certain condition on the stud's generated variables hold true
 #' @export
-holds.true = function(cond, short.message = failure.message,failure.message="Failure in holds.true",success.message="Great, the condition {{cond}} holds true in your solution!",part=NULL,ps=get.ps(),stud.env = ps$stud.env, cond.str=NULL,...) {
+holds.true = function(cond, short.message = failure.message,failure.message="Failure in holds.true",success.message="Great, the condition {{cond}} holds true in your solution!",part=NULL,ps=get.ps(),task.env = ps$task.env, cond.str=NULL,...) {
 
   
   if (is.null(cond.str)) {
@@ -982,7 +982,7 @@ holds.true = function(cond, short.message = failure.message,failure.message="Fai
   }
   restore.point("holds.true")
 
-  if (!all(eval(cond,stud.env))) {
+  if (!all(eval(cond,task.env))) {
     add.failure(log,failure.message,cond=cond.str,...)
     return(FALSE)
   }

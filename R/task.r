@@ -15,7 +15,7 @@
 #
 # - Each task should have a unique id, if not provided in the rmd, we should create one
 #
-# - Tasks may or may not change the stud.env. This depends on task type and options.
+# - Tasks may or may not change the task.env. This depends on task type and options.
 #
 # - task.state: user specific state of a task
 #
@@ -32,7 +32,7 @@
 #       information. The structure of the task state depends on the task object.
 #       For a chunk, the task state could contain the user code and information
 #       about which tests are passed.
-#     - Tasks that can change stud.env have a post task environment.
+#     - Tasks that can change task.env have a post task environment.
 #     - Task states and environments may be stored in ups
 #       or in separate files or they may not be stored.
 #
@@ -121,7 +121,7 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
 
 get.task.env = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps()) {
   ts = get.ts(task.ind)
-  if (ts$stype=="task_chunk") return(ts$stud.env)
+  if (ts$stype=="task_chunk") return(ts$task.env)
   return(NULL)
 }
 

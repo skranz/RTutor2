@@ -186,7 +186,7 @@ export.solution = function(rmd.file =paste0(ps$name,"_",user.name,"_export.rmd")
 
   export.to.rmd(rmd.file)
   if (copy.into.global)
-    copy.into.env(source=ps$stud.env, dest=globalenv())
+    copy.into.env(source=ps$task.env, dest=globalenv())
   return(rmd.file)
 }
 

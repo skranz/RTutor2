@@ -243,7 +243,7 @@ make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
   buttonHandler(nali$editBtn, edit.shiny.chunk, uk=uk)
 }
 
-run.shiny.chunk = function(uk, envir = uk$stud.env, code=uk$stud.code, opts=rt.opts(),...) {
+run.shiny.chunk = function(uk, envir = uk$task.env, code=uk$stud.code, opts=rt.opts(),...) {
   restore.point("run.shiny.chunk")
   ck = uk$ck
   if (opts$in.R.console) {
@@ -253,7 +253,7 @@ run.shiny.chunk = function(uk, envir = uk$stud.env, code=uk$stud.code, opts=rt.o
   }
 }
 
-run.line.shiny.chunk = function(uk, envir=uk$stud.env, cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp(), opts=rt.opts()) {
+run.line.shiny.chunk = function(uk, envir=uk$task.env, cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp(), opts=rt.opts()) {
   restore.point("run.line.shiny.chunk")
 
   uk$stud.code = code
@@ -333,7 +333,7 @@ proceed.with.successfuly.checked.chunk = function(uk,opts=rt.opts()) {
   # if (is.last.chunk.of.ex(chunk.ind)) {
   #   ex.ind = ps$cdt$ex.ind[chunk.ind]
   #   if (!isTRUE(ps$precomp))
-  #     ps$edt$ex.final.env[[ex.ind]] = copy.stud.env(ps$stud.env)
+  #     ps$edt$ex.final.env[[ex.ind]] = copy.task.env(ps$task.env)
   # }
   
   uk$mode = "output"
@@ -375,7 +375,7 @@ hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=
 
 help.shiny.chunk = function(uk, cursor=NULL, selection="",..., app=getApp()) {
   set.shiny.chunk(chunk.ind, cursor=cursor, selection=selection)
-  envir=uk$stud.env; in.R.console=is.null(uk$nali$console)
+  envir=uk$task.env; in.R.console=is.null(uk$nali$console)
   restore.point("help.shiny.chunk")
 
   if (selection == "") {
@@ -498,7 +498,7 @@ chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.chunk.
   library(knitr)
   library(markdown)
   txt = c(header,sep.lines(txt),"```")
-  #all.parent.env(stud.env)
+  #all.parent.env(task.env)
   html ="Evaluation error!"
   if (opts$use.secure.eval) {
     html = try(

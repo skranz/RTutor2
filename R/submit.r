@@ -65,7 +65,7 @@ make.submission = function(ps=get.ps(), user.name=get.user.name(),  ps.name=ps$p
       ret = check.exercise(ex.ind=i, verbose=verbose, check.all=TRUE)
     }
     # Copy variables into global env
-    copy.into.envir(source=ps$stud.env,dest=.GlobalEnv, set.fun.env.to.dest=TRUE)
+    copy.into.envir(source=ps$task.env,dest=.GlobalEnv, set.fun.env.to.dest=TRUE)
     save.ups()
     if (ret==FALSE) {
       edt$ex.solved[i] = FALSE

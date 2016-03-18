@@ -105,7 +105,7 @@ Note: use / instead of \\ to separate folders in 'ps.dir'")
       ret = check.exercise(ex.ind=i, verbose=verbose)
     }
     # Copy variables into global env
-    copy.into.envir(source=ps$stud.env,dest=.GlobalEnv, set.fun.env.to.dest=TRUE)
+    copy.into.envir(source=ps$task.env,dest=.GlobalEnv, set.fun.env.to.dest=TRUE)
     save.ups()
     if (ret==FALSE) {
       edt$ex.solved[i] = FALSE
@@ -165,9 +165,9 @@ check.exercise = function(ex.ind, verbose = FALSE, ps=get.ps(), check.all=FALSE)
   }
   if (NROW(ps$edt)==1) {
     # otherwise data.table throws strange error
-    ps$edt$ex.final.env[[ex.ind]] = list(copy(ps$stud.env))
+    ps$edt$ex.final.env[[ex.ind]] = list(copy(ps$task.env))
   } else {
-    ps$edt$ex.final.env[[ex.ind]] = copy(ps$stud.env)
+    ps$edt$ex.final.env[[ex.ind]] = copy(ps$task.env)
   }
   return(TRUE)
 }
@@ -283,8 +283,8 @@ get.stud.chunk.code = function(txt = ps$stud.code,chunks = ps$cdt$chunk.name, ps
 }
 
 
-make.chunk.stud.env = function(chunk.ind, ps = get.ps()) {
-  restore.point("make.chunk.stud.env")
+make.chunk.task.env = function(chunk.ind, ps = get.ps()) {
+  restore.point("make.chunk.task.env")
 
   # return emptyenv if no student code
   # shall ever be evaluated
@@ -295,8 +295,8 @@ make.chunk.stud.env = function(chunk.ind, ps = get.ps()) {
 
   # return precomputed chunkenv
   if (isTRUE(ps$precomp)) {
-    stud.env = copy.stud.env(ps$cdt$stud.env[[chunk.ind]], chunk.ind)
-    return(stud.env)
+    task.env = copy.task.env(ps$cdt$task.env[[chunk.ind]], chunk.ind)
+    return(task.env)
   }
 
 
@@ -318,24 +318,24 @@ make.chunk.stud.env = function(chunk.ind, ps = get.ps()) {
 
 
   if (start.ex) {
-    # First chunk in exercise: generate new stud.env
-    stud.env = new.stud.env(chunk.ind)
-    import.var.into.stud.env(ps$edt$import.var[[ck$ex.ind]], stud.env,ps)
+    # First chunk in exercise: generate new task.env
+    task.env = new.task.env(chunk.ind)
+    import.var.into.task.env(ps$edt$import.var[[ck$ex.ind]], task.env,ps)
 
   } else {
-    # Later chunk in an exercise: simply copy previous stud.env
-    stud.env = copy.stud.env(ps$cdt$stud.env[[parent.ind]], chunk.ind)
+    # Later chunk in an exercise: simply copy previous task.env
+    task.env = copy.task.env(ps$cdt$task.env[[parent.ind]], chunk.ind)
   }
-  stud.env
+  task.env
 }
 
 
-# Import variables from other exercises stud.env's
-import.var.into.stud.env = function(import.var, dest.env, ps = get.ps()) {
-  restore.point("import.var.into.stud.env")
+# Import variables from other exercises task.env's
+import.var.into.task.env = function(import.var, dest.env, ps = get.ps()) {
+  restore.point("import.var.into.task.env")
   if (is.null(import.var))
     return(NULL)
-  restore.point("import.var.into.stud.env2")
+  restore.point("import.var.into.task.env2")
 
   #stop("jbhgbhbdgh")
   i = 1

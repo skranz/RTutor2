@@ -20,7 +20,7 @@ empty.log = function() {
 #' @param uk the user chunk object; an environment that will be adapted
 #' @details Returns the modified uk with all information from the check. uk$passed denotes whether all checks where passed or not. Note that the uk object and only the uk object will be modified to store all relevant information from the check. Saving ups or giving awards must be separately performed afterwards
 #' @export
-check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=opts$verbose, use.secure.eval = opts$use.secure.eval) {
+check.chunk = function(uk, stud.code=uk$stud.code, task.env=get.fresh.chunk.env(uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=opts$verbose, use.secure.eval = opts$use.secure.eval) {
   restore.point("check.chunk")
 
   opts$noeval = noeval
@@ -48,7 +48,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
 
   uk$has.error = uk$had.warning = has.error = FALSE
   uk$stud.expr.li = NULL
-  uk$stud.env = stud.env
+  uk$task.env = task.env
   
   if (length(ck$test.expr)==0) {
     log$success.message = ""
@@ -86,7 +86,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
   }
 
   if (verbose) {
-    display("make.chunk.stud.env...")
+    display("make.chunk.task.env...")
   }
   has.error = FALSE
   uk$stud.seed = as.integer(Sys.time())
@@ -105,7 +105,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
   # relevant for hint
   uk$e.ind = 0
 
-  res = check.chunk.eval.part(uk=uk, log=log, stud.env=stud.env,opts=opts, store.output=store.output, verbose=verbose)
+  res = check.chunk.eval.part(uk=uk, log=log, task.env=task.env,opts=opts, store.output=store.output, verbose=verbose)
   
   uk$solved = uk$passed
   uk$points = uk$ck$max.points * uk$solved
@@ -127,7 +127,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, stud.env=get.fresh.chunk.env(
 # the part of check chunk that performs evaluations of student code
 # we put in a separate function in order to easier wrap it inside a 
 # secure.eval call when RAppArmor is used.
-check.chunk.eval.part = function(uk,log, stud.env, opts, store.output,verbose=FALSE) {
+check.chunk.eval.part = function(uk,log, task.env, opts, store.output,verbose=FALSE) {
   restore.point("check.chunk.eval.part")
   ck = uk$ck
   # run student code in student.env
@@ -136,7 +136,7 @@ check.chunk.eval.part = function(uk,log, stud.env, opts, store.output,verbose=FA
     # storing output slows down checking of chunk if large
     # data frame is shown
     if (!store.output) log$chunk.console.out=""
-    has.error = !stepwise.eval.stud.expr(stud.expr=uk$stud.expr.li,stud.env=stud.env, log=log, store.output=store.output)
+    has.error = !stepwise.eval.stud.expr(stud.expr=uk$stud.expr.li,task.env=task.env, log=log, store.output=store.output)
     if (has.error) {
       uk$has.error = TRUE
       return(FALSE)
@@ -198,7 +198,7 @@ update.log.test.result = function(...) {
   return()
 }
 
-stepwise.eval.stud.expr = function(stud.expr, stud.env = uk$stud.env, log=uk$log, uk=NULL, seed=NULL, store.output = TRUE, source=NULL, opts=rt.opts()) {
+stepwise.eval.stud.expr = function(stud.expr, task.env = uk$task.env, log=uk$log, uk=NULL, seed=NULL, store.output = TRUE, source=NULL, opts=rt.opts()) {
   restore.point("stepwise.eval.stud.expr")
   if (!is.null(seed))
     set.seed(seed)
@@ -224,7 +224,7 @@ stepwise.eval.stud.expr = function(stud.expr, stud.env = uk$stud.env, log=uk$log
     part.expr = stud.expr[[i]]
 
     if (!store.output) {
-      tryCatch( eval(part.expr, stud.env),error = err.fun)
+      tryCatch( eval(part.expr, task.env),error = err.fun)
     } else {
       if (is.null(source)) {
         add("> ",deparse1(part.expr, collapse="\n+"))
@@ -232,7 +232,7 @@ stepwise.eval.stud.expr = function(stud.expr, stud.env = uk$stud.env, log=uk$log
         add("> ",paste0(li$source[[i]], collapse="\n+ "))
       }
       out = NULL
-      tryCatch(out <- capture.output(eval(part.expr, stud.env)),error = err.fun)
+      tryCatch(out <- capture.output(eval(part.expr, task.env)),error = err.fun)
       if (length(out)>0) add(out)
     }
     if (has.error) {

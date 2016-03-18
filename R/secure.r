@@ -7,7 +7,7 @@ secure.base.env = function(ps=get.ps()) {
 }
 
 # Run check.chunk within RAppArmor eval.secure
-secure.check.chunk = function(chunk.ind, verbose=FALSE,stud.code=ps$cdt$stud.code[[chunk.ind]], stud.env=make.chunk.stud.env(chunk.ind, ps), expect.change = FALSE, store.output=TRUE, noeval = isTRUE(ps$noeval), precomp=isTRUE(ps$precomp), ..., ps = get.ps()) {
+secure.check.chunk = function(chunk.ind, verbose=FALSE,stud.code=ps$cdt$stud.code[[chunk.ind]], task.env=make.chunk.task.env(chunk.ind, ps), expect.change = FALSE, store.output=TRUE, noeval = isTRUE(ps$noeval), precomp=isTRUE(ps$precomp), ..., ps = get.ps()) {
 
   restore.point("secure.check.chunk")
   
@@ -67,8 +67,8 @@ secure.check.chunk = function(chunk.ind, verbose=FALSE,stud.code=ps$cdt$stud.cod
     }
   }
 
-  ps$stud.env = stud.env
-  ps$cdt$stud.env[[chunk.ind]] = stud.env
+  ps$task.env = task.env
+  ps$cdt$task.env[[chunk.ind]] = task.env
 
   ps$stud.seed = as.integer(Sys.time())
   set.seed(ps$stud.seed)
@@ -83,7 +83,7 @@ secure.check.chunk = function(chunk.ind, verbose=FALSE,stud.code=ps$cdt$stud.cod
 
     
   if (is(res,"try-error")) {
-    res = list(ok=FALSE, ps.fields=list(failure.message=ps$failure.message, success.message="", success.log=NULL, e.ind=0, tdt.ind=0, stud.env=ps$stud.env, chunk.console.out=as.character(res)))
+    res = list(ok=FALSE, ps.fields=list(failure.message=ps$failure.message, success.message="", success.log=NULL, e.ind=0, tdt.ind=0, task.env=ps$task.env, chunk.console.out=as.character(res)))
   }
   
   
@@ -99,8 +99,8 @@ secure.check.chunk = function(chunk.ind, verbose=FALSE,stud.code=ps$cdt$stud.cod
   ps$tdt.ind = as.integer(fields$tdt.ind)
   
   ps$cdt$is.solved[[chunk.ind]] = isTRUE(res$ok)
-  # copy stud.env
-  copy.into.env(dest=ps$stud.env, source=fields$stud.env)
+  # copy task.env
+  copy.into.env(dest=ps$task.env, source=fields$task.env)
   
   ck = ps$cdt[chunk.ind,]
   
@@ -142,7 +142,7 @@ inner.secure.check.chunk = function(chunk.ind=ps$chunk.ind,ps=get.ps(), verbose=
 #     
 #   cat("\ninner.secure.check.chunk\n chunk.ind:", chunk.ind,"\n")
 
-  stud.env = ps$stud.env
+  task.env = ps$task.env
   ck = ps$cdt[chunk.ind,]
 
   
@@ -159,9 +159,9 @@ inner.secure.check.chunk = function(chunk.ind=ps$chunk.ind,ps=get.ps(), verbose=
   ps$e.ind = 0
   has.error = FALSE
 
-  # run student code in stud.env
+  # run student code in task.env
   if (!isTRUE(ps$noeval)) {
-    has.error = !stepwise.eval.stud.expr(stud.expr=ps$stud.expr.li,stud.env=stud.env, store.output=FALSE)
+    has.error = !stepwise.eval.stud.expr(stud.expr=ps$stud.expr.li,task.env=task.env, store.output=FALSE)
     if (has.error) {
       return(inner.secure.check.chunk.return(FALSE))
     }
@@ -219,7 +219,7 @@ inner.secure.check.chunk = function(chunk.ind=ps$chunk.ind,ps=get.ps(), verbose=
 inner.secure.check.chunk.return = function(ok, ps = get.ps()) {
   list(ok=ok,
     ps.fields = list(
-      success.message=ps$success.message, failure.message=ps$failure.message, success.log=ps$success.log, e.ind = ps$e.ind, tdt.ind = ps$tdt.ind, stud.env=ps$stud.env, chunk.console.out = ps$chunk.console.out, chunk.ind = ps$chunk.ind
+      success.message=ps$success.message, failure.message=ps$failure.message, success.log=ps$success.log, e.ind = ps$e.ind, tdt.ind = ps$tdt.ind, task.env=ps$task.env, chunk.console.out = ps$chunk.console.out, chunk.ind = ps$chunk.ind
     )
   )
 }

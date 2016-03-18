@@ -329,29 +329,29 @@ rerun.solved.chunks = function(ps = get.ps()) {
   for (chunk.ind in inds) {
     #cat("\n rerun chunk", chunk.ind)
     ps$chunk.ind = chunk.ind
-    ps$stud.env = make.chunk.stud.env(chunk.ind, ps)
-    if (is.null(ps$stud.env)) {
+    ps$task.env = make.chunk.task.env(chunk.ind, ps)
+    if (is.null(ps$task.env)) {
       stop(ps$failure.message)
     }
-    ps$cdt$stud.env[[chunk.ind]] <- ps$stud.env
+    ps$cdt$task.env[[chunk.ind]] <- ps$task.env
     code = ps$cdt$stud.code[[chunk.ind]]
 
     if (!is.false(ps$catch.errors)) {
       ok = tryCatch({
-        out <- rtutor.eval.to.string(code,ps$stud.env)
+        out <- rtutor.eval.to.string(code,ps$task.env)
         TRUE
       }, error = function(e) {
         message(as.character(e))
         FALSE
       })
     } else {
-      out <- rtutor.eval.to.string(code,ps$stud.env)
+      out <- rtutor.eval.to.string(code,ps$task.env)
     }
     if (!ok)
       break
     if (is.last.chunk.of.ex(chunk.ind)) {
       ex.ind = ps$cdt$ex.ind[chunk.ind]
-      ps$edt$ex.final.env[[ex.ind]] = copy.stud.env(ps$stud.env)
+      ps$edt$ex.final.env[[ex.ind]] = copy.task.env(ps$task.env)
     }
   }
   # Could not rerun a chunk that was supposed to be solved

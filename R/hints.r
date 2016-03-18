@@ -78,7 +78,7 @@ hint = function(..., ps=get.ps()) {
 # run hint for chunk uk; uses no ps information
 # TO DO: Need to think about good envir, uk and opts will be drawn
 #        from the parent.frame
-run.chunk.hint = function(uk,envir=uk$stud.env, opts=rt.opts(), no.hint.if.passed=!is.false(opts$no.hint.if.passed)) {
+run.chunk.hint = function(uk,envir=uk$task.env, opts=rt.opts(), no.hint.if.passed=!is.false(opts$no.hint.if.passed)) {
   restore.point("run.chunk.hint")
 
   ck = uk$ck
@@ -179,17 +179,17 @@ hint.for.function = function(code, ...,uk=parent.frame()$uk, opts=parent.frame()
 
   #stop()
   part.str = ""
-  stud.env = uk$stud.env
-  env = new.env(parent=uk$stud.env)
+  task.env = uk$task.env
+  env = new.env(parent=uk$task.env)
   eval(code,env)
   fun.name = ls(env)[1]
   sol.fun = get(fun.name,env)
 
-  if (!exists(fun.name, stud.env)) {
+  if (!exists(fun.name, task.env)) {
     display("You must assign a function to the variable ", fun.name)
     return()
   }
-  stud.fun = get(fun.name, stud.env)
+  stud.fun = get(fun.name, task.env)
   if (!is.function(stud.fun)) {
     display("You must assign a function to the variable ", fun.name)
     return()
@@ -220,7 +220,7 @@ hint.for.function = function(code, ...,uk=parent.frame()$uk, opts=parent.frame()
 
 #' Default hint for a call
 #' @export
-hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, from.assign=!is.null(lhs), lhs = NULL, call.obj = NULL,s3.method=NULL, start.char="\n", end.char="\n", noeval=opts$noeval) {
+hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, env = uk$task.env, stud.expr.li = uk$stud.expr.li, part=NULL, from.assign=!is.null(lhs), lhs = NULL, call.obj = NULL,s3.method=NULL, start.char="\n", end.char="\n", noeval=opts$noeval) {
   
   if (!is.null(call.obj)) {
     call = call.obj
@@ -229,11 +229,11 @@ hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, e
   }
   if (noeval) {
     mco.env = make.base.env()
-    stud.env = emptyenv()
+    task.env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
   } else {
-    mco.env = stud.env
+    mco.env = task.env
   }
 
   restore.point("hint.for.call")
@@ -347,7 +347,7 @@ scramble.text = function(txt, scramble.char="?", share=0.5, keep.char=" ") {
 
 #' Default hint for an assignment
 #' @export
-hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL, s3.method=NULL, expr.object=NULL,start.char="\n", end.char="\n",noeval=opts$noeval,...) {
+hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opts, env = uk$task.env, stud.expr.li = uk$stud.expr.li, part=NULL, s3.method=NULL, expr.object=NULL,start.char="\n", end.char="\n",noeval=opts$noeval,...) {
   if (!is.null(expr.object)) {
     expr = expr.object
   } else {
@@ -355,11 +355,11 @@ hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opt
   }
   if (noeval) {
     mco.env = make.base.env()
-    stud.env = emptyenv()
+    task.env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
   } else {
-    mco.env = stud.env
+    mco.env = task.env
   }
   
   restore.point("hint.for.assign")
@@ -386,7 +386,7 @@ hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opt
 
 #' Default hint for a compute block
 #' @export
-hint.for.compute = function(expr, hints.txt=NULL,var="", uk=parent.frame()$uk,opts=parent.frame()$opts, env = uk$stud.env, stud.expr.li = uk$stud.expr.li, part=NULL,start.char="\n", end.char="\n",...) {
+hint.for.compute = function(expr, hints.txt=NULL,var="", uk=parent.frame()$uk,opts=parent.frame()$opts, env = uk$task.env, stud.expr.li = uk$stud.expr.li, part=NULL,start.char="\n", end.char="\n",...) {
   expr = substitute(expr)
   restore.point("hint.for.compute")
 
@@ -444,7 +444,7 @@ is.dplyr.fun = function(na) {
   na %in% c("mutate","filter","select","arrange","summarise","summarize")
 }
 
-inner.hint.for.call.chain = function(stud.expr.li, cde,uk=parent.frame()$uk,opts=parent.frame()$opts, ce=NULL, assign.str=assign.str,start.char="\n", end.char="\n", env=uk$stud.env,noeval= (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval)),...) {
+inner.hint.for.call.chain = function(stud.expr.li, cde,uk=parent.frame()$uk,opts=parent.frame()$opts, ce=NULL, assign.str=assign.str,start.char="\n", end.char="\n", env=uk$task.env,noeval= (isTRUE(opts$noeval) | isTRUE(opts$hint.noeval)),...) {
 
   restore.point("inner.hint.for.call.chain")
 

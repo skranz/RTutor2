@@ -15,9 +15,9 @@ examples.list.ps = function() {
 }
 
 #' Makes a local copy of a problem set for a new shiny session
-copy.ps.for.session = function(ps, empty.stud.env=TRUE) {
-  if (!empty.stud.env)
-    stop("Current version can only make copies of empty.stud.env")
+copy.ps.for.session = function(ps, empty.task.env=TRUE) {
+  if (!empty.task.env)
+    stop("Current version can only make copies of empty.task.env")
 
   ops = ps
   ps = as.environment(as.list(ps))
@@ -27,10 +27,10 @@ copy.ps.for.session = function(ps, empty.stud.env=TRUE) {
   ps$edt = copy(ops$edt)
 
   cdt = ps$cdt; edt = ps$edt
-  cdt$stud.env = lapply(1:NROW(cdt), function(chunk.ind) {
-    new.stud.env(chunk.ind)
+  cdt$task.env = lapply(1:NROW(cdt), function(chunk.ind) {
+    new.task.env(chunk.ind)
   })
-  env.li  = replicate(NROW(edt),new.stud.env(chunk.ind=0), simplify=FALSE)
+  env.li  = replicate(NROW(edt),new.task.env(chunk.ind=0), simplify=FALSE)
   edt$ex.final.env = env.li
   return(ps)
 }
@@ -85,7 +85,7 @@ init.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = paste0(p
 
   if (ps$precomp) {
     for (row in 1:NROW(rps$cdt)) {
-      parent.env(rps$cdt$stud.env[[row]]) <- ps$ps.baseenv
+      parent.env(rps$cdt$task.env[[row]]) <- ps$ps.baseenv
     }
   }
   
@@ -137,8 +137,8 @@ init.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = paste0(p
   }
 
   if (!ps$precomp) {
-    cdt$stud.env =lapply(1:NROW(cdt), function(chunk.ind) {
-      new.stud.env(chunk.ind)
+    cdt$task.env =lapply(1:NROW(cdt), function(chunk.ind) {
+      new.task.env(chunk.ind)
     })
   } 
   cdt$old.stud.code = cdt$shown.txt
@@ -153,7 +153,7 @@ init.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = paste0(p
   #env.li  = replicate(NROW(edt),new.env(parent=ps$ps.baseenv), simplify=FALSE)
 
   if (!ps$precomp) {
-    env.li  = replicate(NROW(edt),new.stud.env(chunk.ind=0), simplify=FALSE)
+    env.li  = replicate(NROW(edt),new.task.env(chunk.ind=0), simplify=FALSE)
     edt$ex.final.env = env.li
   }
 
