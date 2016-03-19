@@ -7,7 +7,7 @@ examples.frame.ps = function() {
   ps = rtutor.make.frame.ps(txt, catch.errors=FALSE)
   bdf = ps$bdf
   
-  app = rtutorApp(ps)
+  app = rtutorApp(ps,catch.errors = FALSE)
   viewApp(app)
 }
 
@@ -65,6 +65,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   ps$use.mathjax = use.mathjax
   ps$is.shiny = TRUE
   ps$opts$is.shiny=TRUE
+  ps$opts$catch.errors = catch.errors
   
   ps$given.awards.bi = NULL
   set.rt.opts(ps$opts)
@@ -227,7 +228,7 @@ east: {
     init.ps.handlers(ps)
     render.container.descendants(ps=ps,type.ind=1, use.mathjax=ps$use.mathjax, skip.if.rendered=FALSE)
     
- 
+    setApp(app)
   })
   
   

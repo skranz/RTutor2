@@ -119,24 +119,21 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
   ps$task.table = task.table
 }
 
-get.task.env = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps()) {
-  ts = get.ts(task.ind)
-  if (ts$stype=="task_chunk") return(ts$task.env)
-  return(NULL)
+get.ts = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps(), bi=NULL) {
+  restore.point("get.ts")
+  
+  if (!is.null(bi)) task.ind = ps$bdf$task.ind[bi]
+  ps$task.states[[task.ind]]
 }
 
-get.ts = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps()) {
-  app$task.states[[task.ind]]
-}
-
-set.ts = function(task.ind,ts, app=getApp()) {
-  app$task.states[[task.ind]] = ts
+set.ts = function(task.ind,ts, app=getApp(),ps=get.ps()) {
+  ps$task.states[[task.ind]] = ts
 }
 
 init.ps.session.task.states = function(ps, ups=get.ups(), app=getApp()) {
   restore.point("init.ps.session.task.states")
 
-  app$task.states = lapply(ps$org.task.states, init.task.state.with.ups, ups=ups)
+  ps$task.states = lapply(ps$org.task.states, init.task.state.with.ups, ups=ups)
 }
 
 init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts()) {
@@ -201,6 +198,7 @@ make.org.task.state = function(bi, ps, opts = rt.opts()) {
   }
   ts$task.ind = task.ind
   ts$stype = stype
+  ts$bi = bi
   
   ts = as.list(ts)
   ts

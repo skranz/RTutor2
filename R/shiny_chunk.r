@@ -200,15 +200,14 @@ make.global.chunk.hotkey.handlers = function(opts=rt.opts()) {
   }
 }
 
-shiny.chunk.hotkey = function(keyId,editorId,selection,cursor,text,...,app=getApp(),ps=app$ps, opts=rt.opts()) {
+shiny.chunk.hotkey = function(keyId,editorId,selection,cursor,text,...,app=getApp(),opts=rt.opts()) {
   args = list(...)
   restore.point("shiny.chunk.hotkey")
   bi = as.numeric(str.between(editorId,"__","__"))
-  chunk.ind = ps$bdf$stype.ind[bi]
-  uk = ps$uk.li[[chunk.ind]]
+  uk = get.ts(bi=bi)
   if (is.null(uk)) {
     restore.point("shiny.chunk.hotkey.null.uk")
-    warning("shiny.chunk.hotkey: null uk")
+    warning("shiny.chunk.hotkey: uk is null")
   }
   noeval = opts$noeval
   if (keyId=="checkKey") {
@@ -243,7 +242,7 @@ make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
   buttonHandler(nali$editBtn, edit.shiny.chunk, uk=uk)
 }
 
-run.shiny.chunk = function(uk, envir = uk$task.env, code=uk$stud.code, opts=rt.opts(),...) {
+run.shiny.chunk = function(uk, envir = get.task.env(ts=uk), code=uk$stud.code, opts=rt.opts(),...) {
   restore.point("run.shiny.chunk")
   ck = uk$ck
   if (opts$in.R.console) {
@@ -253,7 +252,7 @@ run.shiny.chunk = function(uk, envir = uk$task.env, code=uk$stud.code, opts=rt.o
   }
 }
 
-run.line.shiny.chunk = function(uk, envir=uk$task.env, cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp(), opts=rt.opts()) {
+run.line.shiny.chunk = function(uk, envir=get.task.env(ts=uk), cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp(), opts=rt.opts()) {
   restore.point("run.line.shiny.chunk")
 
   uk$stud.code = code
@@ -273,6 +272,8 @@ run.line.shiny.chunk = function(uk, envir=uk$task.env, cursor=NULL, selection=NU
 
 check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FALSE, opts=rt.opts(), app=getApp(),...) {
   uk$stud.code = getInputValue(uk$ck$nali$editor)
+  
+  #uk$task.env = make.fresh.task.env(ts=uk)
   restore.point("check.shiny.chunk")
   ck = uk$ck
   if (!is.false(opts$catch.errors)) {
@@ -375,7 +376,7 @@ hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=
 
 help.shiny.chunk = function(uk, cursor=NULL, selection="",..., app=getApp()) {
   set.shiny.chunk(chunk.ind, cursor=cursor, selection=selection)
-  envir=uk$task.env; in.R.console=is.null(uk$nali$console)
+  envir=get.task.env(ts=uk); in.R.console=is.null(uk$nali$console)
   restore.point("help.shiny.chunk")
 
   if (selection == "") {
@@ -457,7 +458,7 @@ save.shiny.chunk = function(uk,...,ps=get.ps(),app=getApp()) {
   )
 }
 
-chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.chunk.env(uk), eval=TRUE, success.message=isTRUE(uk$solved), echo=TRUE, nali=NULL, quiet=TRUE) {
+chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.task.env(ts=uk), eval=TRUE, success.message=isTRUE(uk$solved), echo=TRUE, nali=NULL, quiet=TRUE) {
   restore.point("chunk.to.html")
   if (is.null(txt))
     return("")
