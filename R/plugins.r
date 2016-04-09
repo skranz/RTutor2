@@ -96,6 +96,8 @@ rtutor.plugin.dataexplorer = function() {
   list(
     name = "dataexplorer",
     menu.label = "Data",
-    sidebar.ui = function(...) {data.explorer.ui()}
+    sidebar.ui = function(...) {data.explorer.ui()},
+    activate.handler = function(...) {update.data.explorer.ui()},
+    task.select.handler = function(...) {update.data.explorer.ui()}
   )
 }

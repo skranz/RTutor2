@@ -59,6 +59,11 @@ compute.stats = function(by=opts$stats.aggregate.by,ups=get.ups(), ps=get.ps(), 
 rtutor.update.stats.panel = function(app = getApp(),ps=get.ps(),ups=get.ups(),...) {
   restore.point("rtutor.update.stats.panel")
   
+  if (!ps$has.tasks) {
+    dsetUI("uiProblemSetStats", p("The problem set has no tasks."))
+    return()
+  }
+  
   df = compute.stats(ups=ups)
   perc = df[NROW(df),2]
   html = html.table(df)

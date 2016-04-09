@@ -21,12 +21,25 @@ examples.frame.ps = function() {
 
 }
 
+rtutor.builtin.types = function() {
+  c(
+    "chunk","frame","section","subsection","subsubsection",
+    "preknit","precompute","portrait", "image", "solved",
+    "column","row","ps","info","note","award","references",
+    "show","notest","show_notest","hint","test","test_args"
+  )
+}
 
-rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/figure"),addons=c("quiz"), plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(),  ...) {
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(), figure.web.dir = "figure",  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
   
+  ps$figure.web.dir = figure.web.dir
+  ps$figure.sub.dir = figure.sub.dir
+  if (!dir.exists(figure.dir)) {
+    dir.create(figure.dir)
+  }
   ps$ps.name = ps.name
   ps$ps.id = ps.id
   ps$Addons = list()
@@ -73,18 +86,6 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$opts = opts
 
   ps$static.types = opts$static.types
-  ps$slides = opts$slides
-  ps$slide.type = opts$slide.type
-  
-  
-  
-  if (ps$slides) {
-    if (ps$slide.type %in% ps$static.types) {
-      ps$hidden.container.types = ps$slide.type 
-    }
-  } else {
-    ps$hidden.container.types = opts$menu.levels
-  }
     
   # remove content in ignore blocks
   ig.rows = which(df$type=="ignore")
@@ -97,12 +98,40 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     txt = txt[-del.lines]
     df = find.rmd.nested(txt, dot.levels)
   }
+
+  ps$slides = opts$slides
+  ps$slide.type = opts$slide.type
   
+  if (ps$slide.type=="auto") 
+    ps$slide.type = find.bdf.smallest.part.type(df)
+  
+  if (ps$slides) {
+    if (ps$slide.type %in% ps$static.types) {
+      ps$hidden.container.types = ps$slide.type 
+    }
+  } else {
+    ps$hidden.container.types = opts$menu.levels
+  }
+
   ps$txt = txt
   
   df = adapt.for.back.to.blocks(df,ps=ps)
   df$stype = df$type
-  df$is.addon = df$type %in% addons
+  
+  ps$addons = addons = setdiff(unique(df$type), rtutor.builtin.types())
+  
+  ps$Addons = list()
+  for (addon in addons) {
+    addon.fun = paste0("rtutor.addon.",addon)
+    if (exists(addon.fun)) {
+      ps$Addons[[addon]] = do.call(addon.fun,list())
+    } else {
+      warning(paste0("\nWe don't have a built-in block type ", addon,". Bute I could not find the function ", addon.fun, " that identifies the block as an addon. (Have you loaded the required package with the addon?"))
+      ps$addons = setdiff(ps$addons,addon)
+      stop()
+    }
+  }
+  df$is.addon = df$type %in% ps$addons
   
   
   df$parent_addon = get.levels.parents(df$level, df$is.addon)
@@ -112,7 +141,8 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   bdf$obj = bdf$ui = bdf$inner.ui = vector("list", NROW(bdf))
   bdf = mutate(bdf,
     stype.ind = 0,
-    id = paste0(type,"__",index,"__",ps.id),    
+    id = paste0(type,"__",index,"__",ps.id),
+    name = NA_character_,
     has.handler = FALSE,
     is.task = FALSE,task.ind = 0,
     prefixed=FALSE,
@@ -155,7 +185,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   binds = order(bdf$end, -bdf$start)
   bi = binds[1]
   for (bi in binds) {
-    restore.point("inner.make.ps")
+    #restore.point("inner.make.ps")
     if (catch.errors) {
       res = try(rtutor.parse.block(bi,ps), silent=TRUE)
       if (is(res,"try-error")) {
@@ -269,28 +299,8 @@ rtutor.parse.block = function(bi,ps) {
   type = ps$bdf$type[[bi]]
   fun.name = paste0("rtutor.parse.",type)
   
-  if (!exists(fun.name)) {
-    is.addon = type %in% names(ps$Addons)
-    if (!is.addon) {
-      addon.fun = paste0("rtutor.addon.",type)
-      if (exists(addon.fun)) {
-        ps$Addons[[type]] = do.call(addon.fun,list())
-        is.addon = TRUE
-      }
-    }
-    if (is.addon) {
-      return(rtutor.parse.addon(bi=bi, ps=ps))
-    } else {
-      restore.point("rtutor.parse.block.error")
-      
-      cat(paste0("\nWe don't have a function ",fun.name," to deal with block type ", type,". Nor do we have a function ", addon.fun, " that identifies the block as an addon."))
-      stop()
-      bdf = ps$bdf; br = bdf[bi,];
-      str = ps$txt[br$start:br$end]
-      set.bdf.ui(HTML(str),bi,ps)
-      return()
-    }
-    
+  if (ps$bdf$is.addon[[bi]]) {
+    return(rtutor.parse.addon(bi=bi, ps=ps))
   }
   
   fun.call = parse(text=paste0("rtutor.parse.",type,"(bi,ps)"))
@@ -303,28 +313,43 @@ rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
   restore.point("rtutor.parse.addon")
   
   bdf = ps$bdf; br = bdf[bi,];
-  str = ps$txt[br$start:br$end]
   type = br$type
   Ao = ps$Addons[[type]]
   
-  ao = Ao$parse.fun(str, id = paste0(type,"__",bi))
-  if (Ao$is.task) {
+  args = parse.block.args(arg.str = br$arg.str)
+  if (!is.null(args$name)) ps$bdf$name[[bi]] = args$name
+  ao = Ao$parse.fun(
+    block.txt = ps$txt[br$start:br$end],
+    inner.txt = ps$txt[(br$start+1):(br$end-1)],
+    id = paste0(type,"__",bi),
+    args = args,
+    type = type,
+    bdf=bdf,
+    bi = bi,
+    ps = ps
+  )
+  if (!is.null(Ao$ui.fun)) {
+    if (isTRUE(Ao$is.static)) {
+      ui = Ao$ui.fun(ao=ao)
+      set.bdf.ui(ui,bi,ps)
+      ps$bdf$is.static[[bi]] = TRUE
+    } else {
+      # the addon will be put inside a container
+      ps$bdf$is.container[[bi]] = TRUE
+      set.container.div.and.output(bi,ps)
+      ps$bdf$is.static[[bi]] = FALSE
+    }
+  }
+
+  if (isTRUE(Ao$is.task)) {
     ps$bdf$is.task[[bi]] = Ao$is.task
     ao$task.ind = sum(ps$bdf$is.task[1:bi])
-  }
-  if (isTRUE(Ao$is.static)) {
-    ui = Ao$ui.fun(ao=ao)
-    set.bdf.ui(ui,bi,ps)
-    ps$bdf$is.static[[bi]] = TRUE
-  } else {
-    # the addon will be put inside a container
-    ps$bdf$is.container[[bi]] = TRUE
-    set.container.div.and.output(bi,ps)
-    ps$bdf$is.static[[bi]] = FALSE
+    
+    create.bi.task.env.info(bi=bi,ps=ps,need.task.env = isTRUE(Ao$need.task.env),change.task.env = isTRUE(Ao$change.task.env),optional = TRUE,precomp.task.env = opts$precomp, opts=opts)  
+
   }
   ps$bdf$obj[[bi]] = list(ao=ao)
   
-  create.bi.task.env.info(bi=bi,ps=ps,need.task.env = isTRUE(Ao$need.task.env),change.task.env = isTRUE(Ao$change.task.env),optional = TRUE,precomp.task.env = opts$precomp, opts=opts)  
   
   return()
 }

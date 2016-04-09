@@ -1,9 +1,9 @@
 showRTutorPartAddin = function(...) {
-  preview.rtutor.frames.addin(single.part=TRUE)
+  preview.rtutor.part.addin(single.part=TRUE)
 }
 
 showRTutorAddin = function(...) {
-  preview.rtutor.frames.addin(single.part=FALSE)
+  preview.rtutor.part.addin(single.part=FALSE)
 }
 
 
@@ -11,7 +11,7 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
   library(rstudioapi)
   library(RTutor2)
   doc = rstudioapi::getActiveDocumentContext()
-  restore.point("preview.rtutor.frames.addin")
+  restore.point("preview.rtutor.part.addin")
   cat("\nView frame")
   
   file = basename(doc$path)
@@ -28,14 +28,11 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
   }
   
   if (single.part) {
-    ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.part.filter(line=line))
-    start.slide = 1
+    ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.part.filter(line=line),priority.opts = list(slides=TRUE, slide.type="auto"), dir=dir)
+    app = slidesApp(ps,user.name="Jane Doe",catch.errors=FALSE,start.slide=1,dir=dir)
   } else {
-    ps = rtutor.make.frame.ps(txt)
+    ps = rtutor.make.frame.ps(txt,dir=dir)
+    app = rtutorApp(ps, dir=dir)
   }
-  if (ps$slides) {
-    
-  }
-  bdf = ps$bdf
-  show.frame.ps(ps,frame.ind = frame.ind)
+  viewApp(app)
 } 

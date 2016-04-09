@@ -7,6 +7,14 @@ bdf.part.filter = function(line=NULL,ranked.types=c("frame","subsubsection","sub
   bdf.type.filter(line=line,ranked.types=ranked.types, keep.precompute=keep.precompute)
 }
 
+find.bdf.smallest.part.type = function(bdf,ranked.types=c("frame","subsubsection","subsection","section")) {
+  type = NULL
+  if (!is.null(ranked.types)) {
+    for (type in ranked.types) {
+      if (sum(bdf$type == type)>0) return(type)
+    }
+  }
+}
 
 bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, keep.precompute=TRUE) {
   types.to.keep = NULL

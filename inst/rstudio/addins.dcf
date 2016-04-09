@@ -1,9 +1,9 @@
-Name: RTutor Show Frame
+Name: RTutor Show Part
 Description: To be called in a _sol.Rmd file, to preview an RTutor frame block
-Binding: previewRTutorFrameAddin
+Binding: showRTutorPartAddin
 Interactive: true
 
-Name: RTutor Show all Frames
+Name: RTutor Show Problemset
 Description: To be called in a _sol.Rmd file, to preview RTutor frames blocks
-Binding: previewRTutorAllFramesAddin
+Binding: showRTutorAddin
 Interactive: true

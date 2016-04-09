@@ -49,13 +49,16 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
 }
 
 # general initialisation independent of app type
-initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list(), dir=getwd(), ups.dir=dir) {
+initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list(), dir=getwd(), figure.dir = paste0(dir,"/", ps$figure.sub.dir), ups.dir=dir,...) {
   restore.point("initRTutorApp")
   library(shinyjs)
   
   app = eventsApp()
   setAppHasBottomScript(TRUE, app=app)
-  
+
+  if (!is.null(ps$figure.web.dir))
+    addResourcePath(ps$figure.web.dir,figure.dir)
+
   ps$opts[names(opts)] = opts
   
   app$ps = ps
@@ -84,7 +87,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
 slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=1, dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
   restore.point("slidesApp")
   
-  app = initRTutorApp(ps=ps, user.name=user.name, catch.errors = catch.errors,offline = offline, dir=dir, ups.dir=ups.dir, opts=opts)
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, dir=dir, ups.dir=ups.dir, opts=opts)
   
   ps$slide.ind = start.slide
   ps.content.ui = ps$bdf$ui[[1]]   
@@ -125,7 +128,7 @@ rtutorApp = function(ps, user.name = "John Doe", nick=user.name, dir=getwd(), up
     return(slidesApp(ps=ps,user.name=user.name, nick=nick,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,opts=opts, dir=dir, ups.dir=ups.dir,...))
   }
   
-  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline,dir=dir, ups.dir=ups.dir, opts=opts)
+  app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline,dir=dir, ups.dir=ups.dir, opts=opts,...)
   
   
   
@@ -313,7 +316,9 @@ init.ps.handlers = function(ps) {
     ao = ps$bdf$obj[[bi]]$ao
     # TO DO: Distinguish between global handlers
     # initialization and per user initilization
-    ps$Addons[[type]]$init.handlers(ao)
+    handler.fun = ps$Addons[[type]]$init.handlers
+    if (!is.null(handler.fun))
+      handler.fun(ao)
   }
   
 }
@@ -368,7 +373,7 @@ add.slide.navigate.handlers = function() {
   buttonHandler("rtPrevBtn",slide.prev)
   buttonHandler("rtNextBtn",slide.next)
   buttonHandler("rtForwardBtn",slide.forward)
-  eventHandler(eventId="documentClickHandlerEvent", slide.click)
+  eventHandler(eventId="documentClickHandlerEvent", fun=slide.click)
 }
 
 

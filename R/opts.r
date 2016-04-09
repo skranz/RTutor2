@@ -1,5 +1,8 @@
 
 default.ps.opts = function(
+  # slides
+  slides = FALSE,
+  slide.type = "frame",
   # menu
   show.together = "section",
   menu.levels = c("section", "subsection"),

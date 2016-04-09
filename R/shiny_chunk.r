@@ -228,12 +228,9 @@ make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
 
   buttonHandler(nali$checkBtn, check.shiny.chunk, uk=uk)
   buttonHandler(nali$hintBtn, hint.shiny.chunk, uk=uk)
-  buttonHandler(nali$saveBtn, save.shiny.chunk, uk=uk)
 
   if (!opts$noeval) {
     buttonHandler(nali$runBtn, run.shiny.chunk, uk=uk)
-    if (isTRUE(opts$show.data.exp))
-      buttonHandler(nali$dataBtn, data.shiny.chunk, uk=uk)
   }
 
   if (isTRUE(opts$show.solution.btn))
@@ -244,6 +241,7 @@ make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
 
 run.shiny.chunk = function(uk, envir = get.task.env(ts=uk), code=uk$stud.code, opts=rt.opts(),...) {
   restore.point("run.shiny.chunk")
+  chunk.is.selected(uk)
   ck = uk$ck
   if (opts$in.R.console) {
     eval.in.console(code, envir=envir)
@@ -256,6 +254,7 @@ run.line.shiny.chunk = function(uk, envir=get.task.env(ts=uk), cursor=NULL, sele
   restore.point("run.line.shiny.chunk")
 
   uk$stud.code = code
+  chunk.is.selected(uk)
 
   if (selection == "") {
     txt = sep.lines(code)
@@ -272,6 +271,7 @@ run.line.shiny.chunk = function(uk, envir=get.task.env(ts=uk), cursor=NULL, sele
 
 check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FALSE, opts=rt.opts(), app=getApp(),...) {
   uk$stud.code = getInputValue(uk$ck$nali$editor)
+  chunk.is.selected(uk)
   
   #uk$task.env = make.fresh.task.env(ts=uk)
   restore.point("check.shiny.chunk")
@@ -358,6 +358,7 @@ hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=
   restore.point("hint.shiny.chunk")
   
   uk$stud.code = code
+  chunk.is.selected(uk)
 
   if (!isTRUE(opts$hint.noeval)) {
     if (!identical(uk$stud.code,uk$last.check.code))
@@ -375,7 +376,8 @@ hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=
 }
 
 help.shiny.chunk = function(uk, cursor=NULL, selection="",..., app=getApp()) {
-  set.shiny.chunk(chunk.ind, cursor=cursor, selection=selection)
+  chunk.is.selected(uk)
+
   envir=get.task.env(ts=uk); in.R.console=is.null(uk$nali$console)
   restore.point("help.shiny.chunk")
 
@@ -437,25 +439,6 @@ edit.shiny.chunk = function(uk, opts = rt.opts(),...) {
         type = "info", append=FALSE
     )
   }
-}
-
-data.shiny.chunk = function(uk,...,app=getApp()) {
-  restore.point("data.shiny.chunk")
-  update.data.explorer.ui()
-  updateTabsetPanel(session=app$session, inputId="exTabsetPanel",selected = "dataExplorerTabPanel")
-}
-
-save.shiny.chunk = function(uk,...,ps=get.ps(),app=getApp()) {
-  restore.point("data.shiny.chunk")
-  #set.shiny.chunk(chunk.ind)
-  save.sav()
-  nali = uk$ck$nali[[chunk.ind]]
-
-  createAlert(app$session, nali$alertOut,
-    title = paste0("Saved as ", ps$sav.file),
-    content = "",
-    style = "info", append=FALSE
-  )
 }
 
 chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.task.env(ts=uk), eval=TRUE, success.message=isTRUE(uk$solved), echo=TRUE, nali=NULL, quiet=TRUE) {
@@ -530,4 +513,9 @@ chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.task.e
 
 default.chunk.out.args = function() {
   list(fig.width=6.5, fig.height=4.5, fig.align='center', "warning"=FALSE, cache=FALSE, collapse=TRUE, comment=NA)
+}
+
+chunk.is.selected = function(uk, ps = get.ps()) {
+  ps$task.ind = uk$task.ind
+  task.is.selected(uk)
 }

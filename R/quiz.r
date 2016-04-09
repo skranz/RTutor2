@@ -75,10 +75,9 @@ rtutor.quiz.init.handlers = function(ao=ts$ao,ps=get.ps(), app=getApp(),ts=NULL,
   add.quiz.handlers(qu=ao, quiz.handler=rtutor.quiz.handler)    
 }
 
-rtutor.quiz.block.parse = function(txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL, task.ind=NULL,...) {
+rtutor.quiz.block.parse = function(inner.txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL, bi=NULL,...) {
   restore.point("rtutor.quiz.block.parse")
-  qu = shinyQuiz(id = id,yaml = merge.lines(txt), bdf = NULL,add.handler = FALSE)
-  qu$task.ind = task.ind
+  qu = shinyQuiz(id = id,yaml = merge.lines(inner.txt), bdf = NULL,add.handler = FALSE)
   qu
 }
 
@@ -379,6 +378,9 @@ quiz.part.md = function(part, solution=FALSE) {
 
 add.quiz.handlers = function(qu, quiz.handler=NULL, id=qu$id){
   restore.point("add.quiz.handlers")
+  cat("\n**************************************")
+  cat("\nadd.quiz.handlers...")
+  cat("\n**************************************")
   app = getApp()
   if (is.null(app)) {
     cat("\nCannot add quiz handlers since no shinyEvents app object is set.")

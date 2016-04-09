@@ -1,7 +1,5 @@
 data.explorer.ui = function() {
-  return(NULL)
-
-  tagList(
+  ui = tagList(
     uiOutput("radioDataExplorerUI"),
     tabsetPanel(
       tabPanel("Data",DT::dataTableOutput("tableDataExplorer")),
@@ -10,28 +8,28 @@ data.explorer.ui = function() {
       tabPanel("Plot", uiOutput("dataPlotUI"))
     )
   )
-  
   radioBtnGroupHandler("radioDataExplorer", function(value,...,ps=get.ps()) {
     update.data.explorer.data(var=value)
   })
-
+  ui
 }
 
 update.data.explorer.ui = function(ps=get.ps(), session=ps$session) {
   restore.point("update.data.explorer.ui")
   ts = get.ts()
-  task.env = get.task.env()
+  #if (is.null(ts)) return()
+  task.env = get.task.env(ts=ts)
 
-  vars = get.environment.data.var()
+  vars = get.environment.data.var(task.env)
 
 
   if (length(vars)>0) {
-    setUI("radioDataExplorerUI",
+    dsetUI("radioDataExplorerUI",
       radioBtnGroup(id="radioDataExplorer",labels=vars, values=vars)
     )
     var = vars[1]
     cat("\nupdate for var ", var)
-    update.data.explorer.data(var)
+    update.data.explorer.data(var, env=task.env)
   } else {
     setUI("radioDataExplorerUI", HTML("The current task environment has no data frames or matrixes.")
 )
@@ -40,10 +38,10 @@ update.data.explorer.ui = function(ps=get.ps(), session=ps$session) {
   }
 }
 
-update.data.explorer.data  = function(var, ps=get.ps(), session=app$session, app=getApp()) {
+update.data.explorer.data  = function(var, env=get.task.env(ps$task.ind), ps=get.ps(), session=app$session, app=getApp()) {
   restore.point("update.data.explorer.data")
 
-  data = set.data.explorer.data(var)
+  data = set.data.explorer.data(var,env = env)
   updateDataTable(session,"tableDataExplorer",signif.cols(data,4),
       options = list(orderClasses = TRUE,
                      lengthMenu = c(5, 10, 25,50,100),
@@ -54,7 +52,7 @@ update.data.explorer.data  = function(var, ps=get.ps(), session=app$session, app
 }
 
 
-get.environment.data.var=function(env=get.task.env(), ps=get.ps()) {
+get.environment.data.var=function(env=get.task.env(ps$task.ind), ps=get.ps()) {
   vars = ls(env)
   dvars = unlist(lapply(vars, function(var) {
     x = env[[var]]
@@ -65,7 +63,7 @@ get.environment.data.var=function(env=get.task.env(), ps=get.ps()) {
   dvars
 }
 
-set.data.explorer.data  = function(var=NULL, env = get.task.env(), ps=get.ps()) { 
+set.data.explorer.data  = function(var=NULL, env = get.task.env(ps$task.ind), ps=get.ps()) { 
   if (is.null(var)) {
     var = getInputValue("radioDataExplorer")
   }

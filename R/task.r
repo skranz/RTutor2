@@ -50,7 +50,19 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
   
   bdf = ps$bdf
   bi = which(bdf$is.task)
+  
+  # The problem set has no tasks
+  if (NROW(bi)==0) {
+    ps$has.tasks = FALSE
+    ps$org.task.states = NULL
+    ps$task.table = NULL
+    return()
+  }
+  
+  ps$has.tasks = TRUE
   df = bdf[bdf$is.task,]
+  
+  
   
   
   task.ind = seq_along(bi)
@@ -123,6 +135,7 @@ get.ts = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps(), bi=NULL) {
   restore.point("get.ts")
   
   if (!is.null(bi)) task.ind = ps$bdf$task.ind[bi]
+  if (is.null(task.ind)) return(NULL)
   ps$task.states[[task.ind]]
 }
 
@@ -286,4 +299,9 @@ create.bi.task.env.info = function(bi,ps, need.task.env=TRUE, change.task.env=TR
   ps$bdf$change.task.env[bi] = change.task.env
   ps$bdf$task.start.env.bi[bi] = task.start.env.bi
   ps$bdf$precomp.task.env[bi] = precomp.task.env
+}
+
+task.is.selected = function(ts,ps=get.ps()) {
+  ps$task.ind = ts$task.ind
+  call.plugin.handler("task.selected.handler")
 }
