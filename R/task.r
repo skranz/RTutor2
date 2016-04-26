@@ -206,6 +206,10 @@ make.org.task.state = function(bi, ps, opts = rt.opts()) {
   } else {
     Addon = ps$Addons[[stype]]
     ao = ps$bdf$obj[[bi]]$ao
+    
+    if (is.null(Addon$make.org.task.state)) {
+      stop(paste0("The addon ", stype, " is specified as a task, but does not have the required function make.org.task.state."))
+    }
     ts = Addon$make.org.task.state(ao)
     ts$ao = ao
   }
@@ -259,6 +263,10 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
       ups$utt.dates$solved.date[ts$task.ind] = Sys.time()
   } else if (!utr$was.solved) {
     ups$utt$num.failed[ts$task.ind] = ups$utt$num.failed[ts$task.ind]+1
+  }
+  # set small task state
+  if (!is.null(ts[["sts"]])) {
+    ups$sts[[ts$task.ind]] = ts$sts
   }
   update.ups(ups)
   

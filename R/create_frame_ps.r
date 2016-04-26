@@ -93,11 +93,21 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.rows])))
   }  
 
+
   if (length(del.lines)>0) {
     del.lines =unique(del.lines)
     txt = txt[-del.lines]
     df = find.rmd.nested(txt, dot.levels)
   }
+  
+  # remove blocks inside addons
+  # those will be dealt by the addons themselves
+  builtin.types = rtutor.builtin.types()
+  df$is.addon = !(df$type %in% builtin.types)
+  parent_addon = get.levels.parents(df$level,df$is.addon)
+  del.rows = which(parent_addon>0)
+  df = del.rows.and.adapt.refs(df,del.rows,ref.cols = "parent")
+  
 
   ps$slides = opts$slides
   ps$slide.type = opts$slide.type
@@ -118,10 +128,9 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   df = adapt.for.back.to.blocks(df,ps=ps)
   df$stype = df$type
   
-  ps$addons = addons = setdiff(unique(df$type), rtutor.builtin.types())
-  
+  ps$addons = unique(df$type[df$is.addon])
   ps$Addons = list()
-  for (addon in addons) {
+  for (addon in ps$addons) {
     addon.fun = paste0("rtutor.addon.",addon)
     if (exists(addon.fun)) {
       ps$Addons[[addon]] = do.call(addon.fun,list())
@@ -131,10 +140,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
       stop()
     }
   }
-  df$is.addon = df$type %in% ps$addons
-  
-  
-  df$parent_addon = get.levels.parents(df$level, df$is.addon)
+
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","note", "section","subsection")
   pt = get.levels.parents.by.types(df$level, df$type, parent.types)
   bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
@@ -293,9 +299,7 @@ rtutor.parse.block = function(bi,ps) {
   
   # Don't parse blocks inside chunks here
   if (ps$bdf$parent_chunk[[bi]] >0) return()
-  if (ps$bdf$parent_addon[[bi]] >0) return()
 
-  
   type = ps$bdf$type[[bi]]
   fun.name = paste0("rtutor.parse.",type)
   
@@ -1083,3 +1087,23 @@ slide.title.bar.ui = function(title, slide.ind, num.slides) {
   )  
 }
 
+del.rows.and.adapt.refs = function(df, del.rows, ref.cols=NULL) {
+  restore.point("del.rows.and.adapt.refs")
+  
+  if (NROW(df)==0 | NROW(del.rows)==0) return(df)
+  if (!is.logical(del.rows)) 
+    del.rows = (1:NROW(df)) %in% del.rows
+    
+  cum.del = cumsum(del.rows)
+  #rbind(row = 1:NROW(df), parent = df[[col]], del.rows, cum.del, pcum.del = cum.del[ df[[col]] ] )
+
+  for (col in ref.cols) {
+    ref = df[[col]]
+    valid = ref %in% 1:NROW(df)
+    ref = ref[valid]
+    df[[col]][valid] = ref - cum.del[ ref ]
+  }
+  df = df[!del.rows,,drop=FALSE]
+  rownames(df) = NULL
+  df  
+}

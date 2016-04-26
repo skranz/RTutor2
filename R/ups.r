@@ -57,7 +57,8 @@ init.ups = function(user.name=ps$user.name, nick=user.name, user.id=user.name, p
     solved.date = as.POSIXct(NA)
   )
   
-  # small task state: take initial sts from ps
+  # small task states, can be used to init 
+  # addons from ups
   sts = vector("list",n)
   
   ups = as.environment(list(ps.name=ps$ps.name, user.name=user.name, nick=nick,user.id=user.id, task.ind = task.ind, utt=utt, utt.dates=utt.dates, sts=sts))
