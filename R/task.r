@@ -74,6 +74,10 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
     if (ps$org.task.states[[i]]$stype == "task_chunk") {
       return(ps$org.task.states[[i]]$ck$max.points)
     } else {
+      #max.points = ps$org.task.states[[i]]$ao$max.points
+      #if (is.null(max.points)) {
+      #  stop("a task ao object has not defined max.points")
+      #}
       return(ps$org.task.states[[i]]$ao$max.points)
     }
   })
@@ -149,7 +153,7 @@ init.ps.session.task.states = function(ps, ups=get.ups(), app=getApp()) {
   ps$task.states = lapply(ps$org.task.states, init.task.state.with.ups, ups=ups)
 }
 
-init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts()) {
+init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts(),ps=get.ps()) {
   restore.point("init.task.state.without.ups")
   
   ts = as.environment(as.list(org.ts))
@@ -162,7 +166,7 @@ init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts()) {
   ts
 }
 
-init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts()) {
+init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts(), ps=get.ps()) {
   if (is.null(ups) | is.null(ups$utt)) return(init.task.state.without.ups(org.ts,obj=obj, opts=opts))
   restore.point("init.task.state.with.ups")
   

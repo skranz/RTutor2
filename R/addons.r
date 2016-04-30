@@ -6,3 +6,34 @@ make.addons.list = function(addons="quiz") {
    names(li) = addons
   li
 }
+
+check.Addon = function(Ao) {
+  restore.point("check.Addon")
+  check.Addon.field(c("type"),type="")  
+  type = Ao$type
+  check.Addon.field(c("package","is.task","is.static"),type=type)   
+  check.Addon.function("parse.fun",type)
+  if (Ao$is.task) {
+    check.Addon.function(c("make.org.task.state","init.task.state.with.ups","init.task.state.without.ups","init.handlers", "ui.fun"),type)
+    check.Addon.field(c("need.task.env","change.task.env"),type=type) 
+  }
+  
+  
+  
+}
+
+check.Addon.function = function(fun.name, type="") {
+  for (fun in fun.name) {
+    if (is.null(Ao[[fun]])) {
+      stop(paste0("The addon ", type, " has not defined the function ", fun))
+    }
+  }
+}
+check.Addon.field = function(fields, type="") {
+  for (field in fields) {
+    if (is.null(Ao[[field]])) {
+      stop(paste0("The addon ", type, " has not defined the required field ", field))
+    }
+  }
+  
+}

@@ -2,7 +2,7 @@
 # Add javascript to deal with clicks on free html area,
 # i.e. not on inputs, buttons, links or images
 # can be used to proceed with slides
-rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts = rt.opts()) {
+rtutorClickHandler = function(button.handler=TRUE, image.handler = TRUE, use.frame.click = TRUE,opts = rt.opts()) {
   code =  '$(document).on("click", function (e) {'
 
   # Variable definitions
@@ -13,15 +13,46 @@ rtutorClickHandler = function(button.handler=TRUE, use.frame.click = TRUE,opts =
     var gpn = pn.parentNode;
   ')
   
+
   if (button.handler) {
+    eventId = "buttonHandlerEvent"
     code = paste0(code,'
-      if (tag === "BUTTON") {
-        Shiny.onInputChange("buttonHandlerEvent", {id: e.target.id, eventId:"buttonHandlerEvent", tag: tag, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
+    if (tag === "BUTTON") {
+      Shiny.onInputChange("',eventId,'", {eventId: "',eventId,'", id: e.target.id, tag: tag, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
+      return;
+    } else {
+      var ptag = e.target.parentNode.nodeName;
+      if (ptag === "BUTTON" || ptag ==="BUTTON") {
+        Shiny.onInputChange("',eventId,'", {eventId: "',eventId,'", id: e.target.parentNode.id, tag: ptag, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
+        return;
+      }
+    }
+    ')
+  }
+
+  if (image.handler) {
+    imageEventId = "imageClickEvent"
+    code = paste0(code,'
+      if (tag === "IMG") {
+        var img = $(e.target);
+        var offset = img.offset();
+
+        var oimg = document.getElementById(img.attr("id"));
+
+        var xratio = oimg.naturalWidth / img.width();
+        var yratio = oimg.naturalHeight / img.height();
+
+        //alert("Image click: offset= "+JSON.stringify(offset));
+        var x = (e.pageX - offset.left)*xratio;
+        var y = (e.pageY - offset.top)*yratio;
+        Shiny.onInputChange("',imageEventId,'", {eventId: "',imageEventId,'", id: e.target.id, x: x, y: y, tag: tag, nonce: Math.random(), pageX: e.pageX, pageY: e.pageY});
         return;
       }
     ')
+    registerEvent("imageClickEvent", jscript="", overwrite=TRUE)
+    
   }
-  
+    
   if (use.frame.click) {
     # General no click handler
     code = paste0(code,'
