@@ -125,7 +125,7 @@ rtutorApp = function(ps, user.name = "John Doe", nick=user.name, dir=getwd(), up
   restore.point("rtutorApp")
   
   if (isTRUE(ps$slides)) {
-    return(slidesApp(ps=ps,user.name=user.name, nick=nick,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,opts=opts, dir=dir, ups.dir=ups.dir,...))
+    return(slidesApp(ps=ps,user.name=user.name, nick=nick,dir=dir, offline=offline, catch.errors=catch.errors, margin=margin,opts=opts, ups.dir=ups.dir,...))
   }
   
   app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline,dir=dir, ups.dir=ups.dir, opts=opts,...)
@@ -310,16 +310,16 @@ init.ps.handlers = function(ps) {
   }
   
   # Add handlers for addons
-  rows = which(ps$bdf$is.addon) 
-  for (bi in rows) {
-    type = ps$bdf$type[[bi]]
-    ao = ps$bdf$obj[[bi]]$ao
-    # TO DO: Distinguish between global handlers
-    # initialization and per user initilization
-    handler.fun = ps$Addons[[type]]$init.handlers
-    if (!is.null(handler.fun))
-      handler.fun(ao)
-  }
+  # rows = which(ps$bdf$is.addon) 
+  # for (bi in rows) {
+  #   type = ps$bdf$type[[bi]]
+  #   ao = ps$bdf$obj[[bi]]$ao
+  #   # TO DO: Distinguish between global handlers
+  #   # initialization and per user initilization
+  #   handler.fun = ps$Addons[[type]]$init.handlers
+  #   if (!is.null(handler.fun))
+  #     handler.fun(ao)
+  # }
   
 }
 
@@ -355,8 +355,8 @@ render.rtutor.addon = function(ps, bi) {
   ui = Ao$ui.fun(ts=ts)
   output.id = ps$bdf$output.id[[bi]]  
   setUI(output.id, ui)
-  Ao$init.handlers(ao=ao,ts=ts)
-  cat("render add on not yet implemented.")
+  Ao$init.handlers(ao=ao,ts=ts,bi=bi)
+  #cat("render add on not yet implemented.")
 }
 
 

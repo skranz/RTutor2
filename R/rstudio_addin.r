@@ -32,7 +32,7 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
     app = slidesApp(ps,user.name="Jane Doe",catch.errors=FALSE,start.slide=1,dir=dir)
   } else {
     ps = rtutor.make.frame.ps(txt,dir=dir)
-    app = rtutorApp(ps, dir=dir)
+    app = rtutorApp(ps=ps, dir=dir)
   }
   viewApp(app)
 } 

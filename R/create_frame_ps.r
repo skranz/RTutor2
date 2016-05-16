@@ -53,8 +53,6 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   #Encoding(txt) = "UTF8"
   txt = mark_utf8(txt)
 
-  
-  
   # Only capture elements between the lines <!-- START --> and <!-- END -->
   res = rmd.between.start.end.lines(txt,return.start.end = TRUE)
   ps$txt.start = res$start; ps$txt.end = res$end
@@ -513,17 +511,6 @@ rtutor.parse.ps = function(bi,ps) {
 }
 
 
-rtutor.parse.frame = function(bi,ps) {
-  restore.point("rtutor.parse.frame")
-  bdf = ps$bdf; br = bdf[bi,];
-  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]])
-  title = first.non.null(args$title, args$name)
-
-  rtutor.parse.as.container(bi,ps,args = args, rmd.prefix="## Frame", title = title)
-  if (is.null(args$title.offset)) args$title.offset=0
-  ps$bdf$obj[[bi]] = list(title = args$name, args=args)
-}
-
 rtutor.parse.section = function(bi,ps) {
   restore.point("rtutor.parse.section")
   rtutor.parse.as.section(bi,ps,type="section", rmd.prefix="# Section")
@@ -547,7 +534,7 @@ rtutor.parse.frame = function(bi,ps) {
 rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section") {
   restore.point("rtutor.parse.as.section")
   bdf = ps$bdf; br = bdf[bi,];
-  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]])
+  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]], allow.unquoted.title = TRUE)
   title = first.non.null(args$title, args$name)
 
   rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=rmd.prefix, title = title)
