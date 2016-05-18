@@ -1,13 +1,19 @@
-
-bdf.frame.filter = function(line=NULL,frame.ind=NULL,type.ind=frame.ind,bdf.ind=NULL,type,keep.precompute=TRUE) {
-  bdf.type.filter(line,type.ind,bdf.ind,type="frame", keep.precompute=keep.precompute)
+bdf.part.filter = function(line=NULL,ranked.types=c("frame","subsection","section"),...) {
+  bdf.type.filter(line=line,ranked.types=ranked.types,first.if.null=TRUE,...)
 }
 
-bdf.part.filter = function(line=NULL,ranked.types=c("frame","subsubsection","subsection","section"),keep.precompute=TRUE) {
-  bdf.type.filter(line=line,ranked.types=ranked.types, keep.precompute=keep.precompute)
+get.auto.filter.type = function(ps, bdf=ps$bdf) {
+  ranked.types=c("frame","subsection","section")  
+  type = NULL
+  if (!is.null(ranked.types)) {
+    for (type in ranked.types) {
+      if (sum(bdf$type == type)>0) return(type)
+    }
+  }
+
 }
 
-find.bdf.smallest.part.type = function(bdf,ranked.types=c("frame","subsubsection","subsection","section")) {
+bdf.auto.filter.type = bdf.auto.slide.type = function(bdf,ranked.types=c("frame","subsubsection","subsection","section")) {
   type = NULL
   if (!is.null(ranked.types)) {
     for (type in ranked.types) {
@@ -16,11 +22,7 @@ find.bdf.smallest.part.type = function(bdf,ranked.types=c("frame","subsubsection
   }
 }
 
-bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, keep.precompute=TRUE) {
-  types.to.keep = NULL
-  if (keep.precompute) {
-    types.to.keep = "precompute"
-  }
+bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, types.to.keep = c("precompute"), first.if.null=TRUE) {
   function(bdf, te=NULL) {
     restore.point("in.bdf.type.filer")
     
@@ -32,7 +34,11 @@ bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranke
     }
     
     bdf.ind = get.bdf.ind(line=line,type.ind=type.ind,bdf.ind=bdf.ind,bdf=bdf,te=te,type=type)
-    if (is.null(bdf.ind)) return(bdf)
+    if (length(bdf.ind)==0) {
+      bdf.ind = min(which(bdf$type==type))
+      if (is.na(bdf.ind) | !first.if.null)
+        return(bdf)
+    }  
     
     child.ind = which(bdf[,paste0("parent_",type)] == bdf.ind)
     keep = bdf$type %in% types.to.keep & bdf$index <= bdf.ind
@@ -48,6 +54,8 @@ bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranke
 }
 
 get.bdf.ind = function(line=NULL,type.ind=NULL, bdf.ind=NULL, bdf=NULL, type=NULL, te=NULL) {
+  restore.point("get.bdf.ind")
+  
   if (!is.null(bdf.ind)) return(bdf.ind)
   if (!is.null(type.ind)) {
     return(bdf$index[bdf$type==type][type.ind]) 

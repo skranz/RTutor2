@@ -3,6 +3,9 @@
 # i.e. not on inputs, buttons, links or images
 # can be used to proceed with slides
 rtutorClickHandler = function(button.handler=TRUE, image.handler = TRUE, use.frame.click = TRUE,opts = rt.opts()) {
+  restore.point("rtutorClickHandler")
+  
+  
   code =  '$(document).on("click", function (e) {'
 
   # Variable definitions

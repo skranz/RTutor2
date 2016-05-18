@@ -21,18 +21,16 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
   range = doc$selection[[1]]$range
   line = range$start[1]
   
-  sub.txt = txt[1:line]
-  if (!any(str.starts.with(sub.txt,"#. frame"))) {
-    cat("\nSorry,... I don't see a tag '#. frame' above your cursor in your .Rmd file.")
-    return()
-  }
   
+  show.line = filter.line = NULL
   if (single.part) {
-    ps = rtutor.make.frame.ps(txt, bdf.filter=bdf.part.filter(line=line),priority.opts = list(slides=TRUE, slide.type="auto"), dir=dir)
-    app = slidesApp(ps,user.name="Jane Doe",catch.errors=FALSE,start.slide=1,dir=dir)
+    filter.line = line 
   } else {
-    ps = rtutor.make.frame.ps(txt,dir=dir)
-    app = rtutorApp(ps=ps, dir=dir)
+    show.line = line
   }
+
+  ps = rtutor.make.frame.ps(txt, dir=dir, source.file = file, show.line=show.line, filter.line = filter.line)
+  app = rtutorApp(ps=ps, dir=dir)
+  
   viewApp(app)
 } 

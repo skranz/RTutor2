@@ -84,7 +84,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
 }
 
 
-slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=1, dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
+slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=first.non.null(ps$start.slide,1), dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
   restore.point("slidesApp")
   
   app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, dir=dir, ups.dir=ups.dir, opts=opts)
@@ -370,17 +370,19 @@ rtutor.navigate.btns = function() {
 }
 
 add.slide.navigate.handlers = function() {
+  restore.point("add.slide.navigate.handlers")
+  
   buttonHandler("rtPrevBtn",slide.prev)
   buttonHandler("rtNextBtn",slide.next)
   buttonHandler("rtForwardBtn",slide.forward)
-  eventHandler(eventId="documentClickHandlerEvent", fun=slide.click)
+  eventHandler(eventId="documentClickHandlerEvent",id=NULL, fun=slide.click)
 }
 
 
-slide.click = function(value,ps=app$ps, app=getApp(),...) {
+slide.click = function(pageX,pageY,ps=app$ps, app=getApp(),...) {
   restore.point("slide.click")
 
-  is.left = value$pageX < 100 #& value$pageX <= value$width * 0.125 
+  is.left = pageX < 100 #& value$pageX <= value$width * 0.125 
   
   if (is.left) {
     slide.prev(ps=ps,app=app,...)

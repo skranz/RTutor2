@@ -26,11 +26,14 @@ rtutor.builtin.types = function() {
     "chunk","frame","section","subsection","subsubsection",
     "preknit","precompute","portrait", "image", "solved",
     "column","row","ps","info","note","award","references",
-    "show","notest","show_notest","hint","test","test_args"
+    "show","notest","show_notest","hint","test","test_args",
+    "settings"
   )
 }
 
-rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(), figure.web.dir = "figure",  ...) {
+
+
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main",  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
@@ -53,21 +56,18 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   #Encoding(txt) = "UTF8"
   txt = mark_utf8(txt)
 
-  # Only capture elements between the lines <!-- START --> and <!-- END -->
-  res = rmd.between.start.end.lines(txt,return.start.end = TRUE)
-  ps$txt.start = res$start; ps$txt.end = res$end
-  txt = res$txt
-
-  txt = fast.name.rmd.chunks(txt)
+  adapt.ignore.include(ps=ps,txt=txt, source.file=source.file)
+  txt = ps$txt
+  
   # add outer container
   txt = c("#. ps",txt)
+  ps$text.info = rbind(data_frame(line=NA,source=NA),ps$text.info)
+  
+  txt = fast.name.rmd.chunks(txt)
   
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
   
-  # all rows that will be deleted 
-  # in this precompilation state
-  del.lines = NULL
  
   # settings in rmd file overwrite opts
   bis = which(df$type == "settings")
@@ -75,7 +75,6 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     yaml = paste0(txt[(df$start[bi]+1):(df$end[bi]-1)], collapse="\n")
     so = read.yaml(text=yaml, keep.quotes=FALSE)
     opts[names(so)] = so
-    del.lines = c(del.lines, df$start[bi]:df$end[bi])
   }
 
   # priority opts overwrite settings and opts
@@ -84,20 +83,10 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$opts = opts
 
   ps$static.types = opts$static.types
+
+
+  df = find.rmd.nested(txt, dot.levels)
     
-  # remove content in ignore blocks
-  ig.rows = which(df$type=="ignore")
-  if (length(ig.rows)>0) {
-    del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.rows])))
-  }  
-
-
-  if (length(del.lines)>0) {
-    del.lines =unique(del.lines)
-    txt = txt[-del.lines]
-    df = find.rmd.nested(txt, dot.levels)
-  }
-  
   # remove blocks inside addons
   # those will be dealt by the addons themselves
   builtin.types = rtutor.builtin.types()
@@ -111,7 +100,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$slide.type = opts$slide.type
   
   if (ps$slide.type=="auto") 
-    ps$slide.type = find.bdf.smallest.part.type(df)
+    ps$slide.type = find.bdf.auto.slide.type(df)
   
   if (ps$slides) {
     if (ps$slide.type %in% ps$static.types) {
@@ -129,14 +118,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$addons = unique(df$type[df$is.addon])
   ps$Addons = list()
   for (addon in ps$addons) {
-    addon.fun = paste0("rtutor.addon.",addon)
-    if (exists(addon.fun)) {
-      ps$Addons[[addon]] = do.call(addon.fun,list())
-    } else {
-      warning(paste0("\nWe don't have a built-in block type ", addon,". Bute I could not find the function ", addon.fun, " that identifies the block as an addon. (Have you loaded the required package with the addon?"))
-      ps$addons = setdiff(ps$addons,addon)
-      stop()
-    }
+    rtutor.init.Addon(ps=ps,addon=addon)
   }
 
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","note", "section","subsection")
@@ -165,10 +147,15 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   
   
   # Filter bdf if only a subset of elements shall be compiled / shown
-  if (!is.null(bdf.filter)) {
-    bdf = bdf.filter(bdf=bdf)
+  if (!is.null(filter.line)) {
+    # filter problem set
+    line = source.line.to.line(filter.line,ps = ps,source = 1)
+    bdf = bdf.part.filter(line=line)(bdf=bdf)
     bdf = shorten.bdf.index(bdf)
-    #bdf$index = 1:NROW(bdf)
+  } else if (!is.null(show.line) & isTRUE(ps$slides)) {
+    # set start slide to current source line
+    bi = source.line.to.bi(line = show.line,source = 1,bdf=bdf,ps=ps,type = ps$slide.type)
+    ps$start.slide = sum(seq_len(NROW(bdf))<=bi & bdf$stype == ps$slide.type)
   }
 
   ps$bdf = bdf
@@ -194,7 +181,8 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
       res = try(rtutor.parse.block(bi,ps), silent=TRUE)
       if (is(res,"try-error")) {
         br = ps$bdf[bi,]
-        msg = paste0("Error when parsing ",br$type," block lines ", br$start+ps$txt.start-1, " to ", br$end+ps$txt.start-1,"\n\n", paste0(as.character(res), collape="\n"))
+        source = block.source.msg(bi=bi,ps=ps)
+        msg = paste0("Error when parsing ",br$type," block. Source: \n",source, "\n\n", paste0(as.character(res), collape="\n"))
         stop(msg)
       }
     } else {
@@ -220,6 +208,160 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   remove.existing.ups(ps.name=ps.name, dir=dir)
   ps
 }
+
+source.line.to.line = function(line, ps, source=1) {
+  restore.point("source.line.to.line")
+  line = max(which(ps$txt.lines <= line & ps$txt.source == source))
+  if (is.na(line)) line = 1  
+  line
+}
+
+source.line.to.bi = function(line,bdf=ps$bdf,ps, source=1,type=NULL) {
+  restore.point("source.line.to.bi")
+  line = source.line.to.line(line,ps,source)
+
+  if (is.null(type)) {
+    bi = max(which(bdf$start <= line))
+  } else {
+    bi = max(which(bdf$start <= line & bdf$type==type))
+    if (is.na(bi)) {
+      bi = min(which(bdf$type==type))
+    }
+  }
+  bi
+}
+
+block.source.msg = function(bi, ps) {
+  restore.point("block.source.msg")
+  
+  br = ps$bdf[bi,]
+  lines = br$start:br$end
+  df = data_frame(line=ps$txt.lines[lines],source=ps$txt.source)
+  sdf = summarise(group_by(df, source), start=min(line),end=max(line))
+  sdf$file = ps$source.files[sdf$source]
+  
+  paste0(sdf$file, " lines ",sdf$start, " to ", sdf$end, collapse="\n")
+
+}
+
+# Some default packages for addons
+# Can be used to automatically load packages
+rtutor.addon.packages = function() {
+  c(pane="EconCurves",plotpane="EconCurves",panequiz="EconCurves")
+}
+
+rtutor.init.Addon = function(ps, addon) {
+  restore.point("rtutor.init.Addon")
+  addon.fun = paste0("rtutor.addon.",addon)
+  if (exists(addon.fun)) {
+    ps$Addons[[addon]] = do.call(addon.fun,list())
+  } else {
+    pkgs = rtutor.addon.packages()
+    if (!addon %in% names(pkgs)) {
+      warning(paste0("\nWe don't have a built-in block type ", addon,". Bute I could not find the function ", addon.fun, " that identifies the block as an addon. (Have you loaded the required package with the addon?"))
+      ps$addons = setdiff(ps$addons,addon)
+      stop()
+    } else {
+      if (require(pkgs[addon],character.only = TRUE)) {
+        warning(paste0("\nI loaded the package ", pkgs[addon], " for the addon ", addon,".")) 
+        ps$Addons[[addon]] = do.call(addon.fun,list())
+      } else {
+        warning(paste0("\nWe don't have a built-in block type ", addon,". This addon is defined in the package ", pkgs[addon]," but you have not installed that package."))
+        stop()
+      }
+    }
+    
+  }
+}
+
+adapt.ignore.include = function(ps, txt=ps$txt, source.file="main") {
+  restore.point("adapt.ignore.include")
+
+    # Only capture elements between the lines <!-- START --> and <!-- END -->
+  res = rmd.between.start.end.lines(txt,return.start.end = TRUE)
+  txt = res$txt
+  ps$txt.lines = seq_along(txt)+res$start-1
+  ps$txt.source = rep(1, length(ps$txt.lines))
+  ps$source.files = source.file
+
+  changed.ig = changed.in = TRUE
+  counter = 0
+  ps$txt = txt
+  while(changed.ig | changed.in) {
+    counter = counter+1
+    changed.ig = adapt.ignore(ps)
+    changed.in = adapt.include(ps)
+    if (counter > 300) {
+      stop("#. include statements were nested deeper than 300 levels. Probably there is a recursion...")
+    }
+  }
+  invisible()
+}
+
+adapt.ignore = function(ps,txt=ps$txt) {
+  restore.point("adapt.ignore")
+  
+  # all rows that will be deleted 
+  # in this precompilation state
+  del.lines = NULL
+  df = find.rmd.blocks(txt)
+  
+  # remove content in ignore blocks
+  ig.rows = which(df$type=="ignore")
+  if (length(ig.rows)>0) {
+    del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.rows])))
+  }  
+
+  if (length(del.lines)==0) return(FALSE)
+  del.lines =unique(del.lines)
+  txt = txt[-del.lines]
+  ps$txt.lines = ps$txt.lines[-del.lines]
+  ps$txt.source = ps$txt.source[-del.lines]
+  
+  ps$txt = txt
+  return(TRUE)
+}
+
+adapt.include = function(ps,txt=ps$txt) {
+  restore.point("adapt.include")
+  lines = which(str.starts.with(txt,"#. include "))
+  if (length(lines)==0) return(FALSE)
+  
+  files = str.trim(str.right.of(txt[lines],"#. include "))
+  
+  for (i in seq_along(lines)) {
+    file = files[i]
+    source = match(file, ps$source.files)
+    if (is.na(source)) {
+      ps$source.files = c(ps$source.files, file)
+      source = length(ps$source.files)
+    }
+    line = lines[i]
+    ntxt = readLines(paste0(ps$dir,"/",file),warn=FALSE)
+    ps$txt = insert.into.vec(txt,ntxt,pos=line, replace=TRUE)
+    ps$txt.lines = insert.into.vec(ps$txt.lines,seq_along(ntxt),pos=line, replace=TRUE)
+    
+    ps$txt.source = insert.into.vec(ps$txt.source,rep(source,length(ntxt)),pos=line, replace=TRUE)    
+    lines = lines+length(ntxt)-1
+  }
+  return(TRUE)
+}
+
+insert.into.vec = function(vec, new, pos, replace=FALSE) {
+  restore.point("insert.into.vec")
+  
+  keep.left = seq_len(min(pos)-1)
+  
+  if (replace) {
+    keep.right = if (max(pos)<length(vec)) (max(pos)+1):length(vec) else integer(0)  
+  } else {
+    keep.right= if (min(pos)<=length(vec)) (min(pos)):length(vec) else integer(0)    
+  }
+  
+  c(vec[keep.left],new,vec[keep.right])  
+  
+}
+
 
 adapt.for.back.to.blocks = function(bdf,ps, line.start=ps$txt.start) {
   restore.point("adapt.for.back.to.blocks")
@@ -309,6 +451,10 @@ rtutor.parse.block = function(bi,ps) {
   res = eval(fun.call)
   res
   #fun(bi,ps)
+}
+
+rtutor.parse.settings = function(bi, ps,...) {
+  
 }
 
 rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
