@@ -22,7 +22,7 @@ bdf.auto.filter.type = bdf.auto.slide.type = function(bdf,ranked.types=c("frame"
   }
 }
 
-bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, types.to.keep = c("precompute"), first.if.null=TRUE) {
+bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, types.to.keep = c("precompute","ps","settings"), first.if.null=TRUE) {
   function(bdf, te=NULL) {
     restore.point("in.bdf.type.filer")
     
@@ -33,6 +33,8 @@ bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranke
       }
     }
     
+    parent.types.to.keep = types.to.keep[paste0("parent_",types.to.keep) %in% colnames(bdf)]
+    
     bdf.ind = get.bdf.ind(line=line,type.ind=type.ind,bdf.ind=bdf.ind,bdf=bdf,te=te,type=type)
     if (length(bdf.ind)==0) {
       bdf.ind = min(which(bdf$type==type))
@@ -42,7 +44,7 @@ bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranke
     
     child.ind = which(bdf[,paste0("parent_",type)] == bdf.ind)
     keep = bdf$type %in% types.to.keep & bdf$index <= bdf.ind
-    for (ktype in types.to.keep) {
+    for (ktype in parent.types.to.keep) {
       keep = keep | (bdf[,paste0("parent_",ktype)] >0 & bdf$index <= bdf.ind)
     }
     keep.ind = which(keep)

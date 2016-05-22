@@ -152,6 +152,8 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     line = source.line.to.line(filter.line,ps = ps,source = 1)
     bdf = bdf.part.filter(line=line)(bdf=bdf)
     bdf = shorten.bdf.index(bdf)
+    lines = c(unlist(lapply(2:NROW(bdf), function(row) bdf$start[row]:bdf$end[row])))
+    ps$txt[-lines] = ""
   } else if (!is.null(show.line) & isTRUE(ps$slides)) {
     # set start slide to current source line
     bi = source.line.to.bi(line = show.line,source = 1,bdf=bdf,ps=ps,type = ps$slide.type)
@@ -211,9 +213,9 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
 
 source.line.to.line = function(line, ps, source=1) {
   restore.point("source.line.to.line")
-  line = max(which(ps$txt.lines <= line & ps$txt.source == source))
-  if (is.na(line)) line = 1  
-  line
+  lines = (which(ps$txt.lines <= line & ps$txt.source == source))
+  if (length(lines)==0) return(1)
+  return(max(lines))
 }
 
 source.line.to.bi = function(line,bdf=ps$bdf,ps, source=1,type=NULL) {
@@ -223,9 +225,11 @@ source.line.to.bi = function(line,bdf=ps$bdf,ps, source=1,type=NULL) {
   if (is.null(type)) {
     bi = max(which(bdf$start <= line))
   } else {
-    bi = max(which(bdf$start <= line & bdf$type==type))
-    if (is.na(bi)) {
-      bi = min(which(bdf$type==type))
+    bis = which(bdf$start <= line & bdf$type==type)
+    if (length(bis)==0) {
+      bi = min(which(bdf$type==type))      
+    } else {
+      bi = max(bis)
     }
   }
   bi
@@ -236,7 +240,7 @@ block.source.msg = function(bi, ps) {
   
   br = ps$bdf[bi,]
   lines = br$start:br$end
-  df = data_frame(line=ps$txt.lines[lines],source=ps$txt.source)
+  df = data_frame(line=ps$txt.lines[lines],source=ps$txt.source[lines])
   sdf = summarise(group_by(df, source), start=min(line),end=max(line))
   sdf$file = ps$source.files[sdf$source]
   
@@ -309,7 +313,7 @@ adapt.ignore = function(ps,txt=ps$txt) {
   # remove content in ignore blocks
   ig.rows = which(df$type=="ignore")
   if (length(ig.rows)>0) {
-    del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.rows])))
+    del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.row])))
   }  
 
   if (length(del.lines)==0) return(FALSE)
