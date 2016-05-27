@@ -17,6 +17,11 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
   file = basename(doc$path)
   dir = dirname(doc$path)
   
+  if (nchar(file)==0) {
+    cat("\nRStudio has not detected your RTutor .rmd tab. Please try again!")
+    return()
+  }
+  
   txt = doc$contents
   range = doc$selection[[1]]$range
   line = range$start[1]

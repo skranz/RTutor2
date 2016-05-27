@@ -27,7 +27,7 @@ rtutor.builtin.types = function() {
     "preknit","precompute","portrait", "image", "solved",
     "column","row","ps","info","note","award","references",
     "show","notest","show_notest","hint","test","test_args",
-    "settings"
+    "settings","css"
   )
 }
 
@@ -49,6 +49,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$dir = dir
   ps$figure.dir = figure.dir
   ps$plugins = plugins
+  ps$css = NULL
   
   if (length(txt)==1)  
     txt = sep.lines(txt)
@@ -411,10 +412,16 @@ shorten.bdf.index = function(bdf, new = 1:NROW(bdf), old = bdf$index) {
   pmat = as.matrix(bdf[,cols])
   pvec = as.numeric(pmat)
   pvec[pvec==0] = NA_integer_
+  #pvec[pvec==0] = 0
   nmat = matrix(long[as.numeric(pvec)],NROW(pmat),ncol(pmat))
   nmat[pmat==0] = 0
+  nmat[is.na(nmat)] = 0
   
   bdf[,cols] = nmat
+  rows = bdf$parent == 0 & bdf$index > 1
+  bdf$parent[rows] = 1
+  bdf$level[rows] = 2
+  
   bdf
 }
 
@@ -460,6 +467,12 @@ rtutor.parse.block = function(bi,ps) {
 rtutor.parse.settings = function(bi, ps,...) {
   
 }
+
+rtutor.parse.css = function(bi, ps,...) {
+  css = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
+  ps$css = paste0(c(ps[["css"]],css),collapse="\n")
+}
+
 
 rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
   restore.point("rtutor.parse.addon")
@@ -920,6 +933,18 @@ set.bdf.ui = function(ui,bi,ps) {
   #ps$bdf$has.ui[[bi]] = TRUE
 }
 
+fragment.to.html = function(txt, bi, ps) {
+  restore.point("fragment.to.html")
+  
+  if (isTRUE(ps$opts$use.whiskers)) {
+    .whiskers = ps$pre.env[[".whiskers"]]
+    if (length(.whiskers)>0)
+      txt = replace.whiskers(paste0(txt,collapse="\n"),.whiskers)
+  }
+  
+  HTML(md2html(txt, fragment.only = TRUE))  
+}
+
 get.children.and.fragments.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi ) {
   restore.point("get.children.and.fragments.ui.list")
   
@@ -929,7 +954,7 @@ get.children.and.fragments.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, 
   ui = sol.rmd = shown.rmd = out.rmd = res$frag
 
   ui[is.frag] = lapply(ui[is.frag], function(txt) {
-    HTML(md2html(txt, fragment.only = TRUE))
+    fragment.to.html(txt=txt, bi=bi, ps=ps)
   })
   
   ui[is.child] = lapply(which(children), function(ind) {

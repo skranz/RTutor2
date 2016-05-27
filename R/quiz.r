@@ -75,9 +75,14 @@ rtutor.quiz.init.handlers = function(ao=ts$ao,ps=get.ps(), app=getApp(),ts=NULL,
   add.quiz.handlers(qu=ao, quiz.handler=rtutor.quiz.handler)    
 }
 
-rtutor.quiz.block.parse = function(inner.txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL, bi=NULL,...) {
+rtutor.quiz.block.parse = function(inner.txt,type="quiz",name="",id=paste0("addon__",type,"__",name),args=NULL, bdf=NULL, bi=NULL, ps=get.ps(),...) {
   restore.point("rtutor.quiz.block.parse")
-  qu = shinyQuiz(id = id,yaml = merge.lines(inner.txt), bdf = NULL,add.handler = FALSE)
+  whiskers =NULL
+  if (isTRUE(ps$opts$use.whiskers)) {
+    whiskers = ps$pre.env$.whiskers
+  }
+  
+  qu = shinyQuiz(id = id,yaml = merge.lines(inner.txt), bdf = NULL,add.handler = FALSE, whiskers=whiskers)
   qu
 }
 
@@ -154,7 +159,7 @@ quizDefaults = function(lang="en") {
 #' @param quiz.handler a function that will be called if the quiz is checked.
 #'        The boolean argument solved is TRUE if the quiz was solved
 #'        and otherwise FALSE
-shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, defaults=quizDefaults(lang=lang), lang="en") {
+shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, blocks.txt=NULL, bdf=NULL, quiz.handler=NULL, add.handler=TRUE, defaults=quizDefaults(lang=lang), lang="en", whiskers=NULL) {
   restore.point("shinyQuiz")
 
   if (is.null(qu)) {
@@ -192,7 +197,7 @@ shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, block
 
 
   qu$checkBtnId = paste0(qu$id,"__checkBtn")
-  qu$parts = lapply(seq_along(qu$parts), function(ind) init.quiz.part(qu$parts[[ind]],ind,qu))
+  qu$parts = lapply(seq_along(qu$parts), function(ind) init.quiz.part(qu$parts[[ind]],ind,qu,whiskers=whiskers))
   np = length(qu$parts)
   
   qu$max.points = sum(sapply(qu$parts, function(part) part[["points"]]))
@@ -204,7 +209,7 @@ shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, block
   qu
 }
 
-init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=quizDefaults()) {
+init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=quizDefaults(), whiskers=list()) {
   restore.point("init.quiz.part")
 
   part = copy.into.missing.fields(dest=part, source=defaults)
@@ -227,6 +232,9 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
     }
     part$correct.choices = correct.choices
     part$choices[correct.choices] = str.remove.ends(part$choices[correct.choices],right=1)
+    
+    part$choices = lapply(part$choices, replace.whiskers,env=whiskers)
+    
     part$answer = unlist(part$choices[correct.choices])
     names(part$choices) =NULL
     if (part$multiple) {
@@ -248,8 +256,10 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   if (is.null(part[["points"]])) {
     part$points = 1
   }
+  part$question = replace.whiskers(part$question,env=whiskers)
 
-  txt = part$success
+  
+  txt = replace.whiskers(part$success,whiskers)
   
   if (part$points==1) {
     txt = paste0(txt," (", part$points, " ", defaults$point_txt,")")
@@ -259,7 +269,8 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   txt = colored.html(txt, part$success_color)
   part$success =  markdownToHTML(text=txt,encoding = "UTF-8", fragment.only=TRUE)
 
-  txt = colored.html(part$failure, part$failure_color)
+  txt = replace.whiskers(part$failure, whiskers)
+  txt = colored.html(txt, part$failure_color)
   part$failure =  markdownToHTML(text=txt,encoding = "UTF-8", fragment.only=TRUE)
 
   part$id = paste0(qu$id,"__part", part.ind)
@@ -302,7 +313,7 @@ quiz.ui = function(qu, solution=FALSE) {
     pli = c(pli, list(actionButton(qu$checkBtnId,label = "check"),br()))
   }
 
-  pli
+  withMathJax(pli)
 }
 
 quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {

@@ -91,11 +91,14 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
   
   ps$slide.ind = start.slide
   ps.content.ui = ps$bdf$ui[[1]]   
-   
+  
+  css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
+  
   resTags = rtutor.html.ressources()
   app$ui = tagList(
     useShinyjs(),
     resTags,
+    css,
     rtutorClickHandler(),
     fluidPage(
       fluidRow(
@@ -196,11 +199,14 @@ east: {
   resizable: true
 }
 '
+  css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
 
   app$ui = tagList(
     useShinyjs(),
     resTags,
+    css,
     rtutorClickHandler(),
+    
     bootstrapPage(
     jqueryLayoutPage(style=style,
       north = div(
