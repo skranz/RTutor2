@@ -27,7 +27,7 @@ rtutor.builtin.types = function() {
     "preknit","precompute","portrait", "image", "solved",
     "column","row","ps","info","note","award","references",
     "show","notest","show_notest","hint","test","test_args",
-    "settings","css"
+    "settings","css","head"
   )
 }
 
@@ -49,7 +49,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$dir = dir
   ps$figure.dir = figure.dir
   ps$plugins = plugins
-  ps$css = NULL
+  ps$css = ps$head = NULL
   
   if (length(txt)==1)  
     txt = sep.lines(txt)
@@ -471,6 +471,12 @@ rtutor.parse.settings = function(bi, ps,...) {
 rtutor.parse.css = function(bi, ps,...) {
   css = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
   ps$css = paste0(c(ps[["css"]],css),collapse="\n")
+}
+
+
+rtutor.parse.head = function(bi, ps,...) {
+  head = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
+  ps$head = paste0(c(ps[["head"]],head),collapse="\n")
 }
 
 

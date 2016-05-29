@@ -93,9 +93,11 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
   ps.content.ui = ps$bdf$ui[[1]]   
   
   css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
+  head = if (!is.null(ps$head)) tags$head(HTML(ps$head)) else NULL
   
   resTags = rtutor.html.ressources()
   app$ui = tagList(
+    head,
     useShinyjs(),
     resTags,
     css,
@@ -200,8 +202,10 @@ east: {
 }
 '
   css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
+  head = if (!is.null(ps$head)) tags$head(HTML(ps$head)) else NULL
 
   app$ui = tagList(
+    head,
     useShinyjs(),
     resTags,
     css,

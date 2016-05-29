@@ -256,7 +256,7 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   if (is.null(part[["points"]])) {
     part$points = 1
   }
-  part$question = replace.whiskers(part$question,env=whiskers)
+  part$question = md2html(replace.whiskers(part$question,env=whiskers))
 
   
   txt = replace.whiskers(part$success,whiskers)
@@ -267,11 +267,11 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
     txt = paste0(txt," (", part$points, " ", defaults$points_txt,")")
   }
   txt = colored.html(txt, part$success_color)
-  part$success =  markdownToHTML(text=txt,encoding = "UTF-8", fragment.only=TRUE)
+  part$success =  md2html(text=txt, fragment.only=TRUE)
 
   txt = replace.whiskers(part$failure, whiskers)
   txt = colored.html(txt, part$failure_color)
-  part$failure =  markdownToHTML(text=txt,encoding = "UTF-8", fragment.only=TRUE)
+  part$failure =  md2html(text=txt, fragment.only=TRUE)
 
   part$id = paste0(qu$id,"__part", part.ind)
   part$answerId = paste0(part$id,"__answer")
@@ -318,7 +318,7 @@ quiz.ui = function(qu, solution=FALSE) {
 
 quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {
   head = list(
-    HTML(paste0("<p>",part$question,"</p>"))
+    HTML(part$question)
   )
   if (solution) {
     if (part$type=="numeric") {
