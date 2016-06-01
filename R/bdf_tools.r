@@ -22,7 +22,7 @@ bdf.auto.filter.type = bdf.auto.slide.type = function(bdf,ranked.types=c("frame"
   }
 }
 
-bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, types.to.keep = c("precompute","ps","settings","css","head", "pane"), first.if.null=TRUE) {
+bdf.type.filter = function(line=NULL,type.ind=NULL,bdf.ind=NULL,type=NULL, ranked.types = NULL, types.to.keep = c("precompute","ps","settings","css","head", "pane","panequiz"), first.if.null=TRUE) {
   function(bdf, te=NULL) {
     restore.point("in.bdf.type.filer")
     

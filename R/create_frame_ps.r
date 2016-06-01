@@ -1192,54 +1192,6 @@ rtutor.navbar = function(ps, opts=rt.opts(), nav.levels = c("section","subsectio
   ps$navbar.ui
 } 
 
-rtutor.navbar.old = function(ps, nav.levels = c("section","subsection","frame"), link.fun = default.navbar.link.fun, li.fun=default.navbar.li.fun, outer.fun=default.navbar.outer.fun) {
-  restore.point("rtutor.navbar")
-  
-  bdf = ps$bdf
-  nav.levels = intersect(nav.levels, bdf$type)
-  
-  get.level.li = function(nav.levels=nav.levels, parent.bi=NULL, level=1) {
-    restore.point("rtutor.navbar.get.level.li")
-    
-    if (is.null(parent.bi)) {
-      bis = which(bdf$type == nav.levels[1])
-    } else {
-      bis = which(bdf$parent_container==parent.bi)
-    }
-    types = bdf$type[bis]
-    ignore = !types %in% nav.levels
-    bis = bis[!ignore]
-    types = types[!ignore]
-    bi.levels = match(types, nav.levels)
-  
-    
-    child.li = vector("list",length(bis))
-    if (level < length(nav.levels)) {
-      for (i in seq_along(bis)) {
-        bi = bis[i]
-        if (isTRUE(bi.levels[i]<length(nav.levels))) {
-          child.li[[i]] = get.level.li(nav.levels=nav.levels, parent.bi = bi, level=bi.levels[i])
-        }
-      }
-    }
-    titles = lapply(seq_along(bis), function(i) {
-      bi = bis[i]
-      obj = bdf$obj[[bi]]
-      if (is.null(obj$title)) {
-        title = paste0(bdf$type[[bi]]," ",bdf$stype.ind[[bi]])
-      } else {
-        title = obj$title
-      }
-      link.fun(title, bi.levels[i],bi=bi[[i]])
-    })
-    li.fun(titles, child.li,levels=bi.levels, bis=bis)
-  }
-  
-  inner = get.level.li(nav.levels=nav.levels)
-  outer.fun(inner)
-  
-} 
-
 slide.title.bar.ui = function(title, slide.ind, num.slides) {
   div(class="rtutor-slide-title-bar",
     HTML("<table width='100%'><tr><td>"),

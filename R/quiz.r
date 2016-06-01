@@ -24,6 +24,7 @@ rtutor.addon.quiz = function() {
     need.task.env = FALSE,
     change.task.env = FALSE,
     is.task = TRUE,
+    use.clicker = TRUE,
     is.static = FALSE,
     parse.fun = rtutor.quiz.block.parse,
     make.org.task.state = rtutor.quiz.make.org.task.state,

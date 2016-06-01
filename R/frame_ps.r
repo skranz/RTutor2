@@ -17,6 +17,7 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
   # make shallow copy of ps
   ps = as.environment(as.list(ps))
   set.ps(ps)
+  ps$ses.id = random.string(nchar=12)
 
   ups = load.ups(user.name=user.name, nick=user.name)
   restore.point("init.ps.session")
@@ -43,13 +44,17 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
     call.plugin.handler("init.handler",plugin=plugin)
   }
   call.plugin.handler("activate.handler",plugin=ps$active.plugin)
+
+  if (isTRUE(ps$opts$use.clicker)) {
+    init.ps.clicker(ps=ps, opts=ps$opts)
+  }
   
   
   ps
 }
 
 # general initialisation independent of app type
-initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list(), dir=getwd(), figure.dir = paste0(dir,"/", ps$figure.sub.dir), ups.dir=dir,...) {
+initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list(), dir=getwd(), figure.dir = paste0(dir,"/", ps$figure.sub.dir), ups.dir=dir, use.clicker=first.non.null(ps$opts$use.clicker,FALSE), clicker.dir=ps$opts$clicker.dir, ...) {
   restore.point("initRTutorApp")
   library(shinyjs)
   
@@ -70,8 +75,14 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   ps$opts$is.shiny=TRUE
   ps$opts$catch.errors = catch.errors
   
+  ps$opts$clicker.dir = clicker.dir
+  ps$opts$use.clicker = use.clicker
+  
+
   ps$given.awards.bi = NULL
   set.rt.opts(ps$opts)
+  
+  
   
   app$ps = ps
 
@@ -84,7 +95,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
 }
 
 
-slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=first.non.null(ps$start.slide,1), dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list()) {
+slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=first.non.null(ps$start.slide,1), dir=getwd(), ups.dir=dir, offline=FALSE, just.return.html=FALSE, catch.errors = TRUE, margin=2, opts=list(), use.clicker=first.non.null(ps$use.clicker,!is.null(clicker.dir)), clicker.dir = ps[["clicker.dir"]]) {
   restore.point("slidesApp")
   
   app = initRTutorApp(ps=ps, catch.errors = catch.errors,offline = offline, dir=dir, ups.dir=ups.dir, opts=opts)
@@ -94,6 +105,11 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
   
   css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
   head = if (!is.null(ps$head)) tags$head(HTML(ps$head)) else NULL
+  
+  inner.ui = tagList(
+    div(id="slideMenuDiv",uiOutput("slideMenuUI")),
+    withMathJax(ps.content.ui)    
+  )
   
   resTags = rtutor.html.ressources()
   app$ui = tagList(
@@ -105,7 +121,7 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
     fluidPage(
       fluidRow(
         column(width=12-2*margin, offset=margin,
-          withMathJax(ps.content.ui)
+          inner.ui 
         )
       )
     )
@@ -374,7 +390,8 @@ rtutor.navigate.btns = function() {
   btns = tagList(
     bsButton("rtPrevBtn","<",size = "extra-small"),
     bsButton("rtNextBtn",">",size = "extra-small"),
-    bsButton("rtForwardBtn",">>",size = "extra-small")
+    bsButton("rtForwardBtn",">>",size = "extra-small"),
+    bsButton("rtSlideMenuBtn","", size="extra-small", icon=icon(name="bars", lib="font-awesome"))
   )
   btns
 }
@@ -386,6 +403,11 @@ add.slide.navigate.handlers = function() {
   buttonHandler("rtNextBtn",slide.next)
   buttonHandler("rtForwardBtn",slide.forward)
   eventHandler(eventId="documentClickHandlerEvent",id=NULL, fun=slide.click)
+  buttonHandler("rtSlideMenuBtn",slide.menu.click)
+  buttonHandler("rtCloseMenuBtn", function(...) {
+    restore.point("rtCloseMenuBtn")
+    setHtmlHide(id="slideMenuDiv")
+  })
 }
 
 
@@ -401,7 +423,6 @@ slide.click = function(pageX,pageY,ps=app$ps, app=getApp(),...) {
   }
 }
 
-
 slide.prev = function(ps=app$ps, app=getApp(),...) {
   restore.point("slide.prev")
   if (ps$slide.ind <= 1) return()
@@ -416,6 +437,24 @@ slide.next = function(ps=app$ps, app=getApp(),...) {
 
 slide.forward = function(ps=app$ps, app=getApp(),...) {
   slide.next(ps=ps,app=app,...)
+}
+
+
+slide.menu.click = function(..., ps=app$ps, app=getApp()) {
+  restore.point("slide.menu.click")
+  slide.ind = ps$slide.ind
+
+  dsetUI(id="slideMenuUI",make.slide.menu.ui(ps=ps))
+  setHtmlShow("slideMenuDiv")
+}
+
+
+make.slide.menu.ui = function(ps, slide.ind=ps$slide.ind) {
+  div(width="100%",
+    tags$button(id="rtCloseMenuBtn",style="position: absolute; top: 0; right: 0",class="btn btn-small action-btn", "X"),
+    bsButton("rtSendClickerBtn" ,"Send as Clicker", size="small"),
+    bsButton("rtClickerStatsBtn","Clicker Stats", size="small")
+  )
 }
 
 # TO DO: improve code
@@ -461,5 +500,4 @@ set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathja
       show.container(ps=ps,bi=bi)
   }
 }
-
 
