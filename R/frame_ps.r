@@ -414,7 +414,7 @@ add.slide.navigate.handlers = function() {
 slide.click = function(pageX,pageY,ps=app$ps, app=getApp(),...) {
   restore.point("slide.click")
 
-  is.left = pageX < 100 #& value$pageX <= value$width * 0.125 
+  is.left = isTRUE(pageX < 100) #& value$pageX <= value$width * 0.125 
   
   if (is.left) {
     slide.prev(ps=ps,app=app,...)
@@ -422,6 +422,14 @@ slide.click = function(pageX,pageY,ps=app$ps, app=getApp(),...) {
     slide.next(ps=ps,app=app,...)
   }
 }
+
+
+rtutor.bubble.click = function(pageX=NA,pageY=NA,app=getApp(), ps=get.ps(),...) {
+  if (isTRUE(ps$slides)) {
+    slide.click(pageX=pageX,pageY=pageY,...)
+  }
+}
+
 
 slide.prev = function(ps=app$ps, app=getApp(),...) {
   restore.point("slide.prev")
