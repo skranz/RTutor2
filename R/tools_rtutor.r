@@ -1,3 +1,8 @@
+perc = function(val, round.digits=2) {
+  paste0(round(val*100,round.digits),"%")
+}
+
+
 gglines = function(data, xvar=colnames(data)[1], yvars=setdiff(colnames(data),xvar), key_col="variable",value_col="value", geom=ggplot2::geom_line(size=1.1)) {
   tidyr::gather_(data,key_col=key_col,value_col=value_col, gather_cols=yvars) %>%
   ggplot2::ggplot(ggplot2::aes_string(x=xvar,y=value_col, group=key_col, color=key_col)) + geom

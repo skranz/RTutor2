@@ -27,7 +27,7 @@ rtutor.builtin.types = function() {
     "preknit","precompute","portrait", "image", "solved",
     "column","row","ps","info","note","award","references",
     "show","notest","show_notest","hint","test","test_args",
-    "settings","css","head"
+    "settings","css","head","layout"
   )
 }
 
@@ -480,6 +480,23 @@ rtutor.parse.head = function(bi, ps,...) {
 }
 
 
+rtutor.parse.layout = function(bi, ps,...) {
+  restore.point("rtutor.parse.layout")
+  br = ps$bdf[bi,]
+  name = br$arg.str
+  ps$bdf$name[bi] = name
+  inner = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
+  li = parse.hashdot.yaml(inner, hashdot="##. ")
+  li$name = name
+  ps$bdf$obj[[bi]] = li
+  if (is.null(ps[["layouts"]]))
+    ps$layouts = list()
+  
+  ps$layouts[[name]] = li
+}
+
+
+
 rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
   restore.point("rtutor.parse.addon")
   
@@ -703,7 +720,13 @@ rtutor.parse.frame = function(bi,ps) {
 rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section") {
   restore.point("rtutor.parse.as.section")
   bdf = ps$bdf; br = bdf[bi,];
-  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]], allow.unquoted.title = TRUE)
+  arg.str= ps$bdf$arg.str[[bi]]
+  args = parse.block.args(arg.str =arg.str, allow.unquoted.title = TRUE)
+  # extract layout in [ ]
+  if (str.starts.with(arg.str,"[")) {
+    args$layout = str.between(args$name,"[","]")
+    args$name = str.trim(str.right.of(args$name,']'))
+  }
   title = first.non.null(args$title, args$name)
 
   rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=rmd.prefix, title = title)
@@ -947,6 +970,8 @@ fragment.to.html = function(txt, bi, ps) {
     if (length(.whiskers)>0)
       txt = replace.whiskers(paste0(txt,collapse="\n"),.whiskers)
   }
+  
+  #txt = unicode.html.math(txt)
   
   HTML(md2html(txt, fragment.only = TRUE))  
 }
