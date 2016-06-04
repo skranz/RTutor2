@@ -234,7 +234,7 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
     part$correct.choices = correct.choices
     part$choices[correct.choices] = str.remove.ends(part$choices[correct.choices],right=1)
     
-    part$choices = lapply(part$choices, replace.whiskers,env=whiskers)
+    part$choices = lapply(part$choices, replace.whiskers,values=whiskers)
     
     part$answer = unlist(part$choices[correct.choices])
     names(part$choices) =NULL
@@ -257,7 +257,7 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   if (is.null(part[["points"]])) {
     part$points = 1
   }
-  part$question = md2html(replace.whiskers(part$question,env=whiskers))
+  part$question = md2html(replace.whiskers(part$question,values=whiskers))
 
   
   txt = replace.whiskers(part$success,whiskers)

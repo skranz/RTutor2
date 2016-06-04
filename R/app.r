@@ -330,7 +330,7 @@ show.rtutor.login.main = function(userid="guest", psapps = app$glob$psapps, app 
     )
   })
 
-  header = replace.whisker(header, list(userid=userid))
+  header = replace.whiskers(header, list(userid=userid), eval=FALSE)
   ui = fluidRow(column(offset = 2, width=8,
     h3("Welcome ", userid),
     br(),

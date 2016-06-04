@@ -715,7 +715,8 @@ rtutor.parse.subsubsection = function(bi,ps) {
 
 rtutor.parse.frame = function(bi,ps) {
   restore.point("rtutor.parse.frame")
-  rtutor.parse.as.section(bi,ps,type="frame", rmd.prefix="### Frame") }
+  rtutor.parse.as.section(bi,ps,type="frame", rmd.prefix="### Frame") 
+}
 
 rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section") {
   restore.point("rtutor.parse.as.section")
@@ -724,11 +725,17 @@ rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section
   args = parse.block.args(arg.str =arg.str, allow.unquoted.title = TRUE)
   # extract layout in [ ]
   if (str.starts.with(arg.str,"[")) {
-    args$layout = str.between(args$name,"[","]")
+    args$layout.name = str.between(args$name,"[","]")
+    args$layout = ps$layouts[[args$layout.name]]
+    if (is.null(args[["layout"]])) {
+      cat("\nWarning could not find layout", args$layout.name)
+    } else {
+      inner = get.bi.inner.txt(bi,ps=ps)
+      args$layout.txt = sep.lines(txt.to.layout(txt=inner,layout=args$layout))
+    }
     args$name = str.trim(str.right.of(args$name,']'))
   }
   title = first.non.null(args$title, args$name)
-
   rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=rmd.prefix, title = title)
   if (is.null(args$title.offset)) args$title.offset=0
   ps$bdf$obj[[bi]] = list(title = args$name, args=args)
@@ -739,7 +746,7 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   restore.point("rtutor.parse.as.container")
   bdf = ps$bdf; br = bdf[bi,];
   if (is.null(inner.ui) | is.null(rmd.li)) {
-    res = get.children.and.fragments.ui.list(bi,ps,keep.null=TRUE)
+    res = get.children.and.fragments.ui.list(bi,ps,keep.null=TRUE, layout.txt = args$layout.txt)
     if (is.null(inner.ui))
       inner.ui = res$ui.li
     if (is.null(rmd.li)) rmd.li = res
@@ -976,10 +983,10 @@ fragment.to.html = function(txt, bi, ps) {
   HTML(md2html(txt, fragment.only = TRUE))  
 }
 
-get.children.and.fragments.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi ) {
+get.children.and.fragments.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi, layout.txt=NULL) {
   restore.point("get.children.and.fragments.ui.list")
   
-  res = get.non.children.fragments(bi,ps, child.ind = which(children))
+  res = get.non.children.fragments(bi,ps, child.ind = which(children), layout.txt=layout.txt)
   is.frag = res$is.frag
   is.child = !is.frag
   ui = sol.rmd = shown.rmd = out.rmd = res$frag
@@ -1027,9 +1034,12 @@ get.child.and.fragment.txt.li = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf
   list(txt.li = txt.li, is.frag=is.frag)
 }
 
-get.non.children.fragments = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE) {
+get.non.children.fragments = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE, layout.txt = NULL) {
   restore.point("get.non.children.fragments")
   
+  if (!is.null(layout.txt)) {
+    return(get.non.children.fragments.from.layout.txt(bi,ps,bdf, child.ind, keep.header.footer, layout.txt))
+  }
   cpos = cbind(bdf$start[child.ind],bdf$end[child.ind])
   has.footer = bdf$form[[bi]] != "dotblock"
   start = bdf$start[bi]+ (1-keep.header.footer)
@@ -1048,6 +1058,32 @@ get.non.children.fragments = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$pa
   frag.li = lapply(1:NROW(pos), function(row) {
     if (!is.frag[row]) return(NULL)
     ps$txt[pos[row,1]:pos[row,2]]
+  })
+  list(frags = frag.li, is.frag=is.frag)
+}
+
+get.non.children.fragments.from.layout.txt = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE, layout.txt = NULL) {
+  restore.point("get.non.children.fragments.from.layout.txt")
+  child.header = ps$txt[bdf$start[child.ind]]
+  
+  child.start = match(child.header, layout.txt)
+  child.len = bdf$end[child.ind]-bdf$start[child.ind]+1
+  child.end = child.start + child.len -1
+  
+  cpos = cbind(child.start, child.end)
+  pos = pos.complement(cpos, is.sorted=TRUE, keep.pos=TRUE, start=1, end = length(layout.txt))
+  is.frag = attr(pos,"complement")
+  
+  # we may have one end line too much
+  valid = pos[,1]<=pos[,2]
+  pos = pos[valid,,drop=FALSE]
+  is.frag = is.frag[valid]
+  
+  if (NROW(pos)==0) return(NULL)
+  
+  frag.li = lapply(1:NROW(pos), function(row) {
+    if (!is.frag[row]) return(NULL)
+    layout.txt[pos[row,1]:pos[row,2]]
   })
   list(frags = frag.li, is.frag=is.frag)
 }
@@ -1250,4 +1286,13 @@ del.rows.and.adapt.refs = function(df, del.rows, ref.cols=NULL) {
   df = df[!del.rows,,drop=FALSE]
   rownames(df) = NULL
   df  
+}
+
+get.bi.inner.txt = function(bi,txt = ps$txt, ps) {
+  restore.point("get.bi.inner.txt")
+  bdf = ps$bdf
+  has.footer = bdf$form[[bi]] != "dotblock"
+  lines = (bdf$start[bi]+1):(bdf$end[bi]-has.footer)
+  ps$txt[lines]
+
 }

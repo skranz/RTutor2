@@ -389,17 +389,6 @@ signif.or.round = function(val, digits=3) {
 }
 
 
-replace.whisker = function(txt,...,signif.digits=3) {
-  library(whisker)
-  args = list(...)
-  restore.point("replace.whisker")
-  for (i in seq_along(args)) {
-    if (is.numeric(args[[i]]))
-      args[[i]] = signif.or.round(args[[i]],signif.digits)
-  }
-  whisker.render(txt,args)
-}
-
 
 extract.command = function(txt,command) {
   #restore.point("extract.command")

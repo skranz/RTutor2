@@ -247,8 +247,8 @@ adapt.console.err.message = function(str) {
 #' @param ... variables that will be rendered into messages that have whiskers
 #' @export
 add.failure = function(log,message,..., ps= get.ps()) {
-  message=replace.whisker(message,...)
   args = list(...)
+  message=replace.whiskers(message,args, eval=FALSE)
   restore.point("add.failure")
   log$failure.message = message
 }
@@ -259,7 +259,8 @@ add.failure = function(log,message,..., ps= get.ps()) {
 #' @param ... variables that will be rendered into messages that have whiskers
 #' @export
 add.success = function(log,message,...) {
-  message=replace.whisker(message,...)
+  args = list(...)
+  message=replace.whiskers(message,args, eval=FALSE)
   log$success.message = message
 }
 
@@ -270,8 +271,8 @@ add.success = function(log,message,...) {
 #' @param ... variables that will be rendered into messages that have whiskers
 #' @export
 add.warning = function(log,message,...) {
-  message=replace.whisker(message,...)
   args = list(...)
+  message=replace.whiskers(message,args, eval=FALSE)
   #restore.point("add.warning")
   ind = length(log$warning.messages)+1
   log$warning.messages[[ind]] = message
