@@ -209,8 +209,18 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$navbar.ui = rtutor.navbar(ps=ps, nav.levels = opts$nav.levels)
   
   remove.existing.ups(ps.name=ps.name, dir=dir)
+  write.rps(ps=ps,dir=dir)
   ps
 }
+
+write.rps = function(ps, file.name=paste0(dir,"/",ps$ps.name,".rps"), dir=getwd()) {
+  saveRDS(ps, file.name)
+}
+
+read.rps = function(file.name=paste0(dir,"/",ps.name,".rps"), dir=getwd(), ps.name="") {
+  readRDS(file.name)
+}
+
 
 source.line.to.line = function(line, ps, source=1) {
   restore.point("source.line.to.line")
@@ -1296,3 +1306,4 @@ get.bi.inner.txt = function(bi,txt = ps$txt, ps) {
   ps$txt[lines]
 
 }
+

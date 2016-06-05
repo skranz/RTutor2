@@ -1,16 +1,25 @@
-
-
-unicode.html.math = function(txt) {
-  restore.point("unicode.html.math")
+unicode.math = function(txt, math.start = "\\$",len.math.start=1, math.end = "\\$", len.math.end=1, inner = "[\\\\_.\\{\\}0-9a-zA-Z /\\-\\+\\*\\^\\(\\)=<>]*?", block.start = "", block.end="") {
+  restore.point("unicode.math")
   
   if (length(txt)>0) txt = merge.lines(txt)
   
-  pos = str.find(txt,'\\$[\\\\_.{}0-9a-zA-Z]+\\$',fixed=FALSE)
+  #regexec(paste0(math.start), txt)
+  #regexec(paste0(math.start,inner,math.end), txt)
+  
+  pattern = paste0(math.start,inner, math.end)
+  pos = str.find(txt,pattern,fixed=FALSE)
   
   if (NROW(pos)==0) return(txt)
   
-  maths = substring(txt, pos[,1]+1,pos[,2]-1)
-  str = paste0(maths, collapse="\n")
+  maths = substring(txt, pos[,1]+len.math.start,pos[,2]-len.math.end)
+  
+  rmaths = sapply(maths, replace.latex.with.unicode)
+  keep = grepl("\\\\",rmaths)
+  change = which(!keep)
+  if (length(change)==0) return(txt)
+  
+  str = paste0(maths[change], collapse="\nbReAk\n")
+  
   str = replace.latex.with.unicode(str)
   
   li = find.subscripts(str)$s
@@ -23,11 +32,58 @@ unicode.html.math = function(txt) {
     if (max(sub.ind)<length(li))
       str = paste0(str,li[length(li)])
   }
-  trans = sep.lines(str)
-  txt = str.replace.at.pos(txt, pos,new = trans)
+  trans = sep.lines(str,collapse="\nbReAk\n")
+  trans = paste0(block.start, trans, block.end)
+  txt = str.replace.at.pos(txt, pos[change,,drop=FALSE],new = trans)
   
-
   txt
+}
+
+unicode.rmd.math = function(txt) {
+  restore.point("unicode.rmd.math")
+  txt = unicode.math(txt, math.start = "\\$", math.end = "\\$", block.start="<mathinline>", block.end="</mathinline>")
+  txt = unicode.math(txt, math.start = "\\$\\$", math.end = "\\$\\$",len.math.start=2, len.math.end=2, block.start="<mathblock>", block.end="</mathblock>")
+  txt = unicode.math(txt, math.start = "\\Q\\[\\E", math.end = "\\Q\\]\\E",len.math.start=2, len.math.end=2, block.start="<mathblock>", block.end="</mathblock>")
+  txt
+}
+
+examples.unicode.math = function() {
+  txt = "Annahme: Zentralbank kann direkt Nominalzins \\(i_t \\geq 0\\) festlegen."
+  txt = "Auch bei einem Rückgang von \\(Y_1=110\\) auf \\(Y_{NAI}\\) bleiben die Inflationserwartungen auf dem Niveau"
+  unicode.html.math(txt)
+  
+  txt = unicode.math(txt, math.start = "\\Q\\(\\E", math.end = "\\Q\\)\\E",len.math.start=2, len.math.end=2)
+  txt = unicode.math(txt, math.start = "\\\\\\(", math.end = "\\\\\\)", len.math.start=2, len.math.end=2)
+}
+
+unicode.html.math = function(txt) {
+  restore.point("unicode.html.math")
+  txt = unicode.math(txt, math.start = "\\Q\\(\\E", math.end = "\\Q\\)\\E",len.math.start=2, len.math.end=2, block.start="<mathinline>", block.end="</mathinline>")
+  txt = unicode.math(txt, math.start = "\\Q\\[\\E", math.end = "\\Q\\]\\E",len.math.start=2, len.math.end=2, block.start="<mathblock>", block.end="</mathblock>")
+  txt
+}
+
+math.css = function() {
+'
+mathinline {
+  display: inline;
+  font-family: "Georgia", serif;
+  font-weight: 450;
+  font-size: 1.1em;
+  font-style: italic;
+}  
+mathblock {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  display: block;
+  font-family: "Georgia", serif;
+  font-size: 1.25em;
+  font-weight: 450;
+  text-align: center;
+  font-style: italic;
+}  
+  
+  '
 }
 
 find.subscripts = function(str) {
@@ -46,7 +102,7 @@ find.subscripts = function(str) {
   
   
   # find subscripts
-  pos = str.find(str,'_[0-9a-zA-Z_|.=]+',fixed=FALSE)
+  pos = str.find(str,'_[0-9a-zA-Z_|.=\\{\\}\\-\\+\\*]+',fixed=FALSE)
   if (NROW(pos)==0) {
     return(list(s=str,is.sub=FALSE))
   }
