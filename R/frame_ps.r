@@ -108,7 +108,7 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
   
   inner.ui = tagList(
     div(id="slideMenuDiv",uiOutput("slideMenuUI")),
-    withMathJax(ps.content.ui)    
+    with.mathjax(ps.content.ui)    
   )
   
   resTags = rtutor.html.ressources()
@@ -236,7 +236,7 @@ east: {
       center = div(
         #style="margin-left: 10%; margin-right: 10%; overflow: auto; height: 100%;",
         style="margin-left: 10%; margin-right: 10%;",
-        withMathJax(ps.content.ui)
+        with.mathjax(ps.content.ui)
       ),
       east = div(
         sidebar.ui()

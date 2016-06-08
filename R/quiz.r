@@ -314,7 +314,7 @@ quiz.ui = function(qu, solution=FALSE) {
     pli = c(pli, list(actionButton(qu$checkBtnId,label = "check"),br()))
   }
 
-  withMathJax(pli)
+  with.mathjax(pli)
 }
 
 quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {

@@ -49,8 +49,8 @@ examples.shiny.test.highlight = function() {
 
 examples.shiny.test.mathjax = function() {
 
-  mathJaxObj = withMathJax()
-  obj = withMathJax(HTML('Dynamic output 1:  $$\\alpha^2$$'))
+  mathJaxObj = with.mathjax()
+  obj = with.mathjax(HTML('Dynamic output 1:  $$\\alpha^2$$'))
   
   ui = fluidPage(
     title = 'MathJax Examples',

@@ -95,7 +95,7 @@ render.container = function(ps, type="ps",  type.ind=1, bi=NULL, output.id=NULL,
     inner.ui = ui.fun(ui=inner.ui, bi=bi, ps=ps,...)
   }
   if (use.mathjax)
-    inner.ui = withMathJax(inner.ui)
+    inner.ui = with.mathjax(inner.ui)
 
   if (only.return.ui) {
     return(inner.ui)

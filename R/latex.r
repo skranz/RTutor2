@@ -1,4 +1,4 @@
-unicode.math = function(txt, math.start = "\\$",len.math.start=1, math.end = "\\$", len.math.end=1, inner = "[\\\\_.\\{\\}0-9a-zA-Z /\\-\\+\\*\\^\\(\\)=<>]*?", block.start = "", block.end="") {
+unicode.math = function(txt, math.start = "\\$",len.math.start=1, math.end = "\\$", len.math.end=1, inner = "[\\\\_.\\{\\}0-9a-zA-Z /\\-\\+\\*\\^\\(\\)=<>]*?", block.start = "", block.end="", replace.equation.array=TRUE) {
   restore.point("unicode.math")
   
   if (length(txt)>0) txt = merge.lines(txt)
@@ -14,6 +14,9 @@ unicode.math = function(txt, math.start = "\\$",len.math.start=1, math.end = "\\
   maths = substring(txt, pos[,1]+len.math.start,pos[,2]-len.math.end)
   
   rmaths = sapply(maths, replace.latex.with.unicode)
+  if (replace.equation.array)
+    rmaths = sapply(rmaths, replace.latex.equation.array)
+  
   keep = grepl("\\\\",rmaths)
   change = which(!keep)
   if (length(change)==0) return(txt)
@@ -45,6 +48,22 @@ unicode.rmd.math = function(txt) {
   txt = unicode.math(txt, math.start = "\\$\\$", math.end = "\\$\\$",len.math.start=2, len.math.end=2, block.start="<mathblock>", block.end="</mathblock>")
   txt = unicode.math(txt, math.start = "\\Q\\[\\E", math.end = "\\Q\\]\\E",len.math.start=2, len.math.end=2, block.start="<mathblock>", block.end="</mathblock>")
   txt
+}
+
+replace.latex.equation.array = function(str) {
+  
+  #str = "\\begin{eqnarray*} (1+\\pi_t) & = & (1+E\\pi_t) & \\cdot (1+\\mu) \\cdot ws(Y_t ) & \\end{eqnarray*}"
+  if (!grepl("\\begin{eqnarray*}",str, fixed=TRUE)) return(str)
+  restore.point("replace.latex.equation.array")
+  
+  str = gsub("\\begin{eqnarray*}","<table><tr><td>", str, fixed=TRUE)
+  str = gsub("\\end{eqnarray*}","</td></tr></table>", str, fixed=TRUE)
+  str = gsub("&","</td><td>", str, fixed=TRUE)
+  str = gsub("\\\\\\\\","</td></tr><tr><td>", str, fixed=TRUE)
+  str = gsub("\\\\","</td></tr><tr><td>", str, fixed=TRUE)
+  str
+  
+  
 }
 
 examples.unicode.math = function() {
@@ -124,15 +143,19 @@ find.subscripts = function(str) {
 
 replace.latex.with.unicode = function(str) {
 
-  latex = c( "\\alpha","\\beta","\\gamma","\\delta","\\epsilon","\\zeta","\\eta","\\theta","\\iota","\\kappa","\\lambda","\\mu","\\nu","\\xi","\\pi","\\rho","\\varsigma","\\sigma","\\tau","\\upsilon","\\phi","\\chi","\\psi","\\omega","\\Gamma","\\Delta","\\Theta","\\Lambda","\\Xi","\\Pi","\\Sigma","\\Upsilon","\\Phi","\\Psi","\\Omega","\\neg","\\pm","\\cdot","\\to","\\Rightarrow","\\Leftrightarrow","\\forall","\\partial","\\exists","\\emptyset","\\nabla","\\in","\\notin","\\prod","\\sum","\\surd","\\infty","\\wedge","\\vee","\\cap","\\cup","\\int","\\approx","\\neq","\\equiv","\\leq","\\geq","\\subset","\\supset","\\^circ","\\times","\\lfloor","\\rfloor","\\lceil","\\rceil" ) 
+  latex = c( "\\alpha","\\beta","\\gamma","\\delta","\\epsilon","\\zeta","\\eta","\\theta","\\iota","\\kappa","\\lambda","\\mu","\\nu","\\xi","\\pi","\\rho","\\varsigma","\\sigma","\\tau","\\upsilon","\\phi","\\chi","\\psi","\\omega","\\Gamma","\\Delta","\\Theta","\\Lambda","\\Xi","\\Pi","\\Sigma","\\Upsilon","\\Phi","\\Psi","\\Omega","\\neg","\\pm","\\cdot","\\to","\\Rightarrow","\\Leftrightarrow","\\forall","\\partial","\\exists","\\emptyset","\\nabla","\\in","\\notin","\\prod","\\sum","\\surd","\\infty","\\wedge","\\vee","\\cap","\\cup","\\int","\\approx","\\neq","\\equiv","\\leq","\\geq","\\subset","\\supset","\\^circ","\\times","\\lfloor","\\rfloor","\\lceil","\\rceil",
+  "\\left","\\right" ) 
   
-uc = c( "\U3B1","\U3B2","\U3B3","\U3B4","\U3B5","\U3B6","\U3B7","\U3B8","\U3B9","\U3BA","\U3BB","\U3BC","\U3BD","\U3BE","\U3C0","\U3C1","\U3C2","\U3C3","\U3C4","\U3C5","\U3C6","\U3C7","\U3C8","\U3C9","\U393","\U394","\U398","\U39B","\U39E","\U3A0","\U3A3","\U3A5","\U3A6","\U3A8","\U3A9","\U00AC","\U00B1","\U00B7","\U2192","\U21D2","\U21D4","\U2200","\U2202","\U2203","\U2205","\U2207","\U2208","\U2209","\U220F","\U2211","\U221A","\U221E","\U2227","\U2228","\U2229","\U222A","\U222B","\U2248","\U2260","\U2261","\U2264","\U2265","\U2282","\U2283","\U00B0","\U00D7","\U230A","\U230B","\U2308","\U2309" )
+uc = c( "\U3B1","\U3B2","\U3B3","\U3B4","\U3B5","\U3B6","\U3B7","\U3B8","\U3B9","\U3BA","\U3BB","\U3BC","\U3BD","\U3BE","\U3C0","\U3C1","\U3C2","\U3C3","\U3C4","\U3C5","\U3C6","\U3C7","\U3C8","\U3C9","\U393","\U394","\U398","\U39B","\U39E","\U3A0","\U3A3","\U3A5","\U3A6","\U3A8","\U3A9","\U00AC","\U00B1","\U00B7","\U2192","\U21D2","\U21D4","\U2200","\U2202","\U2203","\U2205","\U2207","\U2208","\U2209","\U220F","\U2211","\U221A","\U221E","\U2227","\U2228","\U2229","\U222A","\U222B","\U2248","\U2260","\U2261","\U2264","\U2265","\U2282","\U2283","\U00B0","\U00D7","\U230A","\U230B","\U2308","\U2309",
+"",""  )
   
   pos = str.find(str,'\\\\[0-9a-zA-Z]+',fixed=FALSE)
   spl = str.split.at.pos(str,pos,keep.pos = TRUE)  
   ind = match(spl, latex)
   rows = !is.na(ind)
   spl[rows] = uc[ind[rows]]
+  
+  
   
   res = paste0(spl,collapse="")
   Encoding(res) = "UTF-8"
