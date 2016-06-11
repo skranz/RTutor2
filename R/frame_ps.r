@@ -335,17 +335,16 @@ init.ps.handlers = function(ps) {
     make.chunk.handlers(uk)
   }
   
-  # Add handlers for addons
-  # rows = which(ps$bdf$is.addon) 
-  # for (bi in rows) {
-  #   type = ps$bdf$type[[bi]]
-  #   ao = ps$bdf$obj[[bi]]$ao
-  #   # TO DO: Distinguish between global handlers
-  #   # initialization and per user initilization
-  #   handler.fun = ps$Addons[[type]]$init.handlers
-  #   if (!is.null(handler.fun))
-  #     handler.fun(ao)
-  # }
+  # Add handlers for static addons
+  rows = which(ps$bdf$is.addon & ps$bdf$is.static) 
+  for (bi in rows) {
+    type = ps$bdf$type[[bi]]
+    ao = ps$bdf$obj[[bi]]$ao
+    Ao = ps$Addons[[type]]
+    if (!is.null(Ao[["init.handlers"]])) {
+      Ao$init.handlers(ao=ao)
+    }
+  }
   
 }
 
@@ -388,12 +387,17 @@ render.rtutor.addon = function(ps, bi) {
 
 rtutor.navigate.btns = function() {
   btns = tagList(
-    bsButton("rtPrevBtn","<",size = "extra-small"),
-    bsButton("rtNextBtn",">",size = "extra-small"),
-    bsButton("rtForwardBtn",">>",size = "extra-small"),
+    smallButton("rtPrevBtn","<",size = "extra-small"),
+    smallButton("rtNextBtn",">",size = "extra-small"),
+    smallButton("rtForwardBtn",">>",size = "extra-small"),
     bsButton("rtSlideMenuBtn","", size="extra-small", icon=icon(name="bars", lib="font-awesome"))
   )
   btns
+}
+
+smallButton = function(id,label, icon=NULL, size="extra-small", extra.class=id) {
+  class = paste0(c(extra.class,"btn btn-default action-button btn-xs shiny-bound-input"), collapse=" ")
+  tags$button(id=id, type="button", class=class, label)
 }
 
 add.slide.navigate.handlers = function() {

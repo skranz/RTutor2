@@ -172,6 +172,8 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   # Additional information for slides
   if (ps$slides) {
     ps$num.slides = sum(ps$bdf$type==ps$slide.type)
+    ps$slide.bis = which(ps$bdf$type==ps$slide.type)
+    
   }
 
   
@@ -752,7 +754,7 @@ rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section
 }
 
 
-rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types) {
+rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types, extra.class = "") {
   restore.point("rtutor.parse.as.container")
   bdf = ps$bdf; br = bdf[bi,];
   if (is.null(inner.ui) | is.null(rmd.li)) {
@@ -801,11 +803,20 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   
   # A static container will not be loaded in a uiOutput
   } else {
+    restore.point("jnxjkfhiufhriuhf")
+    
     style = ""
     if (is.hidden) style = "display: none;"
     
     ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
-    div.class = "rtutor-static-container-div"
+    
+    div.class = paste0("rtutor-static-container-div ",type,"-container-div")
+    if (isTRUE(ps$slides)) {
+      if (type == ps$slide.type) {
+        div.class = paste0(div.class," slide-container-div")
+      }
+    }
+    
     ps$bdf$ui[[bi]] = div(id=div.id,class=div.class,  style=style,
       inner.ui
     )
@@ -813,9 +824,9 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   ps$bdf$is.container[[bi]] = TRUE
 }
 
-container.title.html = function(title,type=NULL, ps=NULL) {
+container.title.html = function(title,type=NULL, ps=NULL, class=NULL) {
   if (is.null(title)) return(NULL)
-  h4(title)      
+  h4(class=class, title)      
 }
 
 set.container.div.and.output = function(bi, ps, is.hidden = ps$bdf$type[bi] %in% ps$hidden.container.types) {
@@ -827,7 +838,13 @@ set.container.div.and.output = function(bi, ps, is.hidden = ps$bdf$type[bi] %in%
   
   ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
   ps$bdf$output.id[[bi]] = output.id = paste0(ps$prefix, br$id,"_output")
-  div.class = "rtutor-container-div"
+  type = br$stype
+  div.class = paste0("rtutor-container-div ",type,"-container-div")
+  if (isTRUE(ps$slide)) {
+    if (type == ps$slide.type) {
+      div.class = paste0(div.class," slide-container-div")
+    }
+  }
   ps$bdf$ui[[bi]] = div(id=div.id,class=div.class, style=style,
     uiOutput(output.id)
   )
@@ -1266,7 +1283,7 @@ rtutor.navbar = function(ps, opts=rt.opts(), nav.levels = c("section","subsectio
 slide.title.bar.ui = function(title, slide.ind, num.slides) {
   div(class="rtutor-slide-title-bar",
     HTML("<table width='100%'><tr><td>"),
-    h4(title),
+    h4(class="slide_title",title),
     HTML("</td><td align='right' valign='top' nowrap>"),
     HTML("<table><tr><td valign='center' nowrap>"),
     div(class="nav_buttons_div",  rtutor.navigate.btns()),
