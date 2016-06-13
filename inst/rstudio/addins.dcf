@@ -7,3 +7,8 @@ Name: RTutor Show Problemset
 Description: To be called in a _sol.Rmd file, to preview RTutor frames blocks
 Binding: showRTutorAddin
 Interactive: true
+
+Name: RTutor Create Slides
+Description: To be called in a _sol.Rmd file to create offline html slides
+Binding: createRTutorOfflineSlides
+Interactive: true

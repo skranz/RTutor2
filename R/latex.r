@@ -240,3 +240,10 @@ make.greece.code = function() {
   uc = d[,4]
   cat("uc = c(",paste0('"\\U',substring(uc,2),'"',collapse=","),")")
 }
+
+
+add.latex.dollar = function(txt, ignore.blocks = list(c("$","$"),c("$$","$$"), c("\\[","\\]"),c("\\(","\\)"), c("`","`"),c("```",c("```")))) {
+
+  
+    
+}

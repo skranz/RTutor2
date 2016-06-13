@@ -7,6 +7,20 @@ showRTutorAddin = function(...) {
 }
 
 
+createRTutorOfflineSlides = function(...) {
+  doc = rstudioapi::getActiveDocumentContext()
+
+  file = basename(doc$path)
+  
+  if (nchar(file)==0) {
+    cat("\nRStudio has not detected your RTutor .rmd tab. Please try again!")
+    return()
+  }
+  dir = dirname(doc$path)
+  setwd(dir)
+  create.offline.slides(file)
+}
+
 preview.rtutor.part.addin = function(single.part=TRUE,...) {
   library(rstudioapi)
   library(RTutor2)

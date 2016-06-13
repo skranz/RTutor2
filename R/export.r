@@ -22,6 +22,16 @@ examples.make.ps.html = function() {
 
 }
 
+create.offline.slides = function(rmd.file, ps.name = tools::file_path_sans_ext(basename(rmd.file))) {
+  ps = fetch.ps(rmd.file = rmd.file)  
+
+  tl = offline.slide.ps.ui(ps=ps)
+  create.offline.html(tl, outfile=paste0(ps.name,"_offline.html"),use.button = FALSE)
+    
+  tl = offline.print.slide.ps.ui(ps=ps)
+  create.offline.html(tl, outfile=paste0(ps.name,"_offline_print.html"),use.button = FALSE)
+  
+}
 
 fetch.ps = function(ps = NULL, rps.file=NULL, rmd.file=NULL, txt=NULL, ps.name=NULL) {
 
