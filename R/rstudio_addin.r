@@ -36,6 +36,7 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
     return()
   }
   
+  setwd(dir)
   txt = doc$contents
   range = doc$selection[[1]]$range
   line = range$start[1]

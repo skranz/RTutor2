@@ -1,7 +1,9 @@
 examples.frame.ps = function() {
   library(yaml)
-  setwd("D:/libraries/RTutor2")
-  txt = readLines("ex1.Rmd")
+  setwd("D:/libraries/RTutor2/examples/examples")
+  txt = readLines("Example2_sol.Rmd")
+  setwd("D:/libraries/RTutor2/examples/sporer")
+  txt = readLines("RTutorEnvironmentalRegulations_sol.Rmd")
   
   #setwd("D:/libraries/RTutor2/examples/auction")
   #txt = readLines("auction_sol.Rmd")
@@ -9,15 +11,14 @@ examples.frame.ps = function() {
     show.solution.btn = TRUE,
     slides = FALSE,
     static.type = c("section","subsection"),
-    lang = "de"
-  )
+    lang = "de"  )
   ps = rtutor.make.frame.ps(txt,catch.errors = FALSE, priority.opts=popts)
 
   bdf = ps$bdf
   restore.point.options(display.restore.point = !TRUE)
 
   app = rtutorApp(ps)
-  viewApp(app)
+  viewApp(app,launch.browser = TRUE)
 
 }
 
@@ -27,17 +28,19 @@ rtutor.builtin.types = function() {
     "preknit","precompute","portrait", "image", "solved",
     "column","row","ps","info","note","award","references",
     "show","notest","show_notest","hint","test","test_args",
-    "settings","css","head","layout"
+    "settings","css","head","layout",
+    "gv"
   )
 }
 
 
 
-rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main",  ...) {
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main", libs=NULL, check.old.rtutor.sol,  ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
   
+  ps$version = 0.1
   ps$figure.web.dir = figure.web.dir
   ps$figure.sub.dir = figure.sub.dir
   if (!dir.exists(figure.dir)) {
@@ -54,8 +57,17 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   if (length(txt)==1)  
     txt = sep.lines(txt)
 
+  if (is.old.rtutor.sol(txt)) {
+    cat(paste0('\nYour solution file looks like old RTutor format. You can update it by calling\n
+      translate.old.rtutor.sol()
+      ...'))
+    txt = translate.old.rtutor.sol(txt = txt)
+  }
+  
+  
   #Encoding(txt) = "UTF8"
   txt = mark_utf8(txt)
+  
 
   adapt.ignore.include(ps=ps,txt=txt, source.file=source.file)
   txt = ps$txt
@@ -132,7 +144,6 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     name = NA_character_,
     has.handler = FALSE,
     is.task = FALSE,task.ind = 0,
-    prefixed=FALSE,
     is.container=FALSE,container.ind = 0,
     is.static = TRUE,
     div.id = "",
@@ -209,6 +220,8 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   
   
   ps$navbar.ui = rtutor.navbar(ps=ps, nav.levels = opts$nav.levels)
+  
+  ps$opts$libs = unique(c(ps$opts$libs,libs))
   
   remove.existing.ups(ps.name=ps.name, dir=dir)
   write.rps(ps=ps,dir=dir)
@@ -557,7 +570,7 @@ rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
 rtutor.parse.chunk = function(bi,ps) {
   restore.point("rtutor.parse.chunk")
   bdf = ps$bdf; br = bdf[bi,]; str = ps$txt[br$start:br$end]
-  args = parse.chunk.args(arg.str = br$arg.str)
+  args = parse.chunk.args(header = str[1])
   
   chunk.precompute = br$parent_precompute >0 | isTRUE(args$precompute)
   chunk.preknit = isTRUE(args$preknit) | br$parent_info | br$parent_preknit
@@ -569,21 +582,43 @@ rtutor.parse.chunk = function(bi,ps) {
     expr = parse(text=code)
     res = eval(expr,ps$pre.env)
     ps$bdf$obj[[bi]]$pre.env = copy.env(ps$pre.env)
-    ps$bdf$prefixed[[bi]] = TRUE
     ps$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
-  } else if (chunk.preknit) {
+  }
+  if (chunk.preknit) {
     restore.point("parse.preknit.chunk")
-    ps$bdf$stype[[bi]] = "preknit_chunk"    
-    ui = knit.rmd(str,envir = ps$pre.env,out.type="shiny")
+    ps$bdf$stype[[bi]] = "preknit_chunk"
+    args$comment = NA
+    rmd = code.to.rmd.chunk(code,args=args)
+    ui = knit.rmd(rmd,envir = ps$pre.env,out.type="shiny")
+    #ui = tagList(ui, highlight.code.script())
     set.bdf.ui(ui, bi,ps)
     ps$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
-  } else {
+  }
+  if (!chunk.preknit & !chunk.precompute) {
     ps$bdf$stype[[bi]] = "task_chunk"
     # a task chunk is the classic RTutor chunk
     rtutor.parse.task.chunk(bi=bi,ps=ps,args=args)
   }
 }
 
+code.to.rmd.chunk = function(code, args, label=args$label) {
+  restore.point("code.to.rmd.chunk")
+  
+  if (is.null(label)) {
+    label = "chunk"
+  }
+  args = args[setdiff(names(args),"label")]
+  args = lapply(args, function(arg) {
+    if (is.character(arg)) return(paste0("'",arg,"'"))
+    arg
+  })
+  if (length(args)>0) {
+    head = paste0('```{r "',label, '", ',paste0(names(args)," = ", args, collapse=", "),'}')
+  } else {
+    head = paste0('```{r "',label, '" }')
+  }
+  c(head,code,"```")
+}
 
 rtutor.parse.preknit = function(bi,ps) {
   restore.point("rtutor.parse.preknit")
@@ -607,8 +642,21 @@ rtutor.parse.preknit = function(bi,ps) {
 
 rtutor.parse.precompute = function(bi,ps) {
   # all work is done in the chunks inside
+  rtutor.parse.as.container(bi,ps,is.static = TRUE)
+
 }
 
+rtutor.parse.gv = function(bi, ps) {
+  restore.point("rtutor.parse.gv")
+  arg.str= ps$bdf$arg.str[[bi]]
+  
+  bdf = ps$bdf; br = bdf[bi,];
+  txt = get.bi.inner.txt(bi=bi, ps=ps)
+  library(svgdiagram)
+  svg = gv.to.svg(gv=txt, to.clipboard = FALSE)
+  ui = HTML(svg)
+  set.bdf.ui(ui,bi,ps)
+}
 
 rtutor.parse.portrait = function(bi,ps) {
   restore.point("rtutor.parse.image")
@@ -705,7 +753,7 @@ rtutor.parse.row = function(bi,ps) {
 
 rtutor.parse.ps = function(bi,ps) {
   restore.point("rtutor.parse.ps")
-  rtutor.parse.as.container(bi,ps, is.static=TRUE)
+  rtutor.parse.as.container(bi,ps, is.static=TRUE, only.children.ui = TRUE)
 }
 
 
@@ -750,15 +798,21 @@ rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section
   title = first.non.null(args$title, args$name)
   rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=rmd.prefix, title = title)
   if (is.null(args$title.offset)) args$title.offset=0
-  ps$bdf$obj[[bi]] = list(title = args$name, args=args)
+  button.label = str.left.of(args$name," --")
+  ps$bdf$obj[[bi]] = list(title = args$name,button.label = button.label, args=args)
+  
 }
 
 
-rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types, extra.class = "") {
+rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types, extra.class = "", only.children.ui = FALSE) {
   restore.point("rtutor.parse.as.container")
   bdf = ps$bdf; br = bdf[bi,];
   if (is.null(inner.ui) | is.null(rmd.li)) {
-    res = get.children.and.fragments.ui.list(bi,ps,keep.null=TRUE, layout.txt = args$layout.txt)
+    if (only.children.ui) {
+      res = get.children.ui.list(bi,ps,keep.null=TRUE, layout.txt = args$layout.txt)
+    } else {
+      res = get.children.and.fragments.ui.list(bi,ps,keep.null=TRUE, layout.txt = args$layout.txt)
+    }
     if (is.null(inner.ui))
       inner.ui = res$ui.li
     if (is.null(rmd.li)) rmd.li = res
@@ -1010,6 +1064,26 @@ fragment.to.html = function(txt, bi, ps) {
   HTML(md2html(txt, fragment.only = TRUE))  
 }
 
+get.children.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi, layout.txt=NULL) {
+  restore.point("get.children.ui.list")
+  
+
+  ui = lapply(which(children), function(ind) {
+    bdf$ui[[ind]]
+  })
+  sol.rmd = bdf$sol.rmd[children]
+  shown.rmd = bdf$shown.rmd[children]
+  out.rmd = bdf$out.rmd[children]
+
+  if (!keep.null) {
+    null.ui = sapply(ui, is.null)
+    ui = ui[!is.null(ui)]
+  }
+  names(ui) = NULL
+  list(ui.li=ui, sol.rmd=sol.rmd,shown.rmd=shown.rmd,out.rmd=out.rmd, is.frag=rep(FALSE,length(ui)))
+}
+
+
 get.children.and.fragments.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi, layout.txt=NULL) {
   restore.point("get.children.and.fragments.ui.list")
   
@@ -1204,94 +1278,6 @@ default.navbar.li.fun = function(titles, child.li, levels=NULL,bis=NULL) {
   #inner = paste0("<li>", titles, "\n", child.li, "</li>")
   #paste0("<ul>", paste0(inner, collapse="\n"),"</ul>")
 
-}
-
-rtutor.navbar = function(ps, opts=rt.opts(), nav.levels = c("section","subsection","frame")) {
-  restore.point("rtutor.navbar")
-  
-  bdf = ps$bdf
-  nav.levels = intersect(nav.levels, bdf$type)
-  
-
-  get.raw.selector = function(nav.levels=nav.levels, parent.bi=NULL, level=1, name=nav.levels[[1]]) {
-    restore.point("get.raw.selector")
-    #stop()
-    if (is.null(parent.bi)) {
-      bis = which(bdf$type == nav.levels[1])
-    } else {
-      bis = which(bdf$parent_container==parent.bi)
-    }
-    types = bdf$type[bis]
-    ignore = !types %in% nav.levels
-    bis = bis[!ignore]
-    types = types[!ignore]
-    if (length(bis)==0) {
-      return(NULL)
-    }
-    
-    titles = sapply(seq_along(bis), function(i) {
-      bi = bis[i]
-      obj = bdf$obj[[bi]]
-      title = first.non.null(obj$menu.title, obj$title, obj$name, paste0(bdf$type[[bi]]," ",bdf$stype.ind[[bi]]))
-      title
-    })
-    choices = bis
-    names(choices) = titles
-    
-    contents = bdf$div.id[bis]
-    children = as.list(paste0("s",bis))
-    names(children) = bis
-
-        
-    children.sel = lapply(bis, function(bi) {
-      child.sel.li = get.raw.selector(nav.levels=nav.levels,parent.bi = bi,level=level+1, name=paste0("s",bi))[[1]]  
-    }) 
-    names(children.sel) = paste0("s",bis)
-    is.child = !sapply(children.sel, is.null)
-    children = children[is.child]
-    children.sel = children.sel[is.child]
-    
-    sel = list(list(
-      bis = bis,
-      choices = choices,
-      children = children,
-      div = as.character(level),
-      contents = contents
-    ))
-    names(sel)=name
-    c(sel,children.sel)
-  }
-  
-  ps$menu.selectors = get.raw.selector(nav.levels=nav.levels, level=1, name="ps")
-  
-  ps$menu.sel.ui = nestedSelector(id="rtNavbarSelector", btn.size="xs", ps$menu.selectors, input.type="radioBtnGroup")
-  
-  title = first.non.null(opts$menu.title, "RTutor")
-  ps$navbar.ui = div(
-    style = "
-    background-color: #eeeeee;
-    ",
-    HTML("<table><tr><td style='padding-left: 5px; padding-right: 10px; vertical-align: top;'>"),
-    h4(title),
-    HTML("</td><td>"),
-    ps$menu.sel.ui$ui  ,
-    HTML("</td></tr></table>")
-   )
-  ps$navbar.ui
-} 
-
-slide.title.bar.ui = function(title, slide.ind, num.slides) {
-  div(class="rtutor-slide-title-bar",
-    HTML("<table width='100%'><tr><td>"),
-    h4(class="slide_title",title),
-    HTML("</td><td align='right' valign='top' nowrap>"),
-    HTML("<table><tr><td valign='center' nowrap>"),
-    div(class="nav_buttons_div",  rtutor.navigate.btns()),
-    HTML("</td><td valign='center' nowrap style='padding-left: 5px'>"),
-    HTML(paste0(slide.ind, " of ",num.slides)),      
-    HTML("</td></tr></table>"),
-    HTML("</td></tr></table>")
-  )  
 }
 
 del.rows.and.adapt.refs = function(df, del.rows, ref.cols=NULL) {

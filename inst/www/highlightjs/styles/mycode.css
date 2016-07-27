@@ -1,0 +1,56 @@
+/*
+
+Google Code style (c) Aahan Krish <geekpanth3r@gmail.com>
+
+*/
+
+
+pre code {
+  font-family: 'Lucida Console';
+  color: #005;  
+}
+
+pre code.r {
+  font-family: 'Lucida Console';
+  color: #000;  
+}
+
+pre .operator,
+pre .paren {
+ color: rgb(104, 118, 135)
+}
+
+pre .literal {
+ color: #990073
+}
+
+pre .number {
+ color: #007;
+}
+
+pre .cs {
+ color: #004;
+}
+
+
+pre .cs .keyword {
+ color: #000;
+}
+
+pre .comment {
+ color: #070;
+ /*font-weight: bold;*/
+ font-family: Sniglet;
+}
+
+pre .keyword {
+ color: #900;
+}
+
+pre .identifier {
+ color: rgb(0, 0, 0);
+}
+
+pre .string {
+ color: #914;
+}

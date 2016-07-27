@@ -124,6 +124,7 @@ offline.slide.ps.ui = function(ps = NULL, rps.file=NULL, rmd.file=NULL) {
     tags$head(HTML("\n<!-- MyHeadStart -->\n")),
     tags$head(includeScript(paste0(path.package("shiny"),"/www/shared/jquery.min.js"))),
     tags$head(includeCSS(paste0(path.package("shiny"),"/www/shared/bootstrap/css/bootstrap.css"))),
+    tags$head(includeScript(paste0(path.package("shiny"),"/www/shared/bootstrap/js/bootstrap.min.js"))),
     head,
     css,
     mcss,

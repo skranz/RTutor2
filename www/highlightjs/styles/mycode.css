@@ -1,0 +1,35 @@
+/*
+
+Google Code style (c) Aahan Krish <geekpanth3r@gmail.com>
+
+*/
+pre .operator,
+pre .paren {
+ color: rgb(104, 118, 135)
+}
+
+pre .literal {
+ color: #990073
+}
+
+pre .number {
+ color: #099;
+}
+
+pre .comment {
+ color: #007;
+ font-style: italic
+ font-weight: bold
+}
+
+pre .keyword {
+ color: #900;
+}
+
+pre .identifier {
+ color: rgb(0, 0, 0);
+}
+
+pre .string {
+ color: #d14;
+}

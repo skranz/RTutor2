@@ -1,5 +1,35 @@
 # Some customization to yaml
 
+read.yaml.blocks = function(txt, add.txt =TRUE, omit.header=FALSE, tab.width=3) {
+  restore.point("read.yaml.blocks")
+
+  first.char = substring(txt,1,1)
+  start = nchar(txt)>0 & first.char!=" " & first.char!="#" & first.char !="\t"
+  start = which(start)
+  name = str.left.of(txt[start],":")
+  end = c(start[-1]-1,length(txt))
+
+  if (!add.txt) {
+   ret = quick.df(name=name, start.row=start, end.row=end)
+  } else {
+    if (!omit.header) {
+      block.txt = sapply(seq_along(start), function(i) {
+        paste0(txt[int.seq(start[i]+omit.header,end[i])], collapse="\n")
+      })
+    } else {
+      i = 4
+      block.txt = sapply(seq_along(start), function(i) {
+        space.str = paste0(rep(" ", tab.width), collapse="")
+        str = txt[int.seq(start[i]+omit.header,end[i])]
+        left = ifelse(str.starts.with(str,space.str), tab.width+1,1)
+        str = substring(str, left)
+        paste0(str, collapse="\n")
+      })
+    }
+    ret = quick.df(name=name, start.row=start, end.row=end, txt=block.txt)
+  }
+  ret
+}
 
 # custom handler for booleans: only convert "TRUE" and "FALSE" to boolean
 yaml.bool.handler.yes <- function(val) {
@@ -110,36 +140,4 @@ print.yaml = function(obj) {
     cat(as.yaml(obj))
   }
 }
-
-read.yaml.blocks = function(txt, add.txt =TRUE, omit.header=FALSE, tab.width=3) {
-  restore.point("read.yaml.blocks")
-
-  first.char = substring(txt,1,1)
-  start = nchar(txt)>0 & first.char!=" " & first.char!="#" & first.char !="\t"
-  start = which(start)
-  name = str.left.of(txt[start],":")
-  end = c(start[-1]-1,length(txt))
-
-  if (!add.txt) {
-   ret = quick.df(name=name, start.row=start, end.row=end)
-  } else {
-    if (!omit.header) {
-      block.txt = sapply(seq_along(start), function(i) {
-        paste0(txt[int.seq(start[i]+omit.header,end[i])], collapse="\n")
-      })
-    } else {
-      i = 4
-      block.txt = sapply(seq_along(start), function(i) {
-        space.str = paste0(rep(" ", tab.width), collapse="")
-        str = txt[int.seq(start[i]+omit.header,end[i])]
-        left = ifelse(str.starts.with(str,space.str), tab.width+1,1)
-        str = substring(str, left)
-        paste0(str, collapse="\n")
-      })
-    }
-    ret = quick.df(name=name, start.row=start, end.row=end, txt=block.txt)
-  }
-  ret
-}
-
 

@@ -178,16 +178,22 @@ init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts
     
     ts = as.environment(org.ts)
     ts$solved = utr$was.solved
-    ts$points = utr$point
+    ts$points = utr$points
     ts$score = utr$score
-    if (!is.null(utr$sts[[1]]$stud.code)) {
-      ts$stud.code = utr$sts$stud.code
+    
+    if (has.col(utr,"sts")) {
+      if (!is.null(utr$sts[[1]]$stud.code)) {
+        ts$stud.code = utr$sts$stud.code
+      } else {
+        if (ts$solved) {
+          ts$stud.code = ts$ck$sol.txt
+        }
+      }
     } else {
-      # only overwrite if solved
       if (ts$solved) {
         ts$stud.code = ts$ck$sol.txt
       }
-    } 
+    }
   } else {
     restore.point("init.task.state.with.ups.addon")
     ts = as.environment(as.list(org.ts))

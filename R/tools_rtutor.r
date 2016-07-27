@@ -1,3 +1,7 @@
+has.col = function(x,col) {
+  col %in% names(x)
+}
+ 
 perc = function(val, round.digits=2) {
   paste0(round(val*100,round.digits),"%")
 }

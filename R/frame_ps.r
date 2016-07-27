@@ -56,8 +56,7 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
 # general initialisation independent of app type
 initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !offline, opts=list(), dir=getwd(), figure.dir = paste0(dir,"/", ps$figure.sub.dir), ups.dir=dir, use.clicker=first.non.null(ps$opts$use.clicker,FALSE), clicker.dir=ps$opts$clicker.dir, ...) {
   restore.point("initRTutorApp")
-  library(shinyjs)
-  
+
   app = eventsApp()
   setAppHasBottomScript(TRUE, app=app)
 
@@ -77,9 +76,11 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   
   ps$opts$clicker.dir = clicker.dir
   ps$opts$use.clicker = use.clicker
-  
-
+ 
   ps$given.awards.bi = NULL
+  
+  load.ps.libs(ps$opts$libs)
+  
   set.rt.opts(ps$opts)
   
   
@@ -114,7 +115,7 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
   resTags = rtutor.html.ressources()
   app$ui = tagList(
     head,
-    useShinyjs(),
+#    useShinyjs(),
     resTags,
     css,
     rtutorClickHandler(),
@@ -124,7 +125,8 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
           inner.ui 
         )
       )
-    )
+    ),
+    bottomScript("$('pre code.r').each(function(i, e) {hljs.highlightBlock(e)});")
   )
   add.slide.navigate.handlers()
   
@@ -158,90 +160,21 @@ rtutorApp = function(ps, user.name = "John Doe", nick=user.name, dir=getwd(), up
   
   resTags = rtutor.html.ressources()
 
-    json.opts =
-'
-defaults: {
-  //spacing_open: 4
-},
-north: {
-  size: "auto",
-  resizable: false,
-  //spacing_open: 4,
-  spacing_closed: 10
-},
-east: {
-  closable: true,
-  resizable: true
-}
-'
-  style = tags$style(HTML('
-.ui-layout-east {
-	background:	#FFF;
-	border:		none;
-	padding:	0px;
-	overflow:	auto;
-}
-
-
-.ui-layout-north {
-	background:	#FFF;
-	border:		none;
-	padding:	0px;
-	overflow:	auto;
-}
-
-.ui-layout-center {
-	background:	#FFF;
-	border:		none;
-	padding:	2px;
-	overflow:	auto;
-}
-
-
-'
-  ))
-
-    json.opts =
-'
-defaults: {
-  //spacing_open: 4
-},
-north: {
-  size: "auto",
-  resizable: false,
-  //spacing_open: 4,
-  spacing_closed: 10
-},
-east: {
-  closable: true,
-  resizable: true
-}
-'
   css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
   head = if (!is.null(ps$head)) tags$head(HTML(ps$head)) else NULL
 
   app$ui = tagList(
     head,
-    useShinyjs(),
+#    useShinyjs(),
     resTags,
     css,
     rtutorClickHandler(),
     
     bootstrapPage(
-    jqueryLayoutPage(style=style,
-      north = div(
-        style="margin-left: 2px; margin-right: 2px;",
-        ps$navbar.ui
-      ),
-      center = div(
-        #style="margin-left: 10%; margin-right: 10%; overflow: auto; height: 100%;",
-        style="margin-left: 10%; margin-right: 10%;",
-        with.mathjax(ps.content.ui)
-      ),
-      east = div(
-        sidebar.ui()
-      )
-    ))
+      ps.layout(ps=ps, ps.content.ui = ps.content.ui)
+    ),
+    bottomScript("$('pre code.r').each(function(i, e) {hljs.highlightBlock(e)});")
+    
   ) 
   
 
@@ -318,8 +251,8 @@ select.ps.part.handler = function(value, shown_contents, app=getApp(), ps=app$ps
   render.container(bi=bis[1],render.desc = TRUE, ps=ps)
   
   #cont.bi = which(ps$bdf$div.id %in% shown_contents)
-  for (cbi in bis)
-    show.container(bi = cbi,ps=ps)
+  #for (cbi in bis)
+  #  show.container(bi = cbi,ps=ps)
 }
 
 init.ps.handlers = function(ps) {
@@ -513,3 +446,19 @@ set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathja
   }
 }
 
+
+
+load.ps.libs = function(libs) {
+  if (length(libs)==0)
+    return()
+  for (i in seq_along(libs)) {
+    lib = libs[i]
+    display("load package ", lib, "...")
+    ret = suppressWarnings(require(lib, quietly=TRUE, warn.conflicts =FALSE,character.only=TRUE))
+    if (!ret) {
+      stop(paste0("Please install the package '", lib,
+                  "', which is required to solve this problem set."))
+    }
+    display("... all required packages loaded.")
+  }
+}

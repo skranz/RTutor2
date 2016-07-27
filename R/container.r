@@ -6,7 +6,9 @@ show.container = function(ps,type="ps",  type.ind=1, bi=NULL,anim=FALSE) {
     bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
   
   div.id = ps$bdf$div.id[[bi]]
-  shinyjs::show(div.id,anim=anim)
+  setHtmlShow(id=div.id)
+  
+  #shinyjs::show(div.id,anim=anim)
   
   if (!is.null(ps$cont.state))
     ps$cont.state$hidden[bi] = FALSE
@@ -30,7 +32,9 @@ hide.container = function(ps,type="ps",  type.ind=1, bi=NULL, anim=FALSE,animTyp
     bi = get.bdf.ind(type.ind=type.ind,type = type,bdf = bdf)
   
   div.id = ps$bdf$div.id[[bi]]
-  shinyjs::hide(div.id,anim=anim, animType="animType")
+  setHtmlHide(div.id)
+
+  #shinyjs::hide(div.id,anim=anim, animType="animType")
   if (!is.null(ps$cont.state))
     ps$cont.state$hidden[bi] = TRUE
   
