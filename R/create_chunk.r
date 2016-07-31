@@ -5,6 +5,7 @@ rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
   
   #code = ps$txt[(br$start+1):(br$end-1)]
 
+  
   # a task chunk is a container
   ps$bdf$is.container[[bi]] = TRUE
   set.container.div.and.output(bi,ps)
@@ -41,8 +42,10 @@ rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
   }
   
   # Collapse, since txt from aceEditor is also collapsed
-  ck$shown.txt = paste0(ck$shown.txt, collapse="\n")
-  ck$sol.txt = paste0(ck$sol.txt, collapse="\n")
+  head = ps$txt[br$start]
+  tail = ps$txt[br$end]
+  ck$shown.txt = paste0(c(head,ck$shown.txt,tail), collapse="\n")
+  ck$sol.txt = paste0(c(head,ck$sol.txt,tail), collapse="\n")
   
   # add tests and hints
   add.chunk.tests.and.hints(ck)
@@ -71,7 +74,7 @@ rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
 
 
   # set task env info
-  create.bi.task.env.info(bi=bi,ps=ps,need.task.env = TRUE,change.task.env = TRUE,optional = isTRUE(args$optional),precomp.task.env = opts$precomp)  
+  create.bi.task.env.info(bi=bi,ps=ps,args=args, need.task.env = TRUE,change.task.env = TRUE,presolve.task = opts$presolve)  
   
   invisible(ck)
 }

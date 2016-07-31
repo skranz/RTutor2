@@ -1,3 +1,9 @@
+Name: Check Problemset 2
+Description: Check your solution of a RTutor2 problem set
+Binding: checkProblemSet2Addin
+Interactive: false
+
+
 Name: RTutor Show Part
 Description: To be called in a _sol.Rmd file, to preview an RTutor frame block
 Binding: showRTutorPartAddin

@@ -5,7 +5,7 @@
 #'
 #' The command will be put at the top of a student's problem set. It checks all exercises when the problem set is sourced. If something is wrong, an error is thrown and no more commands will be sourced.
 #'@export
-check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, set.warning.1=TRUE, user.name="GUEST", do.check=interactive(), verbose=FALSE, catch.errors=TRUE, from.knitr=!interactive(), use.null.device=TRUE, just.init=FALSE) {
+check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, set.warning.1=TRUE, user.name="user", do.check=interactive(), verbose=FALSE, catch.errors=TRUE, from.knitr=!interactive(), use.null.device=TRUE, just.init=FALSE) {
 
   restore.point("check.problem.set", deep.copy=FALSE)
 
@@ -17,8 +17,8 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
     try(ps <- get.or.init.ps(ps.name,user.name, stud.path, stud.short.file, reset), silent=TRUE)
 
     # Copy extra code into globalenv
-    if (!is.null(ps$rps$extra.code.env)) {
-      copy.into.env(source=ps$rps$extra.code.env, dest = globalenv())
+    if (!is.null(ps$init.env)) {
+      copy.into.env(source=ps$init.env, dest = globalenv())
     }
     return()
   }
@@ -26,20 +26,16 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
   # If called from knitr, I don't want to check by default
   if (!do.check) return("not checked")
 
-
-
   if (set.warning.1) {
     if (options()$warn<1)
       options(warn=1)
   }
   if (!isTRUE(try(file.exists(stud.path),silent = TRUE))) {
-    str= paste0("I could not find your problem set directory '", stud.path,"'.  Please set in the first code chunk of the your problem set the variable 'ps.dir' to the directory in which you have saved your problem set.
-
-Note: use / instead of \\ to separate folders in 'ps.dir'")
+    str= paste0("I could not find your problem set directory '", stud.path,"'.")
     stop(str,call. = FALSE)
   }
   if (!file.exists(paste0(stud.path,"/", stud.short.file))) {
-    str= paste0("I could not find your file '", stud.short.file,"' in your problem set folder '",stud.path,"'. Please set the variables ps.dir and ps.file to the right values in the first chunk of your problem set. The variable 'ps.file' must have the same file name than your problem set file.")
+    str= paste0("I could not find your file '", stud.short.file,"' in your problem set folder '",stud.path,"'.")
     stop(str,call. = FALSE)
   }
 
@@ -60,72 +56,41 @@ Note: use / instead of \\ to separate folders in 'ps.dir'")
 
   set.ps(ps)
   ps$warning.messages = list()
-
-  cdt = ps$cdt
-  edt = ps$edt
-
   ps$stud.code = readLines(ps$stud.file)
-  cdt$stud.code = get.stud.chunk.code(ps=ps)
-  cdt$code.as.shown = cdt$stud.code == cdt$shown.txt
-  cdt$chunk.changed = cdt$stud.code != cdt$old.stud.code
-  cdt$old.stud.code = cdt$stud.code
+  rmc = ps$rmc
+  if (!has.col(rmc,"chunk.was.run")) {
+    rmc$succesfully.run = FALSE
+  } 
+  if (!has.col(rmc,"old.stud.code")) {
+    rmc$old.stud.code = rmc$shown.txt
+  } 
 
-  #test.code.df = data.frame(stud.code = cdt$stud.code, old.stud.code = cdt$old.stud.code)
+  rmc$stud.code = get.stud.chunk.code(ps=ps)
+  rmc$code.as.shown = rmc$stud.code == rmc$shown.txt
+  rmc$chunk.changed = rmc$stud.code != rmc$old.stud.code
+  
+  # only update old.stud.code if a chunk was checked
+  #rmc$old.stud.code = rmc$stud.code
 
-  ex.changed = summarise(group_by(as.data.frame(cdt),ex.ind), ex.changed = any(chunk.changed))$ex.changed
 
-  ex.check.order = unique(c(which(ex.changed),ps$ex.last.mod, which(!edt$ex.solved)))
-
-  if (! any(cdt$chunk.changed)) {
+  if (!any(rmc$chunk.changed)) {
     code.change.message = "\nBTW: I see no changes in your code... did you forget to save your file?"
   } else {
     code.change.message = NULL
   }
 
-  ps$cdt = cdt
+  ps$rmc = rmc
 
   if (just.init) return(invisible())
 
-  # Check exercises
+  
+  # Check chunks
+  check.chunks = get.check.chunks(ps)
+  check.chunks = c(check.chunks, setdiff(ps$rmc$chunk.ind, check.chunks))
+  
   i = 1
   # i = 8
-  for (i in ex.check.order) {
-    ps$ex.last.mod = i
-    ex.name = edt$ex.name[i]
-    ret <- FALSE
-    if (verbose) {
-      display("### Check exercise ", ex.name ," ######")
-    }
-
-    if (!is.false(ps$catch.errors)) {
-      ret = tryCatch(check.exercise(ex.ind=i, verbose=verbose),
-                   error = function(e) {ps$failure.message <- as.character(e)
-                                        return(FALSE)})
-    } else {
-      ret = check.exercise(ex.ind=i, verbose=verbose)
-    }
-    # Copy variables into global env
-    copy.into.envir(source=ps$task.env,dest=.GlobalEnv, set.fun.env.to.dest=TRUE)
-    save.ups()
-    if (ret==FALSE) {
-      edt$ex.solved[i] = FALSE
-      if (cdt$code.as.shown[ps$chunk.ind]) {
-        message = paste0("You have not yet started with chunk ", cdt$chunk.name[ps$chunk.ind],"\nIf you have no clue how to start, try hint().")
-        #cat(message)
-        stop.without.error(message)
-      }
-
-      message = ps$failure.message
-      message = paste0(message,"\nFor a hint, type hint() in the console and press Enter.")
-      message = paste(message,code.change.message)
-
-
-      stop(message, call.=FALSE, domain=NA)
-    } else if (ret=="warning") {
-      message = paste0(ps$warning.messages,collapse="\n\n")
-      message(paste0("Warning: ", message))
-    }
-    edt$ex.solved[i] = TRUE
+  for (i in check.chunks) {
   }
 
   if (all(edt$ex.solved)) {
@@ -137,41 +102,100 @@ Note: use / instead of \\ to separate folders in 'ps.dir'")
   stop("There were still errors in your solution.")
 }
 
-check.exercise = function(ex.ind, verbose = FALSE, ps=get.ps(), check.all=FALSE) {
-  restore.point("check.exercise")
+check.chunk.in.rstudio = function(chunk.ind, ps) {
+  restore.point("check.chunk.in.rstudio")
+  
+  rmc = ps$rmc
+  i = chunk.ind
+  ps$prev.checked.chunk = i
+  bi = rmc$bi[i]
+  task.ind = rmc$task.ind[i]
+  ps$task.ind = task.ind
+  task.env = get.fresh.task.env(task.ind)
+  uk = get.ts(task.ind=task.ind)
+  log = empty.log()
+  stud.code = rmc$stud.code[[i]]
+  
+  
+  ret <- FALSE
+  if (verbose) {
+    display("### Check chunk ", i ," ######")
+  }
 
-  ck.rows = ps$cdt$ex.ind == ex.ind
-  cdt = ps$cdt
-  ex.name = ps$edt$ex.name[ex.ind]
+  if (!is.false(ps$catch.errors)) {
+    ret = tryCatch(check.chunk(uk = uk,log=log,task.env = task.env ,stud.code = stud.code ,opts = rt.opts(),use.secure.eval = FALSE),
+      error = function(e) {
+        log$failure.message <- as.character(e);
+        return(FALSE)
+      }
+    )
+  } else {
+    ret = check.chunk(uk = uk,log=log, task.env = task.env ,stud.code = stud.code ,opts = rt.opts(),use.secure.eval = FALSE)
+  }
+  
+  # Copy variables into global env
+  copy.into.envir(source=task.env,dest=.GlobalEnv, set.fun.env.to.dest=TRUE)
+  
+  #save.ups()
+  if (ret==FALSE) {
+    rmd$successfully.run[i] = FALSE
+    if (rmc$code.as.shown[chunk.ind]) {
+      message = paste0("You have not yet started with chunk ", rdt$chunk.name[i],"\nIf you have no clue how to start, try hint().")
+      #cat(message)
+      stop.without.error(message)
+    }
 
-  if (check.all) {
-    min.chunk = min(which(ck.rows))
-  } else {
-    rows = which(ck.rows & ((!cdt$is.solved) | cdt$chunk.changed))
-    # All chunks solved and no chunk changed
-    if (length(rows)==0) {
-      cat(paste0("\nAll chunks were correct and no change in exercise ",ex.name,"\n"))
-      return(TRUE)
-    }
-    min.chunk = min(rows)
+    message = log$failure.message
+    message = paste0(message,"\nFor a hint, type hint() in the console and press Enter.")
+    message = paste(message,code.change.message)
+
+
+    stop(message, call.=FALSE, domain=NA)
+  } else if (ret=="warning") {
+    message = paste0(ps$warning.messages,collapse="\n\n")
+    message(paste0("Warning: ", message))
   }
-  chunks = min.chunk:max(which(ck.rows))
-  chunk.ind = chunks[1]
-  for (chunk.ind in chunks) {
-    ret = check.chunk(chunk.ind,ps=ps, verbose=verbose)
-    if (ret==FALSE) {
-      return(FALSE)
-    }
-  }
-  if (NROW(ps$edt)==1) {
-    # otherwise data.table throws strange error
-    ps$edt$ex.final.env[[ex.ind]] = list(copy(ps$task.env))
-  } else {
-    ps$edt$ex.final.env[[ex.ind]] = copy(ps$task.env)
-  }
-  return(TRUE)
+  edt$ex.solved[i] = TRUE
+  
+  
 }
 
+get.check.chunks = function(ps) {
+  restore.point("get.check.chunks")
+  
+  rmc = ps$rmc
+  # all changed chunks
+  cc = which(rmc$chunk.changed)
+
+  # no chunk changed
+  if (length(cc)==0) {
+    # we have a previously checked chunk (if exists)
+    if (!is.null(ps$prev.checked.chunk)) {
+      pcc = ps$prev.checked.chunk
+      # rerun previous checked chunk
+      if (!rmc$successfully.run[[pcc]]) {
+        return(pcc)
+      } else {
+        if (pcc < NROW(rmc)) {
+          cc = pcc+1
+        } else {
+          return(pcc)
+        }
+      }
+    } else {
+      # check the first chunk
+      return(1)
+    }
+  }
+
+  # all chunks that are required for changed chunks
+  req = unique(unlist(lapply(cc, function(chunk.ind) ps$rmc$all.required[[chunk.ind]])))
+  
+  # only rerun required chunks that were not successfully run
+  req = req[!rmc$succesfully.run[req]]
+  
+  sort(unique(c(cc,req)))
+}
 
 can.chunk.be.edited = function(chunk.ind, ps = get.ps()) {
   restore.point("can.chunk.be.edited")
@@ -202,7 +226,7 @@ can.chunk.be.edited = function(chunk.ind, ps = get.ps()) {
     solved = all(ps$cdt$is.solved[chunks] | ps$cdt$optional[chunks])
     if (all(solved))
       return(TRUE)
-    ps$failure.message = paste0("You must first solve and check all chunks in exercise(s) ", paste0(ex.names[ex.inds],collapse=", "), " before you can start this exercise.")
+    log$failure.message = paste0("You must first solve and check all chunks in exercise(s) ", paste0(ex.names[ex.inds],collapse=", "), " before you can start this exercise.")
     return(FALSE)
   } else {
     ex.rows = which(cdt$ex.ind == ex.ind & cdt$chunk.ps.ind < chunk.ind)
@@ -210,7 +234,7 @@ can.chunk.be.edited = function(chunk.ind, ps = get.ps()) {
       return(TRUE)
     }
 
-    ps$failure.message = paste0("You must first solve and check all previous, non-optional chunks in this exercise before you can edit and solve this chunk.")
+    log$failure.message = paste0("You must first solve and check all previous, non-optional chunks in this exercise before you can edit and solve this chunk.")
     return(FALSE)
   }
 
@@ -280,102 +304,6 @@ get.stud.chunk.code = function(txt = ps$stud.code,chunks = ps$cdt$chunk.name, ps
     stop("I miss chunks in your solution: ",missing.chunks,". You probably removed them or changed the title line or order of your chunks by accident. Please correct this!", call.=FALSE)
   }
   chunk.txt
-}
-
-
-make.chunk.task.env = function(chunk.ind, ps = get.ps()) {
-  restore.point("make.chunk.task.env")
-
-  # return emptyenv if no student code
-  # shall ever be evaluated
-  if (isTRUE(ps$noeval)) {
-    return(emptyenv())
-  }
-
-
-  # return precomputed chunkenv
-  if (isTRUE(ps$precomp)) {
-    task.env = copy.task.env(ps$cdt$task.env[[chunk.ind]], chunk.ind)
-    return(task.env)
-  }
-
-
-  ck = ps$cdt[chunk.ind,]
-
-  cdt = ps$cdt
-
-  # Find index of closest non-optional parent
-  ex.ind = ck$ex.ind
-  non.optional = which(cdt$ex.ind == ex.ind & !cdt$optional)
-  non.optional = non.optional[non.optional < chunk.ind]
-
-  if (length(non.optional)==0) {
-    start.ex = TRUE
-  } else {
-    parent.ind = max(non.optional)
-    start.ex = FALSE
-  }
-
-
-  if (start.ex) {
-    # First chunk in exercise: generate new task.env
-    task.env = new.task.env(chunk.ind)
-    import.var.into.task.env(ps$edt$import.var[[ck$ex.ind]], task.env,ps)
-
-  } else {
-    # Later chunk in an exercise: simply copy previous task.env
-    task.env = copy.task.env(ps$cdt$task.env[[parent.ind]], chunk.ind)
-  }
-  task.env
-}
-
-
-# Import variables from other exercises task.env's
-import.var.into.task.env = function(import.var, dest.env, ps = get.ps()) {
-  restore.point("import.var.into.task.env")
-  if (is.null(import.var))
-    return(NULL)
-  restore.point("import.var.into.task.env2")
-
-  #stop("jbhgbhbdgh")
-  i = 1
-  edt = ps$edt
-  ex.names = edt$ex.name
-
-  for (i in seq_along(import.var)) {
-    ex.name = names(import.var)[i]
-    if (!ex.name %in% ex.names) {
-      ind = str.starts.with(ex.names,ex.name)
-      if (!any(ind)) {
-        stop(paste0("\nWrong import variable statement in solution file of exercise  ",ex.names[i], ": exercise ", ex.name, " not found"))
-      } else {
-        ex.name = ex.names[ind][1]
-      }
-    }
-
-    vars = import.var[[i]]
-    ex.ind = which(edt$ex.name==ex.name)
-    source.env = edt$ex.final.env[[ex.ind]]
-    if (is.null(source.env)) {
-      #str = paste0("\nYou must first solve and check exercise '", ex.name, " before you can solve this exercise.\n To check exercise ", ex.name, " enter somewhere an irrelevant space in it's code chunks.")
-      ck$log$failure.message = str
-      stop(str)
-      return(FALSE)
-    }
-    for (var in vars) {
-      if (!exists(var,source.env, inherits=FALSE)) {
-        str = paste0("You first must correctly generate the variable '", var, "' in exercise ", ex.name, " before you can solve this exercise.")
-        ck$log$failure.message = str
-        stop(str)
-      }
-      val = get(var,source.env)
-      # Set enclosing environments of functions to dest.env
-      if (is.function(val))
-        environment(val) = dest.env
-      assign(var, val,dest.env)
-    }
-  }
-  return(TRUE)
 }
 
 

@@ -1,0 +1,42 @@
+There are different levels of precomputation. Different objects will be available in different situations:
+
+Environemnts:
+
+precompilation:
+
+task.env (non chunks) <- pre.env <- init.env <- parent.env(global.env)
+
+runtime:
+
+task.env (for chunks) <- init.env <- parent.env(global.env)
+
+- init_compute blocks and extra.code.file
+  - Objects stored in init.env
+  - Will compute before any chunk is run
+  - Will be available at compile time and during runtime of the problemset
+  - Only in chunks and blocks that come after the precompute statement
+  
+- precompute chunks
+  - Know and write into pre.env
+
+- preknit chunks
+  - Know pre.env but don't write into it, unless we also have precompute=TRUE
+
+Interactive chunks:
+
+- If prerun = TRUE in settings, all chunks will already be run at compile time. By default, we then also have knit.prerun = TRUE and store.prerun = TRUE.
+
+- All chunks know objects from init.env
+
+## Task Lines
+- Each chunk belongs to a task.line and may have additional task.in.
+  - Knows all objects from earlier chunk in task.line and from all chunks in the task.in lines
+  - All earlier chunks in task.line must be solved and also chunks from additional task.in
+
+- Default lines:
+  - A new task.line starts by default in a new exercise / section
+  - A note will by default have an own task.line with an in.line equal to
+    the surrounding section / exercise
+  - An optional chunk will have a separate task.line but uses the surrounding task.line as task.in
+  - A non-chunk task by default has no task.in and starts a single task.line
+

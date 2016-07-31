@@ -44,6 +44,18 @@
 #
 
 
+are.required.tasks.solved = function(task.ind, ps) {
+  restore.point("are.required.tasks.solved")
+  req = ps$task.table$required.tasks.ind[[task.ind]]
+  solved = sapply(req,is.task.solved, ps=ps)
+  ok = all(solved)
+  unsolved = req[!solved]
+  list(ok=ok, unsolved = unsolved)
+}
+
+is.task.solved = function(task.ind, ps) {
+  get.ts(task.ind)$solved
+}
 
 create.ps.tasks = function(ps, opts=rt.opts()) {
   restore.point("create.ps.tasks")
@@ -106,23 +118,41 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
   
   # Find the required tasks that have to be
   # solved in order to edit the current task
-  required.task.bi = sapply(bi, function(b) {
+  required.tasks.ind = lapply(bi, function(b) {
+    restore.point("unfnfhrbg")
+    # earlier tasks from same task line
     req.bi = which(
       bdf$is.task & 
       bdf$index < b & 
-      is.true(bdf$task.env.line == bdf$task.env.line[b])
+      is.true(bdf$task.line == bdf$task.line[b])
     )
-    if (length(req.bi)==0) return(NA_integer_)
-    req.bi[1]
+    if (length(req.bi)>0) req.bi = max(req.bi)
+    
+    # earlier tasks from all task.in
+    for (ti in bdf$task.in[[b]]) {
+      res = which(
+        bdf$is.task & 
+        bdf$index < b & 
+        is.true(bdf$task.line == ti)
+      )
+      if (length(res)>0) res = max(res)
+      req.bi = c(req.bi, res)
+    }
+    req.bi = sort(req.bi)#
+    
+    # transform bi to task.ind
+    match(req.bi,bi)
   })
   
   task.table = data_frame(
     task.ind = task.ind,
     bi = bi,
+    task.line = ps$bdf$task.line[bi],
+    task.in = ps$bdf$task.in[bi],
     max.points = max.points,
     award.bi = NA_integer_,
     activate.next.task.ind = match(activate.next.task.bi,bi),
-    required.task.ind =  match(required.task.bi,bi)
+    required.tasks.ind =  required.tasks.ind
   )
   
 
@@ -291,35 +321,100 @@ process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {
 }
 
 
-create.bi.task.env.info = function(bi,ps, need.task.env=TRUE, change.task.env=TRUE, optional=FALSE, precomp.task.env=opts$precomp, opts=rt.opts()) {
+create.bi.task.env.info = function(bi,ps, args=NULL, need.task.env=TRUE, change.task.env=TRUE, optional=FALSE, presolve.task=opts$presolve, opts=rt.opts()) {
   restore.point("create.bi.task.env.info")
   
   if (!need.task.env) return()
   
   bdf = ps$bdf
   
-  # determine task.env.line
-  line.type = opts$task.env.together
-  line.bi = bdf[[paste0("parent_",line.type)]][bi]
-
-  task.env.line = paste0(line.type,"_",line.bi)
-  if (need.task.env) {
-    task.start.env.bi = which(bdf$task.env.line==task.env.line & bdf$change.task.env)[1]      
-  } else {
-    task.start.env.bi = NA_integer_
-  }
-  if (optional) {
-    task.env.line = paste0("opt_",bi)
-  }
-  
-  ps$bdf$task.env.line[bi] = task.env.line
   ps$bdf$need.task.env[bi] = need.task.env
   ps$bdf$change.task.env[bi] = change.task.env
-  ps$bdf$task.start.env.bi[bi] = task.start.env.bi
-  ps$bdf$precomp.task.env[bi] = precomp.task.env
+  ps$bdf$presolve.task[bi] = presolve.task
+  
+  set.task.line(bi,ps,args=args,need.task.env=need.task.env, change.task.env=change.task.env)
+  
+  
 }
 
 task.is.selected = function(ts,ps=get.ps()) {
   ps$task.ind = ts$task.ind
   call.plugin.handler("task.selected.handler")
+}
+
+
+set.task.line = function(bi,ps, args=NULL, opts=rt.opts(), need.task.env=TRUE, change.task.env=TRUE) {
+  restore.point("set.task.line")
+  res = compute.default.task.line(bi,ps,args,opts, need.task.env=need.task.env, change.task.env=change.task.env)
+  
+  task.line = first.non.null(args$task.line, res$task.line)
+  task.in = first.non.null(args$task.in, res$task.in)
+  
+  ps$bdf$task.line[bi] = task.line
+  ps$bdf$task.in[bi] = list(task.in)
+  
+  
+}
+
+compute.default.task.line = function(bi,ps, args=NULL, opts=rt.opts(), need.task.env=TRUE, change.task.env=TRUE) {
+  restore.point("compute.default.task.line")
+  br = ps$bdf[bi,]
+  
+  if (!need.task.env) {
+    return(list(task.line = NA, task.in = NULL))
+  }
+  
+  # check if we are a type that starts own task.line
+  if (br$stype %in% opts$new.task.line.parts) {
+    return(list(task.line = paste0("_",br$id), task.in = NULL))
+  }
+  
+  pbi = get.default.task.line.parent(bi,ps,opts)
+  
+  # no parent task.line is found
+  # create own task.line
+  if (is.na(pbi)) {
+    return(list(task.line = paste0("_",br$id), task.in = NULL))
+  }
+  
+  # nest parent task.line
+  if (br$stype %in% opts$nested.task.line.parts) {
+    return(list(task.line = paste0("_",br$id), task.in = ps$bdf$task.line[pbi]))
+  }
+  
+  
+  task.line = ps$bdf$task.line[pbi]
+  task.in = NULL
+  pos = 1
+  if (bi > 1) {
+    rows  = seq_len(bi-1)
+    pos = sum(ps$bdf$task.line[seq_len(bi-1)] == task.line & ps$bdf$is.task[rows], na.rm = TRUE)+1
+  }
+  if (pos == 1) {
+     task.in = ps$bdf$task.in[[pbi]]    
+  } 
+  
+  # an optional chunk is like a single nested chunk
+  if (isTRUE(args$optional) | !change.task.env) {
+    if (pos == 1) {
+      return(list(task.line = paste0("_",br$id), task.in = task.in))
+    } else {
+      return(list(task.line = paste0("_",br$id), task.in = ps$bdf$task.line[pbi]))
+    }
+  }
+
+  
+  # just continue parent task.line 
+  return(list(task.line = task.line, task.in = task.in))
+}
+
+get.default.task.line.parent = function(bi, ps, opts=rt.opts()) {
+  restore.point("get.default.task.line.parent")
+  for (type in c(opts$nested.task.line.parts, opts$new.task.line.parts)) {
+    col = paste0("parent_",type)
+    if (isTRUE(ps$bdf[[col]][bi] > 0)) {
+      return(ps$bdf[[col]][bi])
+    }
+  }
+  return(NA)
 }
