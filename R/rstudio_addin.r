@@ -1,8 +1,8 @@
 checkProblemSet2Addin = function(...) {
   library(RTutor2)
   doc = rstudioapi::getActiveDocumentContext()
-  restore.point("preview.rtutor.part.addin")
-  cat("\nView frame")
+  restore.point("checkProblemSet2Addin")
+  cat("\nCheck Problemset")
   
   file = basename(doc$path)
   dir = dirname(doc$path)
@@ -27,17 +27,20 @@ checkProblemSet2Addin = function(...) {
   }
   long.rps.files = paste0(dir,"/",rps.files, ".rps")
   rps.file = NULL
-  for (f in rps.file) {
+  for (f in long.rps.files) {
     if (file.exists(f)) {
       rps.file = f
       break
     }
   }
   if (is.null(rps.file)) {
-    cat(paste0("\nI could not find the file ", rps.files[length(rps.files)], ".rps, which is needed to check your problem set ", file, ". Also make sure that you have not renamed your .rmd file."))
+    cat(paste0("\nI could not find the file ", rps.files[length(rps.files)], ".rps, in the directory ", dir,", which is needed to check your problem set ", file, ". Also make sure that you have not renamed your .rmd file."))
     return()
   }
   
+  ps.name = tools::file_path_sans_ext(basename(rps.file))
+  
+  res = try(check.problem.set(ps.name = ps.name,stud.short.file = file, stud.path = dir))
 }
 
 showRTutorPartAddin = function(...) {

@@ -7,7 +7,7 @@ empty.log = function() {
 #' @param uk the user chunk object; an environment that will be adapted
 #' @details Returns the modified uk with all information from the check. uk$passed denotes whether all checks where passed or not. Note that the uk object and only the uk object will be modified to store all relevant information from the check. Saving ups or giving awards must be separately performed afterwards
 #' @export
-check.chunk = function(uk, stud.code=uk$stud.code, task.env=make.fresh.task.env(ts=uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=opts$verbose, use.secure.eval = opts$use.secure.eval) {
+check.chunk = function(uk, stud.code=uk$stud.code, task.env=make.fresh.task.env(ts=uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=isTRUE(opts$verbose), use.secure.eval = opts$use.secure.eval) {
   restore.point("check.chunk")
 
   opts$noeval = noeval

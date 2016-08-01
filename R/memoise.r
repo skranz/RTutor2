@@ -33,5 +33,5 @@ memoise.fun.li = function(funs) {
 }
 
 rtutor.default.memoise.funs = function() {
-  c("read.csv","read.table", "foreign::read.dta")
+  c("read.csv","read.table", "foreign::read.dta","readRDS")
 }

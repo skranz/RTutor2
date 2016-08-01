@@ -5,7 +5,7 @@ examples.rps.to.wps = function() {
   save.rps(rps)
 }
 
-preknit.rps = function(rps=load.rps(file=file),precomp=TRUE,file=paste0(ps.name,".rps"), ps.name=NULL, quiet=FALSE, knit.print.opts=make.knit.print.opts()) {
+preknit.rps = function(rps=read.rps(file=file),precomp=TRUE,file=paste0(ps.name,".rps"), ps.name=NULL, quiet=FALSE, knit.print.opts=make.knit.print.opts()) {
   restore.point("knit.all.rps.sol")
 
   if (!isTRUE(rps$has.sol)) {

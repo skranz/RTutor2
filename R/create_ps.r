@@ -146,17 +146,6 @@ examples.parse.sol.rmd = function() {
   sol.file = "Example2_sol.Rmd"
 }
 
-save.rps = function(rps,file = paste0(rps$ps.name,".rps")) {
-  save(rps,file=file)
-}
-
-
-load.rps = function(ps.name=NULL,file = paste0(ps.name,".rps")) {
-  load(file=file)
-  rps
-}
-
-
 parse.sol.rmd = function(sol.file=NULL, txt=NULL, te = get.empty.te()) {
   if (is.null(txt))
     txt = readLines(sol.file)

@@ -38,7 +38,7 @@ rtutor.parse.task.chunk  = function(bi,ps,args, opts=ps$opts) {
   # parse all blocks and create shown.txt, sol.txt,
   # expression lists and hint and test markers in ck
   for (i in seq_along(txt.li)) {
-    add.chunk.block(ck=ck,type=types[i], str=txt.li[[i]],cbi=i,bi=bi,ps=ps)
+    add.chunk.block(ck=ck,type=types[i], str=txt.li[[i]],cbi=i,bi=bi,ps=ps, add.enter.code.here = isTRUE(opts$add.enter.code.here))
   }
   
   # Collapse, since txt from aceEditor is also collapsed

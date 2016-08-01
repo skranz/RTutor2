@@ -9,12 +9,11 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
 
   restore.point("check.problem.set", deep.copy=FALSE)
 
-
   if (from.knitr) {
     # Allows knitting to HTML even when there are errors
     knitr::opts_chunk$set(error = TRUE)
     ps = NULL
-    try(ps <- get.or.init.ps(ps.name,user.name, stud.path, stud.short.file, reset), silent=TRUE)
+    try(ps <- get.or.init.rmd.ps(ps.name,user.name, stud.path, stud.short.file, reset), silent=TRUE)
 
     # Copy extra code into globalenv
     if (!is.null(ps$init.env)) {
@@ -45,32 +44,29 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
     stop('You have not picked a user name. Change the variable "user.name" in your problem set file from "ENTER A USER NAME HERE" to some user.name that you can freely pick.',call. = FALSE)
   }
 
-  log.event(type="check_ps")
-
   if (verbose)
     display("get.or.init.ps...")
 
-  ps = get.or.init.ps(ps.name,user.name,stud.path, stud.short.file, reset)
+  ps = get.or.init.rmd.ps(ps.name,user.name,stud.path, stud.short.file, reset)
+  log.event(type="check_ps")
+
   ps$catch.errors = catch.errors
   ps$use.null.device = use.null.device
 
   set.ps(ps)
-  ps$warning.messages = list()
   ps$stud.code = readLines(ps$stud.file)
   rmc = ps$rmc
   if (!has.col(rmc,"chunk.was.run")) {
-    rmc$succesfully.run = FALSE
+    rmc$successfully.run = FALSE
   } 
   if (!has.col(rmc,"old.stud.code")) {
-    rmc$old.stud.code = rmc$shown.txt
+    rmc$old.stud.code = rmc$shown.code
   } 
 
   rmc$stud.code = get.stud.chunk.code(ps=ps)
-  rmc$code.as.shown = rmc$stud.code == rmc$shown.txt
+  rmc$code.as.shown = rmc$stud.code == rmc$shown.code
   rmc$chunk.changed = rmc$stud.code != rmc$old.stud.code
-  
-  # only update old.stud.code if a chunk was checked
-  #rmc$old.stud.code = rmc$stud.code
+  rmc$old.stud.code = rmc$stud.code
 
 
   if (!any(rmc$chunk.changed)) {
@@ -88,21 +84,20 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
   check.chunks = get.check.chunks(ps)
   check.chunks = c(check.chunks, setdiff(ps$rmc$chunk.ind, check.chunks))
   
-  i = 1
-  # i = 8
-  for (i in check.chunks) {
+  for (chunk.ind in check.chunks) {
+    check.chunk.in.rstudio(chunk.ind=chunk.ind, ps=ps, verbose=verbose)
   }
 
-  if (all(edt$ex.solved)) {
+  all.solved = FALSE
+  if (all.solved) {
     display("\n****************************************************")
     stats()
     msg = "You solved the problem set. Congrats!"
     stop.without.error(msg)
   }
-  stop("There were still errors in your solution.")
 }
 
-check.chunk.in.rstudio = function(chunk.ind, ps) {
+check.chunk.in.rstudio = function(chunk.ind, ps, verbose=TRUE) {
   restore.point("check.chunk.in.rstudio")
   
   rmc = ps$rmc
@@ -111,26 +106,25 @@ check.chunk.in.rstudio = function(chunk.ind, ps) {
   bi = rmc$bi[i]
   task.ind = rmc$task.ind[i]
   ps$task.ind = task.ind
-  task.env = get.fresh.task.env(task.ind)
+  task.env = make.fresh.task.env(task.ind)
   uk = get.ts(task.ind=task.ind)
   log = empty.log()
   stud.code = rmc$stud.code[[i]]
   
   
   ret <- FALSE
-  if (verbose) {
-    display("### Check chunk ", i ," ######")
-  }
+  
+  display("\nCheck chunk ", rmc$chunk.name[i]  ,"...")
 
   if (!is.false(ps$catch.errors)) {
-    ret = tryCatch(check.chunk(uk = uk,log=log,task.env = task.env ,stud.code = stud.code ,opts = rt.opts(),use.secure.eval = FALSE),
+    ret = tryCatch(check.chunk(uk = uk,log=log,task.env = task.env ,stud.code = stud.code ,opts = ps$opts,use.secure.eval = FALSE),
       error = function(e) {
         log$failure.message <- as.character(e);
         return(FALSE)
       }
     )
   } else {
-    ret = check.chunk(uk = uk,log=log, task.env = task.env ,stud.code = stud.code ,opts = rt.opts(),use.secure.eval = FALSE)
+    ret = check.chunk(uk = uk,log=log, task.env = task.env ,stud.code = stud.code ,opts = rt.opts(),use.secure.eval = FALSE, opts=ps$opts)
   }
   
   # Copy variables into global env
@@ -138,26 +132,25 @@ check.chunk.in.rstudio = function(chunk.ind, ps) {
   
   #save.ups()
   if (ret==FALSE) {
-    rmd$successfully.run[i] = FALSE
+    rmc$successfully.run[i] = FALSE
     if (rmc$code.as.shown[chunk.ind]) {
-      message = paste0("You have not yet started with chunk ", rdt$chunk.name[i],"\nIf you have no clue how to start, try hint().")
+      message = paste0("You have not yet started with chunk ", rmc$chunk.name[i],"\nIf you have no clue how to start, try hint().")
       #cat(message)
       stop.without.error(message)
     }
 
     message = log$failure.message
     message = paste0(message,"\nFor a hint, type hint() in the console and press Enter.")
-    message = paste(message,code.change.message)
+    message = paste(message)
 
 
     stop(message, call.=FALSE, domain=NA)
   } else if (ret=="warning") {
-    message = paste0(ps$warning.messages,collapse="\n\n")
+    message = paste0(log$warning.messages,collapse="\n\n")
     message(paste0("Warning: ", message))
+  } else {
+    display("... ok\n")
   }
-  edt$ex.solved[i] = TRUE
-  
-  
 }
 
 get.check.chunks = function(ps) {
@@ -165,7 +158,8 @@ get.check.chunks = function(ps) {
   
   rmc = ps$rmc
   # all changed chunks
-  cc = which(rmc$chunk.changed)
+  # and chunks different from shown code that have not been run
+  cc = unique(c(which(rmc$chunk.changed),which(!rmc$code.as.shown & !rmc$successfully.run)))
 
   # no chunk changed
   if (length(cc)==0) {
@@ -192,7 +186,7 @@ get.check.chunks = function(ps) {
   req = unique(unlist(lapply(cc, function(chunk.ind) ps$rmc$all.required[[chunk.ind]])))
   
   # only rerun required chunks that were not successfully run
-  req = req[!rmc$succesfully.run[req]]
+  req = req[!rmc$successfully.run[req]]
   
   sort(unique(c(cc,req)))
 }
@@ -240,43 +234,7 @@ can.chunk.be.edited = function(chunk.ind, ps = get.ps()) {
 
 }
 
-#' Extracts the stud's code of a given exercise
-#' @export
-extract.exercise.code = function(ex.name,stud.code = ps$stud.code, ps=get.ps(),warn.if.missing=TRUE) {
-  restore.point("extract.r.exercise.code")
-
-  return(extract.rmd.exercise.code(ex.name,stud.code, ps,warn.if.missing))
-}
-
-extract.rmd.exercise.code = function(ex.name,stud.code = ps$stud.code, ps=get.ps(),warn.if.missing=TRUE) {
-  restore.point("extract.rmd.exercise.code")
-  txt = stud.code
-  mr = extract.command(txt,paste0("## Exercise "))
-  mr[,2] = str_trim(gsub("#","",mr[,2], fixed=TRUE))
-  start.ind = which(mr[,2]==ex.name)
-  start.row = mr[start.ind,1]
-  if (length(start.row) == 0) {
-    if (warn.if.missing)
-      message(paste0("Warning: Exercise ", ex.name, " not found. Your code must have the line:\n",
-                     paste0("## Exercise ",ex.name)))
-    return(NA)
-  }
-  if (length(start.row)>1) {
-    message("Warning: Your solution has ", length(start.row), " times exercise ", ex.name, " I just take the first.")
-    start.row = start.row[1]
-    start.ind = start.ind[1]
-  }
-  end.row = c(mr[,1],length(txt)+1)[start.ind+1]-1
-  str = txt[(start.row+1):(end.row)]
-
-  # Get all code lines with an R code chunk
-  hf = str.starts.with(str,"```")
-  str = str[cumsum(hf) %% 2 == 1 & !hf]
-
-  paste0(str, collapse="\n")
-}
-
-get.stud.chunk.code = function(txt = ps$stud.code,chunks = ps$cdt$chunk.name, ps = get.ps()) {
+get.stud.chunk.code = function(txt = ps$stud.code,chunks = ps$rmc$chunk.name, ps = get.ps()) {
   restore.point("get.stud.chunk.code")
   chunk.start = which(str.starts.with(txt,"```{"))
   chunk.end   = setdiff(which(str.starts.with(txt,"```")), chunk.start)

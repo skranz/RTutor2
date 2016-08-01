@@ -8,11 +8,12 @@ examples.frame.ps = function() {
   #setwd("D:/libraries/RTutor2/examples/auction")
   #txt = readLines("auction_sol.Rmd")
   popts=default.ps.opts(
+    ps.type = "rmd",
     show.solution.btn = TRUE,
     slides = FALSE,
     static.type = c("section","subsection"),
     lang = "de")
-  ps = rtutor.make.frame.ps(txt,catch.errors = FALSE, priority.opts=popts)
+  ps = rtutor.make.frame.ps(txt,catch.errors = FALSE, priority.opts=popts, ps.type="rmd")
 
   write.ps.rmd(ps)
   
@@ -40,7 +41,7 @@ rtutor.builtin.types = function() {
 
 
 
-rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main", libs=NULL, check.old.rtutor.sol=TRUE, extra.code.file=NULL,  ...) {
+rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE,ps.name = "ps", ps.id=ps.name, opts=default.ps.opts(ps.type=ps.type, use.memoise=use.memoise), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main", libs=NULL, check.old.rtutor.sol=TRUE, extra.code.file=NULL, use.memoise = FALSE, ps.type=c("shiny","slides","rmd") , ...) {
   restore.point("rtutor.make.frame.ps")
 
   ps = new.env()
@@ -188,7 +189,11 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
   ps$init.env = new.env(parent=parent.env(globalenv()))
   ps$pre.env = new.env(parent=ps$init.env)
   ps$env = new.env(parent=ps$init.env)
-  
+
+  if (isTRUE(ps$opts$use.memoise))
+    ps$memoise.fun.li = memoise.fun.li(ps$opts$memoise.funs)
+
+    
   source.extra.code.file(extra.code.file = extra.code.file, ps=ps)
 
   # set knitr output for data frames
@@ -263,7 +268,9 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
 }
 
 write.rps = function(ps, file.name=paste0(dir,"/",ps$ps.name,".rps"), dir=getwd()) {
-  saveRDS(ps, file.name)
+  restore.point("write.rps")
+  
+  suppressWarnings(saveRDS(ps, file.name))
 }
 
 read.rps = function(file.name=paste0(dir,"/",ps.name,".rps"), dir=getwd(), ps.name="") {
@@ -616,6 +623,9 @@ rtutor.parse.chunk = function(bi,ps) {
   restore.point("rtutor.parse.chunk")
   bdf = ps$bdf; br = bdf[bi,]; str = ps$txt[br$start:br$end]
   args = parse.chunk.args(header = str[1])
+  
+  if (!is.null(args$label))
+    ps$bdf$name[bi] = args$label 
   
   chunk.precompute = br$parent_precompute >0 | isTRUE(args$precompute)
   chunk.preknit = isTRUE(args$preknit) | br$parent_info | br$parent_preknit
@@ -1389,7 +1399,7 @@ create.ps.rmc = function(ps) {
     merge.lines(txt[-c(1,length(txt))])
   })
   
-  rmc = data_frame(chunk.ind = seq_along(task.ind), bi, task.ind, task.line = ps$task.table$task.line[task.ind], chunk.name = paste0("chunk ", chunck.ind), shown.code = shown.code, all.required=vector("list", length(task.ind)))
+  rmc = data_frame(chunk.ind = seq_along(task.ind), bi, task.ind, task.line = ps$task.table$task.line[task.ind], chunk.name = ps$bdf$name[bi], shown.code = shown.code, all.required=vector("list", length(task.ind)))
   ps$rmc = rmc
   
   for (r in seq_len(NROW(rmc))[-1]) {
@@ -1406,12 +1416,13 @@ compute.all.required.chunks = function(chunk.ind, ps, use.prev.req=FALSE) {
   task.ind = rmc$task.ind[chunk.ind]
   lines = c(rmc$task.line[chunk.ind],ps$task.table$task.in[[task.ind]] )
   
-  all.req = sort(unique(unlist(lapply(lines, function(line) {
+  all.req = unique(unlist(lapply(lines, function(line) {
     chunks = which(rmc$task.line == line & rmc$chunk.ind < chunk.ind)
     if (length(chunks)==0) return(NULL)
     chunk = max(chunks)
     return(c(chunk,rmc$all.required[[chunk]]))
-  }))))
+  })))
+  if (!is.null(all.req)) all.req = sort(all.req)
   
   all.req
 }

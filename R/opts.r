@@ -1,7 +1,9 @@
 
 default.ps.opts = function(
+  ps.type = "shiny",
+  
   # slides
-  slides = FALSE,
+  slides = identical(ps.type,"slides"),
   slide.type = "frame",
   # menu
   show.together = "section",
@@ -46,8 +48,12 @@ default.ps.opts = function(
   save.chunk.user.code = !replace.sol,
 
   chunk.out.args = default.chunk.out.args(),
-  knit.print.params = default.knit.print.params(),   
-
+  knit.print.params = default.knit.print.params(),
+  
+  use.memoise = FALSE,
+  memoise.funs = rtutor.default.memoise.funs(),
+  add.enter.code.here = isTRUE(ps.type == "rmd"),
+  
   ...
 ) {
   args = c(as.list(environment()),list(...))
