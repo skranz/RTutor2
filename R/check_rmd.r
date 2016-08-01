@@ -87,10 +87,12 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
   for (chunk.ind in check.chunks) {
     res = check.chunk.in.rstudio(chunk.ind=chunk.ind, ps=ps, verbose=verbose)
     if (!res) {
+      save.ups()
       return()
     }
   }
-
+  
+  save.ups()
   display("\n****************************************************")
   stats()
   display("You solved the problem set. Congrats!")
@@ -117,14 +119,14 @@ check.chunk.in.rstudio = function(chunk.ind, ps, verbose=TRUE) {
   display("Check chunk ", rmc$chunk.name[i]  ,"...", end.char="")
 
   if (!is.false(ps$catch.errors)) {
-    ret = tryCatch(check.chunk(uk = uk,log=log,task.env = task.env ,stud.code = stud.code ,opts = ps$opts,use.secure.eval = FALSE),
+    ret = tryCatch(check.chunk(uk = uk,log=log,task.env = task.env ,stud.code = stud.code ,opts = ps$opts,use.secure.eval = FALSE, save.ups=FALSE),
       error = function(e) {
         log$failure.message <- as.character(e);
         return(FALSE)
       }
     )
   } else {
-    ret = check.chunk(uk = uk,log=log, task.env = task.env ,stud.code = stud.code ,opts = rt.opts(),use.secure.eval = FALSE, opts=ps$opts)
+    ret = check.chunk(uk = uk,log=log, task.env = task.env ,stud.code = stud.code ,use.secure.eval = FALSE, opts=ps$opts, save.ups=FALSE)
   }
   
   # Copy variables into global env

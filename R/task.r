@@ -270,7 +270,7 @@ task.solved.give.award = function(ts,ps=get.ps(), ups=get.ups(),...) {
   give.award(award.bi, ps=ps)
 }
 
-process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
+process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,...) {
   restore.point("process.checked.task")
 
    
@@ -308,7 +308,8 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(),...) {
   if (!is.null(ts[["sts"]])) {
     ups$sts[[ts$task.ind]] = ts$sts
   }
-  update.ups(ups)
+  if (save.ups)
+    update.ups(ups)
   
   call.plugin.handler("task.checked.handler", ts=ts)
 

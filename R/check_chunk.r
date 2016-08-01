@@ -7,7 +7,7 @@ empty.log = function() {
 #' @param uk the user chunk object; an environment that will be adapted
 #' @details Returns the modified uk with all information from the check. uk$passed denotes whether all checks where passed or not. Note that the uk object and only the uk object will be modified to store all relevant information from the check. Saving ups or giving awards must be separately performed afterwards
 #' @export
-check.chunk = function(uk, stud.code=uk$stud.code, task.env=make.fresh.task.env(ts=uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=isTRUE(opts$verbose), use.secure.eval = opts$use.secure.eval) {
+check.chunk = function(uk, stud.code=uk$stud.code, task.env=make.fresh.task.env(ts=uk), opts=rt.opts(), log=empty.log(), expect.change = FALSE, store.output=TRUE, noeval = opts$noeval, precomp=opts$precomp,verbose=isTRUE(opts$verbose), use.secure.eval = opts$use.secure.eval, save.ups = TRUE) {
   restore.point("check.chunk")
 
   opts$noeval = noeval
@@ -39,7 +39,10 @@ check.chunk = function(uk, stud.code=uk$stud.code, task.env=make.fresh.task.env(
   
   if (length(ck$test.expr)==0) {
     log$success.message = ""
-    uk$passed = TRUE
+    uk$passed = uk$solved = TRUE
+    uk$points = uk$ck$max.points
+    if (uk$ck$max.points>0)
+      process.checked.task(ts=uk,save.ups=save.ups)
     return(TRUE)
   }
 
@@ -96,7 +99,7 @@ check.chunk = function(uk, stud.code=uk$stud.code, task.env=make.fresh.task.env(
   
   uk$solved = uk$passed
   uk$points = uk$ck$max.points * uk$solved
-  process.checked.task(uk)
+  process.checked.task(uk, save.ups = save.ups)
   if (uk$passed) {
     log.event(type="check_chunk",chunk.ind=ck$chunk.ind, e.ind=0,code=stud.code, ok=TRUE,message="")
     if (isTRUE(uk$had.warning)) {
