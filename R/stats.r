@@ -1,5 +1,7 @@
 
-stats = function(do.display=TRUE(),ups = get.ups(), ps=get.ps()) {
+stats = function(do.display=TRUE,ups = get.ups(), ps=get.ps()) {
+  restore.point("stats")
+  
   if (is.null(ps)) {
     display("No problem set specified. You must check a problem before you can see your stats.")
     return(invisible())

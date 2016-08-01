@@ -4,74 +4,12 @@
 hint = function(..., ps=get.ps()) {
   restore.point("hint")
 
-  if (is.null(ps$chunk.ind)) {
-    cat("Please test the chunk before you ask for a hint.")
+  if (is.null(ps[["task.ind"]])) {
+    cat("Please check a chunk before you ask for a hint.")
     return(invisible(""))
   }
-
-
-  # In old RTutor versions there was no chunk.hint
-  if ("chunk.hint" %in% colnames(ps$cdt)) {
-    chunk.hint = ps$cdt$chunk.hint[[ps$chunk.ind]]
-  } else {
-    chunk.hint = NULL
-  }
-
-  do.log = TRUE
-
-  if (isTRUE(ps$use.secure.eval) & !isTRUE(ps$hint.noeval)) {
-    eval.fun = function(call, envir=parent.frame(),...) {
-      if (is.expression(call)) call = call[[1]]
-      new.call = substitute(capture.output(call), list(call=call))
-      txt = RTutor::rtutor.eval.secure(new.call, envir=envir, silent.check=TRUE)
-      cat(paste0(txt, collapse="\n"))
-    }
-  } else {
-    eval.fun = base::eval
-  }
-  
-  # No expression set
-  if (ps$e.ind == 0) {
-    if (!is.null(chunk.hint)) {
-      eval.fun(chunk.hint)
-      log.event(type="hint",chunk=ps$chunk.ind, ex=ps$ex.ind, e.ind=ps$e.ind)
-      if (ps$cdt$num.e[[ps$chunk.ind]]>0) {
-        cat("\nI can't give you a more specific hint, since I can't run your code, due to an error.")
-      }
-    } else {
-      do.log = FALSE
-      if (ps$cdt$num.e[[ps$chunk.ind]]==0) {
-        cat("Sorry, but there is no hint for your current problem.")
-      } else {
-        cat("There is an error in your code chunk so that RTutor cannot evaluate your code. Before you can get a more detailed hint, write code that runs without error when you manually run your chunk. (One way to get no syntax error is to remove all your own code in your chunk.)")
-      }
-    }
-
-  # hint for expression ps$e.ind
-  } else {
-    hint.expr = ps$cdt$hint.expr[[ps$chunk.ind]][[ps$e.ind]]
-    if (length(hint.expr)==0) {
-      if (!is.null(chunk.hint)) {
-        eval.fun(hint.expr)
-        log.event(type="hint",chunk=ps$chunk.ind, ex=ps$ex.ind, e.ind=ps$e.ind)
-      } else {
-        do.log = FALSE
-        cat("Sorry, but there is no hint for your current problem.")
-      }
-    } else {
-      eval.fun(hint.expr)
-      if (!is.null(chunk.hint)) {
-        eval.fun(chunk.hint)
-      }
-    }
-  }
-
-  
-  if (do.log)
-    log.hint(chunk.ind=ps$chunk.ind, ps=ps)
-  
-  #ps$chunk.ind
-  #ps$e.ind
+  uk = get.ts(task.ind = ps$task.ind)
+  run.chunk.hint(uk=uk, opts=ps$opts)
   invisible("")
 }
 
@@ -229,11 +167,11 @@ hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, e
   }
   if (noeval) {
     mco.env = make.base.env()
-    task.env = emptyenv()
+    env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
   } else {
-    mco.env = task.env
+    mco.env = env
   }
 
   restore.point("hint.for.call")
@@ -318,9 +256,9 @@ hint.for.call = function(call, uk=parent.frame()$uk, opts=parent.frame()$opts, e
     hint.str = scramble.text(deparse(call),"?",0.4, keep.char=" ")
 
     if (from.assign) {
-      display("You have to assign a correct formula to the variable '", lhs, "'. Here is a scrambled version of my solution with some characters being hidden by ?:\n\n ",lhs ," = ", hint.str, start.char=start.char, end.char=end.char)
+      display("You have to assign a correct formula to the variable '", lhs, "'. Here is a scrambled version of the sample solution with some characters being hidden by '?':\n\n ",lhs ," = ", hint.str, start.char=start.char, end.char=end.char)
     } else {
-      display("You have to enter a correct formula... Here is a scrambled version of my solution with some characters being hidden by ?:\n\n  ", hint.str, start.char=start.char, end.char=end.char)
+      display("You have to enter a correct formula... Here is a scrambled version of the sample solution with some characters being hidden by '?':\n\n  ", hint.str, start.char=start.char, end.char=end.char)
     }
 
   }  else if (cde$type == "var") {
@@ -355,11 +293,11 @@ hint.for.assign = function(expr, uk = parent.frame()$uk, opts=parent.frame()$opt
   }
   if (noeval) {
     mco.env = make.base.env()
-    task.env = emptyenv()
+    env = emptyenv()
     check.arg.by.value=FALSE
     ok.if.same.val = FALSE
   } else {
-    mco.env = task.env
+    mco.env = env
   }
   
   restore.point("hint.for.assign")

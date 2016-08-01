@@ -83,38 +83,38 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
   # Check chunks
   check.chunks = get.check.chunks(ps)
   check.chunks = c(check.chunks, setdiff(ps$rmc$chunk.ind, check.chunks))
-  
+
   for (chunk.ind in check.chunks) {
-    check.chunk.in.rstudio(chunk.ind=chunk.ind, ps=ps, verbose=verbose)
+    res = check.chunk.in.rstudio(chunk.ind=chunk.ind, ps=ps, verbose=verbose)
+    if (!res) {
+      return()
+    }
   }
 
-  all.solved = FALSE
-  if (all.solved) {
-    display("\n****************************************************")
-    stats()
-    msg = "You solved the problem set. Congrats!"
-    stop.without.error(msg)
-  }
+  display("\n****************************************************")
+  stats()
+  display("You solved the problem set. Congrats!")
 }
 
 check.chunk.in.rstudio = function(chunk.ind, ps, verbose=TRUE) {
   restore.point("check.chunk.in.rstudio")
   
+  log = empty.log()  
   rmc = ps$rmc
   i = chunk.ind
   ps$prev.checked.chunk = i
   bi = rmc$bi[i]
   task.ind = rmc$task.ind[i]
   ps$task.ind = task.ind
+  
   task.env = make.fresh.task.env(task.ind)
   uk = get.ts(task.ind=task.ind)
-  log = empty.log()
   stud.code = rmc$stud.code[[i]]
   
   
   ret <- FALSE
   
-  display("\nCheck chunk ", rmc$chunk.name[i]  ,"...")
+  display("Check chunk ", rmc$chunk.name[i]  ,"...", end.char="")
 
   if (!is.false(ps$catch.errors)) {
     ret = tryCatch(check.chunk(uk = uk,log=log,task.env = task.env ,stud.code = stud.code ,opts = ps$opts,use.secure.eval = FALSE),
@@ -135,21 +135,21 @@ check.chunk.in.rstudio = function(chunk.ind, ps, verbose=TRUE) {
     rmc$successfully.run[i] = FALSE
     if (rmc$code.as.shown[chunk.ind]) {
       message = paste0("You have not yet started with chunk ", rmc$chunk.name[i],"\nIf you have no clue how to start, try hint().")
-      #cat(message)
-      stop.without.error(message)
+      cat(message)
+      return(FALSE)
     }
 
     message = log$failure.message
     message = paste0(message,"\nFor a hint, type hint() in the console and press Enter.")
     message = paste(message)
-
-
     stop(message, call.=FALSE, domain=NA)
   } else if (ret=="warning") {
     message = paste0(log$warning.messages,collapse="\n\n")
     message(paste0("Warning: ", message))
+    return(TRUE)
   } else {
-    display("... ok\n")
+    cat("... chunk ok!\n")
+    return(TRUE)
   }
 }
 
