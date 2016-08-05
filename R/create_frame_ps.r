@@ -158,6 +158,7 @@ rtutor.make.frame.ps = function(txt,bdf.filter = NULL,dir=getwd(), figure.dir=pa
     # determines required computation order of chunks / tasks
     task.line = NA_character_,
     task.in = vector("list", NROW(bdf)),
+    task.listeners = vector("list", NROW(bdf)),
     
     # These arguments deal with task.envs
     need.task.env = FALSE,
@@ -400,6 +401,7 @@ adapt.include = function(ps,txt=ps$txt) {
   
   files = str.trim(str.right.of(txt[lines],"#. include "))
   
+  i = 1
   for (i in seq_along(lines)) {
     file = files[i]
     source = match(file, ps$source.files)
@@ -414,6 +416,7 @@ adapt.include = function(ps,txt=ps$txt) {
     
     ps$txt.source = insert.into.vec(ps$txt.source,rep(source,length(ntxt)),pos=line, replace=TRUE)    
     lines = lines+length(ntxt)-1
+    txt = ps$txt
   }
   return(TRUE)
 }

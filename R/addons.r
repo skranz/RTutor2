@@ -7,6 +7,10 @@ make.addons.list = function(addons="quiz") {
   li
 }
 
+get.Addon = function(bi=NULL,type=ps$bdf$type[[bi]], ps=get.ps()) {
+  ps$Addons[[type]]
+}
+
 check.Addon = function(Ao) {
   restore.point("check.Addon")
   check.Addon.field(c("type"),type="")  
@@ -14,7 +18,7 @@ check.Addon = function(Ao) {
   check.Addon.field(c("package","is.task","is.static"),type=type)   
   check.Addon.function("parse.fun",type)
   if (Ao$is.task) {
-    check.Addon.function(c("make.org.task.state","init.task.state.with.ups","init.task.state.without.ups","init.handlers", "ui.fun"),type)
+    check.Addon.function(c("init.task.state","init.handlers", "ui.fun"),type)
     check.Addon.field(c("need.task.env","change.task.env"),type=type) 
   }
   

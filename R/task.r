@@ -43,6 +43,9 @@
 #   as a live "clicker" quiz to students' mobile phones.
 #
 
+update.task.ui = function(ui, bi=ts$bi, ts=NULL) {
+  
+}
 
 are.required.tasks.solved = function(task.ind, ps) {
   restore.point("are.required.tasks.solved")
@@ -90,7 +93,7 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
       #if (is.null(max.points)) {
       #  stop("a task ao object has not defined max.points")
       #}
-      return(ps$org.task.states[[i]]$ao$max.points)
+      return(first.non.null(ps$org.task.states[[i]]$ao$max.points,0))
     }
   })
   
@@ -180,7 +183,7 @@ set.ts = function(task.ind,ts, app=getApp(),ps=get.ps()) {
 init.ps.session.task.states = function(ps, ups=get.ups(), app=getApp()) {
   restore.point("init.ps.session.task.states")
 
-  ps$task.states = lapply(ps$org.task.states, init.task.state.with.ups, ups=ups)
+  ps$task.states = lapply(ps$org.task.states, init.task.state, ups=ups)
 }
 
 init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts(),ps=get.ps()) {
@@ -191,20 +194,20 @@ init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts(),ps=get.ps(
     ts$log = new.env()
   } else {
     Addon = ps$Addons[[ts$stype]]
-    Addon$init.task.state.without.ups(ts, opts=opts)
+    Addon$init.task.state(ts, ups=NULL, opts=opts)
   }
   ts
 }
 
-init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts(), ps=get.ps()) {
+init.task.state = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts(), ps=get.ps()) {
   if (is.null(ups) | is.null(ups$utt)) return(init.task.state.without.ups(org.ts,obj=obj, opts=opts))
-  restore.point("init.task.state.with.ups")
+  restore.point("init.task.state")
   
   ts = org.ts
   task.ind = ts$task.ind
   utr = ups$utt[task.ind,]
   if (ts$stype=="task_chunk") {
-    restore.point("init.task.state.with.ups.task.chunk")
+    restore.point("init.task.state.task.chunk")
     
     ts = as.environment(org.ts)
     ts$solved = utr$was.solved
@@ -225,10 +228,11 @@ init.task.state.with.ups = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts
       }
     }
   } else {
-    restore.point("init.task.state.with.ups.addon")
+    restore.point("init.task.state.addon")
     ts = as.environment(as.list(org.ts))
     Addon = ps$Addons[[ts$stype]]
-    ts = Addon$init.task.state.with.ups(ts, ups=ups,opts=opts)
+    
+    ts = Addon$init.task.state(ts, ups=ups,opts=opts)
   }
   return(ts)
 }
@@ -248,9 +252,10 @@ make.org.task.state = function(bi, ps, opts = rt.opts()) {
     ao = ps$bdf$obj[[bi]]$ao
     
     if (is.null(Addon$make.org.task.state)) {
-      stop(paste0("The addon ", stype, " is specified as a task, but does not have the required function make.org.task.state."))
+      ts = new.env()
+    } else {
+      ts = Addon$make.org.task.state(ao)
     }
-    ts = Addon$make.org.task.state(ao)
     ts$ao = ao
   }
   ts$task.ind = task.ind
@@ -270,15 +275,35 @@ task.solved.give.award = function(ts,ps=get.ps(), ups=get.ups(),...) {
   give.award(award.bi, ps=ps)
 }
 
+
+add.task.listener = function(target.bi, listener.bi, ps = get.ps()) {
+  restore.point("add.task.listeners")
+  
+  task.listeners = c(ps$bdf$task.listeners[[target.bi]], listener.bi)
+  
+  ps$bdf$task.listeners[[bi]] = task.listeners
+}
+
+call.task.listeners = function(ts, ps = get.ps()) {
+  restore.point("call.task.listeners")
+  
+  tl =  ps$bdf$task.listeners[[ts$bi]]
+  if (length(tl)==0) return()
+  for (bi in tl) {
+    Ao = get.Addon(bi=bi)
+    Ao$listener.handler(target.ts=ts, target.ao=ts$ao, target.bi=ts$bi, ts=ts, bi=bi)
+  }
+}
+
 process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,...) {
   restore.point("process.checked.task")
 
-   
   if (is.null(ups)) {
     if (ts$solved) {
       task.solved.give.award(ts)
       call.plugin.handler("task.checked.handler", ts=ts)
-   }
+    }
+    process.task.listeners(ts=ts, ps=ps)
     return()
   }
   
@@ -311,6 +336,7 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,.
   if (save.ups)
     update.ups(ups)
   
+  process.task.listeners(ts=ts, ps=ps)
   call.plugin.handler("task.checked.handler", ts=ts)
 
 }
@@ -318,9 +344,9 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,.
 process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {
   restore.point("process.checked.addon")
   process.checked.task(ts)
+  
   return()
 }
-
 
 create.bi.task.env.info = function(bi,ps, args=NULL, need.task.env=TRUE, change.task.env=TRUE, optional=FALSE, presolve.task=opts$presolve, opts=rt.opts()) {
   restore.point("create.bi.task.env.info")

@@ -28,8 +28,7 @@ rtutor.addon.quiz = function() {
     is.static = FALSE,
     parse.fun = rtutor.quiz.block.parse,
     make.org.task.state = rtutor.quiz.make.org.task.state,
-    init.task.state.with.ups = rtutor.quiz.init.task.state.with.ups,
-    init.task.state.without.ups = rtutor.quiz.init.task.state.without.ups,
+    init.task.state = rtutor.quiz.init.task.state,
     init.handlers = rtutor.quiz.init.handlers,
     ui.fun = rtutor.quiz.shiny.ui,
     shown.txt.fun = rtutor.quiz.shown.txt.fun,
@@ -47,13 +46,10 @@ rtutor.quiz.make.org.task.state = function(ao) {
   )
 }
 
-rtutor.quiz.init.task.state.with.ups = function(ts,ups, task.ind=ts$task.ind,...) {
+rtutor.quiz.init.task.state = function(ts,ups, task.ind=ts$task.ind,...) {
+  if (is.null(ups)) return(ts)
   ts$solved = ups$utt$was.solved[task.ind]
   ts$part.solved = rep(ts$solved)
-  ts
-}
-
-rtutor.quiz.init.task.state.without.ups = function(ts,ups, task.ind=ts$task.ind,...) {
   ts
 }
 

@@ -6,6 +6,10 @@ make.submission = function(ps=get.ps(), user.name=get.user.name(),  ps.name=ps$p
 
   restore.point("make.submission")
 
+  if (is.null(ps)) {
+    cat("Please check your problem set once before you make the submission.")
+    return()
+  }
   
   if (from.knitr) {
     cat("Cannot grade when called from knitr")

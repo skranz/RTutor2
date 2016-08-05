@@ -303,17 +303,16 @@ render.rtutor.task.chunk = function(ps, bi) {
   update.chunk.ui(uk)
 }
 
-render.rtutor.addon = function(ps, bi) {
+render.rtutor.addon = function(ps, bi,  ts = get.ts(bi=bi), init.handlers=TRUE) {
   restore.point("render.rtutor.addon")
-  task.ind = ps$bdf$task.ind[bi]
-  ts = get.ts(task.ind)
   ao = ts$ao
   type = ps$bdf$type[[bi]]
   Ao = ps$Addons[[type]]
   ui = Ao$ui.fun(ts=ts)
   output.id = ps$bdf$output.id[[bi]]  
   setUI(output.id, ui)
-  Ao$init.handlers(ao=ao,ts=ts,bi=bi)
+  if (init.handlers)
+    Ao$init.handlers(ao=ao,ts=ts,bi=bi)
   #cat("render add on not yet implemented.")
 }
 

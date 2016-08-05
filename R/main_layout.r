@@ -22,6 +22,7 @@ north: {
   slideable: false
 },
 east: {
+  initClosed: true,
   closable: true,
   resizable: true,
   spacing_open: 5
@@ -101,6 +102,7 @@ north: {
   spacing_closed: 10
 },
 east: {
+  initClosed: true,
   closable: true,
   resizable: true
 }

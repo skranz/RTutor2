@@ -71,7 +71,7 @@ get.ups = function() {
   ps = get.ps()
   ups = ps[["ups"]]
   if (is.null(ups)) {
-    return(get(".__rtutor_ups", ups, .GlobalEnv))
+    return(.GlobalEnv[[".__rtutor_ups"]])
   }
   ups
 }
