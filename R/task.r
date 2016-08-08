@@ -278,7 +278,7 @@ task.solved.give.award = function(ts,ps=get.ps(), ups=get.ups(),...) {
 
 add.task.listener = function(target.bi, listener.bi, ps = get.ps()) {
   restore.point("add.task.listeners")
-  
+  stop("not implemented")
   task.listeners = c(ps$bdf$task.listeners[[target.bi]], listener.bi)
   
   ps$bdf$task.listeners[[bi]] = task.listeners
@@ -286,6 +286,7 @@ add.task.listener = function(target.bi, listener.bi, ps = get.ps()) {
 
 call.task.listeners = function(ts, ps = get.ps()) {
   restore.point("call.task.listeners")
+  stop("not implemented")
   
   tl =  ps$bdf$task.listeners[[ts$bi]]
   if (length(tl)==0) return()
@@ -303,7 +304,7 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,.
       task.solved.give.award(ts)
       call.plugin.handler("task.checked.handler", ts=ts)
     }
-    process.task.listeners(ts=ts, ps=ps)
+    #call.task.listeners(ts=ts, ps=ps)
     return()
   }
   
@@ -336,7 +337,7 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,.
   if (save.ups)
     update.ups(ups)
   
-  process.task.listeners(ts=ts, ps=ps)
+  #call.task.listeners(ts=ts, ps=ps)
   call.plugin.handler("task.checked.handler", ts=ts)
 
 }

@@ -1,3 +1,17 @@
+update.addon = function(id, bi = which(ps$bdf$id==id),ps=get.ps(),...) {
+  restore.point("update.addon")
+  
+  Ao = get.Addon(bi=bi)
+  ao = get.addon(bi=bi)
+  if (!is.null(Ao[["update"]]))
+    Ao$update(ao=ao,bi=bi,...)
+  render.rtutor.addon(bi=bi, ps=ps)
+}
+
+get.addon = function(bi, ps=get.ps()) {
+  ps$bdf$obj[[bi]]
+}
+
 make.addons.list = function(addons="quiz") {
    li = lapply(addons, function(addon) {
      fun = paste0("rtutor.addon.",addon)

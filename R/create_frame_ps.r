@@ -410,7 +410,8 @@ adapt.include = function(ps,txt=ps$txt) {
       source = length(ps$source.files)
     }
     line = lines[i]
-    ntxt = readLines(paste0(ps$dir,"/",file),warn=FALSE)
+    ntxt = readLines(paste0(ps$dir,"/",file),warn=FALSE,encoding = "UTF8")
+    ntxt = mark_utf8(ntxt)
     ps$txt = insert.into.vec(txt,ntxt,pos=line, replace=TRUE)
     ps$txt.lines = insert.into.vec(ps$txt.lines,seq_along(ntxt),pos=line, replace=TRUE)
     

@@ -12,7 +12,8 @@ rtutor.addon.rmdform = function() {
     init.handlers = rtutor.rmdform.init.handlers,
     listener.handler = rtutor.listener.handler,
     init.task.state = rtutor.rmdform.init.task.state,
-    ui.fun = rtutor.rmdform.ui
+    ui.fun = rtutor.rmdform.ui,
+    update = rtutor.rmdform.update
   )
 }
 
@@ -22,11 +23,22 @@ rtutor.rmdform.init.task.state = function(ts,ups=NULL, task.ind=ts$task.ind,...)
   restore.point("rtutor.rmdform.init.task.state")
   
   ts$ready = TRUE
-  if (!is.null(ts$ao$update)) {
-    ts$ao$update(ts=ts)
+  if (!is.null(ts$ao$fun.env$update)) {
+    ts$ao$fun.env$update(ts=ts)
   }
   ts
 }
+
+rtutor.rmdform.update = function(ao, bi, ps=get.ps(),...) {
+  restore.point("rtutor.rmdform.update")
+  
+  ts = get.ts(bi = bi)
+  if (!is.null(ao$fun.env[["update"]]))
+    ao$fun.env$update(ts=ts, ao=ao, bi=bi,...)
+}
+
+
+
 
 rtutor.rmdform.ui = function(ts, ao=ts$ao, ps= get.ps(),...) {
   restore.point("rtutor.rmdform.ui")
@@ -38,7 +50,8 @@ rtutor.rmdform.ui = function(ts, ao=ts$ao, ps= get.ps(),...) {
   if (!is.null(ts$ao$form))
     set.form(ts$ao$form)
   ui = render.compiled.rmd(ts$ao$cr,envir = ts$data.env)
-  ui
+  #ui = mark_utf8(ui)
+  with.mathjax(ui)
 }
 
 set.task.data = function(ts, data) {
