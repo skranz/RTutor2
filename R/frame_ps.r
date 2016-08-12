@@ -2,9 +2,7 @@
 
 examples.frame.ps = function() {
   setwd("D:/libraries/RTutor2")
-  txt = readLines("ex1.rmd", warn=FALSE)
-  #txt = readLines("test.rmd", warn=FALSE)
-  ps = rtutor.make.frame.ps(txt, catch.errors=FALSE)
+  ps = create.ps(file="ex1.rmd", catch.errors=FALSE)
   bdf = ps$bdf
   
   app = rtutorApp(ps,catch.errors = FALSE)
@@ -249,10 +247,6 @@ select.ps.part.handler = function(value, shown_contents, app=getApp(), ps=app$ps
   
   bis = as.numeric(unlist(value))
   render.container(bi=bis[1],render.desc = TRUE, ps=ps)
-  
-  #cont.bi = which(ps$bdf$div.id %in% shown_contents)
-  #for (cbi in bis)
-  #  show.container(bi = cbi,ps=ps)
 }
 
 init.ps.handlers = function(ps) {
@@ -302,20 +296,6 @@ render.rtutor.task.chunk = function(ps, bi) {
   #  get.ps.uk(ps,bi=bi)
   update.chunk.ui(uk)
 }
-
-render.rtutor.addon = function(ps, bi,  ts = get.ts(bi=bi), init.handlers=TRUE) {
-  restore.point("render.rtutor.addon")
-  ao = ts$ao
-  type = ps$bdf$type[[bi]]
-  Ao = ps$Addons[[type]]
-  ui = Ao$ui.fun(ts=ts)
-  output.id = ps$bdf$output.id[[bi]]  
-  setUI(output.id, ui)
-  if (init.handlers)
-    Ao$init.handlers(ao=ao,ts=ts,bi=bi)
-  #cat("render add on not yet implemented.")
-}
-
 
 rtutor.navigate.btns = function() {
   btns = tagList(
@@ -399,18 +379,6 @@ make.slide.menu.ui = function(ps, slide.ind=ps$slide.ind) {
     bsButton("rtSendClickerBtn" ,"Send as Clicker", size="small"),
     bsButton("rtClickerStatsBtn","Clicker Stats", size="small")
   )
-}
-
-# TO DO: improve code
-rtutor.init.addons = function(addons,ps) {
-  restore.point("rtutor.init.addons")
-  
-  for (ao in addons) {
-    #rta = ao$rta
-    #Ao = ps$Addons[[rta$type]]
-    #Ao$shiny.init.fun(ao)
-    add.quiz.handlers(qu=ao, quiz.handler=NULL) 
-  }  
 }
 
 set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathjax = isTRUE(ps$use.mathjax),...) {

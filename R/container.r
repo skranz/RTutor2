@@ -70,7 +70,7 @@ render.container = function(ps, type="ps",  type.ind=1, bi=NULL, output.id=NULL,
   if (no.render) {
     
     if (render.desc) {
-      render.container.descendants(ps=ps,bi=bi,output.id=NULL, use.mathjax=use.mathjax, skip.if.rendered=skip.desc.if.rendered, skip.desc.if.rendered=skip.desc.if.rendered, add.desc.title=add.desc.title)
+      render.container.descendants(ps=ps,bi=bi,output.id=NULL, use.mathjax=use.mathjax, skip.if.rendered=skip.if.rendered, skip.desc.if.rendered=skip.desc.if.rendered, add.desc.title=add.desc.title)
     }
     return()
   }

@@ -60,30 +60,40 @@ center: {
 
 '
   ))
+  title = first.non.null(ps$opts$title,"RTutor")
+  
+  if (is.false(ps$opts$use_sidebar)) {
+    sidebar.btn =  sidebar.ui = NULL
+  } else {
+    sidebar.btn = HTML(
+'<button id="toogleEastBtn" type="button" class="btn btn-default action-button shiny-bound-input btn-xs" onclick="mainLayoutLayoutVar.toggle(\'east\')">
+        <i class="fa fa-bars"></i>
+</button>')
+    sidebar.ui = sidebar.ui()
+  }
+  
   tagList(jqueryLayoutHeader(), jqueryLayoutPanes(id="mainLayout",style=style,json.opts = json.opts,
     north = div(
       style="margin-left: 0px; margin-right: 0px;color: #333;",
-      HTML("<table width='100%'><tr><td style='padding-left: 4px;'>"),
-      HTML("RTutor "),
-      HTML("</td><td style='padding-left: 2px;'>"),
+      HTML("<table width='100%'><tr><td style='white-space: nowrap;  padding-left: 4px;'>"),
+      HTML(title),
+      HTML("</td><td align='left' style='width: 100%; padding-left: 10px;'>"),
       ps$menu.sel.ui$ui,
       HTML("</td><td align='right' valign='top' nowrap>"),
       HTML("<table><tr><td valign='center' nowrap>"),
-      HTML('<button id="toogleEastBtn" type="button" class="btn btn-default action-button shiny-bound-input btn-xs" onclick="mainLayoutLayoutVar.toggle(\'east\')">
-        <i class="fa fa-bars"></i>
-      </button>'),
+      sidebar.btn,
       HTML("</td></tr></table>"),
       HTML("</td></tr></table>"),
       hr(style="padding: 0; margin: 0; background-color: #999999; height: 1px;")
      ),
     center = div(
-      #style="margin-left: 10%; margin-right: 10%; overflow: auto; height: 100%;",
-      style="margin-left: 15%; margin-right: 15%;",
+      #style="margin-left: 15%; margin-right: 15%;",
+      style="max-width: 50em; margin:auto; padding-left: 5px; padding-right: 5px",
       #ps$navbar.ui,
       with.mathjax(ps.content.ui)
     ),
     east = div(
-      sidebar.ui()
+      sidebar.ui
     )
   ))
 }

@@ -1,3 +1,14 @@
+guess.rtutor.file = function(txt = readLines(file)) {
+  restore.point("guess.rtutor.file")
+  
+  num = sum(str.starts.with(txt,"#. section") | str.starts.with(txt, "#. frame"))
+  if (num > 0) return("ps")
+  num = sum(str.starts.with(txt,"#. rmd") | str.starts.with(txt, "#. readonly"))
+  if (num > 0) return("rmdform")
+  
+  return("ps")
+}
+
 checkProblemSet2Addin = function(...) {
   library(RTutor2)
   doc = rstudioapi::getActiveDocumentContext()
@@ -83,6 +94,13 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
   
   setwd(dir)
   txt = doc$contents
+  
+  guess = guess.rtutor.file(txt=txt)
+  if (guess == "rmdform") {
+    show.rmdform(txt=txt)
+    return()
+  }
+  
   range = doc$selection[[1]]$range
   line = range$start[1]
   
@@ -94,7 +112,7 @@ preview.rtutor.part.addin = function(single.part=TRUE,...) {
     show.line = line
   }
 
-  ps = rtutor.make.frame.ps(txt, dir=dir, source.file = file, show.line=show.line, filter.line = filter.line)
+  ps = create.ps(txt=txt, dir=dir, source.file = file, show.line=show.line, filter.line = filter.line)
   app = rtutorApp(ps=ps, dir=dir)
   
   viewApp(app)

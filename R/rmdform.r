@@ -1,3 +1,23 @@
+examples.show.rmdform = function() {
+  setwd("D:/libraries/RTutor2/examples/invest")
+  file = "game1_result2.Rmd"
+  show.rmdform(file=file)
+}
+
+show.rmdform = function(file = NULL, txt=readLines(file,warn = FALSE, encoding = "UTF8")) {
+  restore.point("show.rmdform")
+  txt = mark_utf8(txt)
+  ao = rtutor.rmdform.parse(txt)
+  ts = new.env(parent=globalenv())
+  ts$ao = ao
+  ts$data.env = new.env(parent=globalenv())
+  try(ao$fun.env$update(ts=ts))
+  ui = render.compiled.rmd(ao$cr,envir = ts$data.env)
+  if (is.character(ui)) ui = HTML(ui)
+  ui = with.mathjax(ui)
+  view.html(ui=ui)
+}
+
 rtutor.addon.rmdform = function() {
   list(
     package = "RTutor",
@@ -50,6 +70,9 @@ rtutor.rmdform.ui = function(ts, ao=ts$ao, ps= get.ps(),...) {
   if (!is.null(ts$ao$form))
     set.form(ts$ao$form)
   ui = render.compiled.rmd(ts$ao$cr,envir = ts$data.env)
+  if (is.character(ui)) {
+    ui = HTML(ui)
+  }
   #ui = mark_utf8(ui)
   with.mathjax(ui)
 }
@@ -102,17 +125,18 @@ rtutor.rmdform.parse = function(inner.txt,type="rmdform",name="",id=paste0("addo
   
   li = parse.hashdot.yaml(inner.txt)
   settings = read.yaml(text=li$settings)
+  settings$out.type = first.non.null(settings$out.type, "shiny")
   form = settings[["form"]]
   
   id = first.non.null(settings[["id"]],id)
-  ps$bdf$id[bi] = id
+  try(ps$bdf$id[bi] <- id, silent=TRUE)
   
   if (!is.null(form)) {
     library(webforms)
     form = init.form(form, prefix=paste0(id,"_"))
     set.form(form)
   }  
-  cr = compile.rmd(text = li$rmd, out.type = "shiny")
+  cr = compile.rmd(text = li$rmd, out.type = settings$out.type)
   if (!is.null(li$not.ready)) {
     notready.ui = render.compiled.rmd(compile.rmd(text=li$notready, out.type="shiny"))
   } else {

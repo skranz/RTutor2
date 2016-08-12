@@ -43,7 +43,7 @@ fetch.ps = function(ps = NULL, rps.file=NULL, rmd.file=NULL, txt=NULL, ps.name=N
   }
   if (!is.null(txt)) {
     if (is.null(ps.name)) ps.name = "ps"
-    ps = rtutor.make.frame.ps(txt=txt, ps.name=ps.name)
+    ps = create.ps(txt=txt, ps.name=ps.name)
   } else if (!is.null(rps.file)) {
     ps = read.rps(rps.file)
   }

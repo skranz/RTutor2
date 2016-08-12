@@ -1,1075 +1,1511 @@
-CREATE.PS.ENV = new.env()
-
 examples.create.ps = function() {
-  library(restorepoint)
-  library(stringtools)
-  setwd("D:/libraries/RTutor/RTutor/vignettes/problemsets")
-  sol.file = "Example2_sol.Rmd"
-  create.ps(sol.file = sol.file)
+  library(yaml)
+  setwd("D:/libraries/RTutor2/examples/sporer")
+  txt = readLines("RTutorEnvironmentalRegulations_sol.Rmd")
+  setwd("D:/libraries/RTutor2/examples/examples")
+  txt = readLines("Example2_sol.Rmd")
+  
+  #setwd("D:/libraries/RTutor2/examples/auction")
+  #txt = readLines("auction_sol.Rmd")
+  popts=default.ps.opts(
+    ps.type = "rmd",
+    show.solution.btn = TRUE,
+    slides = FALSE,
+    static.type = c("section","subsection"),
+    lang = "de")
+  ps = create.ps(txt,catch.errors = FALSE, priority.opts=popts, ps.type="rmd")
 
-  setwd("D:/libraries/RTutor/examples")
-  ps.name = "Example"; sol.file = paste0(ps.name,"_sol.Rmd")
-  libs = NULL # character vector of all packages you load in the problem set
-  #name.rmd.chunks(sol.file) # set auto chunk names in this file
-  create.ps(sol.file=sol.file, ps.name=ps.name, user.name=NULL,libs=libs, whitelist.report = TRUE)
-  show.ps(ps.name, load.sav=FALSE,  sample.solution=TRUE, run.solved=FALSE, catch.errors=TRUE, launch.browser=TRUE)
+  write.ps.rmd(ps)
+  
+  bdf = ps$bdf
+  rmc = ps$rmc
+  
+  restore.point.options(display.restore.point = !TRUE)
+
+  app = rtutorApp(ps)
+  viewApp(app,launch.browser = TRUE)
+
+}
+
+rtutor.builtin.types = function() {
+  c(
+    "chunk","frame","section","subsection","subsubsection",
+    "exercise",
+    "preknit","precompute","portrait", "image", "solved",
+    "column","row","ps","info","note","award","references",
+    "show","notest","show_notest","hint","test","test_args",
+    "settings","css","head","layout",
+    "gv"
+  )
 }
 
 
 #' Generate a problem set from a solution file
 #'
-#' Generates  .rps file, and .rmd files for empty ps , sample solution
-#' and output solution
+#' Generates  .ps file, and .rmd files for empty ps , sample solution, and output solution
 #'
-#' @param sol.file file name of the _sol.rmd file that specifies the problem set
+#' @param txt the content of the sol.rmd file as text lines
+#' @param file filename of the _sol.rmd file that specifies the problem set
 #' @param ps.name the name of the problem set
-#' @param user.name can pick a default user.name (will typically not be set)
-#' @param sol.user.name the user.name set in the sample solution
 #' @param dir the directory in which all files are found and wil be saved to
-#' @param libs character vector with names of libraries that will be used by the problem set
 #' @param extra.code.file the name of an r file that contains own functions that will be accessible in the problme set
 #' @param var.txt.file name of the file that contains variable descriptions (see thee vignette for an explanation of the file format)
 #' @param rps.has.sol shall the sample solution be stored in the .rps file. Set this option to FALSE if you use problem sets in courses and don't want to assess students the sample solution easily
 #' @param use.memoise shall functions like read.csv be memoised? Data sets then only have to be loaded once. This can make problem sets run faster. Debugging may be more complicated, however.
-#' @param memoise.funs character vector of function names that will be memoised when use.memoise = TRUE. By default a list of functions that load data from a file.
-#' @param preknit shall sample solution of chunks be knitted when problem set is generated. Default = FALSE
-#' @param precomp shall chunk environments be computed from sample solution when problem set is generated? Default = FALSE
-#' @param force.noeval shall problem set only be shown in noeval mode? (Used as a security against accidentially forgetting to set noeval=TRUE in show.ps, when showing the problem set in a web app.)
-#' @param e.points how many points does the user get per required expression in a chunk (expressions that are shown do not count). Default=1
-#' @param chunk.points you may also specify fixed points given for solving a chunk that will be added to the points per expression. Default=0
-#' @param min.chunk.points minimal points for checking a chunk even if all expression are already shown. By default=0.5. I feel there may be a higher motivation to continue a problem set if there are may be some free point chunks farther below. Also it feels nice to get points, even if it is just for pressing the check button.
-#' 
-#'
 #' @export
-create.ps = function(sol.file, ps.name=NULL, user.name= "ENTER A USER NAME HERE", sol.user.name="Jane Doe", dir = getwd(), header="", footer="", libs=NULL, stop.when.finished=FALSE, extra.code.file = NULL, var.txt.file = NULL, rps.has.sol=TRUE, fragment.only=TRUE, add.enter.code.here=FALSE, add.shiny=TRUE, addons=NULL, whitelist.report=FALSE, wl=rtutor.default.whitelist(),use.memoise=FALSE, memoise.funs = rtutor.default.memoise.funs(), precomp=FALSE, preknit=FALSE, force.noeval=FALSE,  html.data.frame=TRUE,table.max.rows=25, round.digits=8, signif.digits=8, knit.print.opts=make.knit.print.opts(html.data.frame=html.data.frame,table.max.rows=table.max.rows, round.digits=round.digits, signif.digits=signif.digits), e.points = 1, min.chunk.points=0, chunk.points=0) {
+create.ps = function(txt=readLines(file,warn=FALSE),file = NULL,ps.name = "ps", ps.id=ps.name, bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE, opts=default.ps.opts(ps.type=ps.type, use.memoise=use.memoise), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main", libs=NULL, check.old.rtutor.sol=TRUE, extra.code.file=NULL, use.memoise = FALSE, ps.type=c("shiny","slides","rmd")[1] , ...) {
   restore.point("create.ps")
 
-  CREATE.PS.ENV$fragment.only = fragment.only
-  CREATE.PS.ENV$add.enter.code.here = add.enter.code.here
-  Addons = make.addons.list(addons)
+  ps = new.env()
+  
+  ps$version = 0.1
+  ps$figure.web.dir = figure.web.dir
+  ps$figure.sub.dir = figure.sub.dir
+  if (!dir.exists(figure.dir)) {
+    dir.create(figure.dir)
+  }
+  ps$ps.name = ps.name
+  ps$ps.id = ps.id
+  ps$Addons = list()
+  ps$dir = dir
+  ps$figure.dir = figure.dir
+  ps$plugins = plugins
+  ps$css = ps$head = NULL
+  
+  if (length(txt)==1)  
+    txt = sep.lines(txt)
 
-  setwd(dir)
-  txt = readLines(sol.file)
-  txt =  name.rmd.chunks(txt=txt)
+  if (is.old.rtutor.sol(txt)) {
+    cat(paste0('\nYour solution file looks like old RTutor format. You can update it by calling the function\n
+      translate.old.rtutor.sol()'))
+    txt = translate.old.rtutor.sol(txt = txt)
+  }
+  
+  cat("\n\nCompile problem set", ps.name, "...")
+  
+  #Encoding(txt) = "UTF8"
   txt = mark_utf8(txt)
   
-  te = get.empty.te(Addons=Addons)
-  te = parse.sol.rmd(txt=txt, te=te)
 
-  te$knit.print.params = nlist(html.data.frame,table.max.rows, round.digits, signif.digits) 
-  te$e.points = e.points
-  te$chunk.points = chunk.points
-  te$min.chunk.points = min.chunk.points
+  adapt.ignore.include(ps=ps,txt=txt, source.file=source.file)
+  txt = ps$txt
   
-  te$items.df = rbindlist(te$items[1:te$num.items])
-
-  if (!is.null(ps.name))
-    te$ps.name = ps.name
-
-  write.sample.solution(te=te, header=header,footer=footer,
-                        user.name=sol.user.name, ps.dir=dir)
-
-
-  shown.txt = write.empty.ps(te=te,  header=header,footer=footer,
-                            user.name=user.name, ps.dir=dir)
-  rps = te.to.rps(te=te)
-
-  rps$force.noeval = force.noeval
+  # add outer container
+  txt = c("#. ps",txt)
+  ps$text.info = rbind(data_frame(line=NA,source=NA),ps$text.info)
   
-  # Store information about empty problem set in order to easily export
-  # an html problem set into it
-  shown.txt = sep.lines(shown.txt)
+  txt = fast.name.rmd.chunks(txt)
   
-  rmd.header = output.solution.header(rps=rps, te=te)
-  rmd.txt = c(rmd.header,sep.lines(te$shown.txt))
-  rps$empty.rmd.txt = rmd.txt
-  rps$empty.rmd.chunk.lines = get.chunk.lines(rmd.txt)
-  #rps$empty.rmd.user.name.line = which(str.starts.with(shown.txt,"user.name = '"))[1]
-  #rps$empty.rmd.ps.dir.line = which(str.starts.with(shown.txt,"ps.dir =  '"))[1]
-  #rps$empty.rmd.ps.file.line = which(str.starts.with(shown.txt,"ps.file = '"))[1]
-
-  if (add.shiny) {
-    rps$shiny.dt = make.shiny.dt(rps=rps, txt=shown.txt)
-    rps$cdt$shown.html = create.cdt.shown.html(rps$cdt)
-  }
-
-  source.rps.extra.code(extra.code.file, rps)
-  if (!is.null(var.txt.file)) {
-    rps$var.dt = read.var.txt(var.txt.file)
-  } else {
-    rps$var.dt = NULL
-  }
-  rps$libs = libs
-  rps$has.sol = rps.has.sol
-  if (!rps.has.sol) {
-    rps$cdt$sol.txt = rep("",NROW(rps$cdt))
-  }
-
-  if (whitelist.report) {
-    rtutor.whitelist.report(rps=rps, te=te, wl=wl)
-  }
-
-  rps$use.memoise = use.memoise
-  if (use.memoise)
-    rps$memoise.fun.li = memoise.fun.li(memoise.funs)
-
-  if (preknit | precomp) {
-    rps = preknit.rps(rps=rps,precomp=precomp, knit.print.opts=knit.print.opts)
-  }
-
-  write.output.solution(te=te,rps=rps)
-
+  dot.levels = rtutor.dot.levels()
+  df = find.rmd.nested(txt, dot.levels)
   
-  save.rps(rps)
-  remove.ups(ps.name=rps$ps.name)
-  if (stop.when.finished) {
-    stop.without.error("The problem set files have been succefully created.")
+ 
+  # settings in rmd file overwrite opts
+  bis = which(df$type == "settings")
+  for (bi in bis) {
+    yaml = paste0(txt[(df$start[bi]+1):(df$end[bi]-1)], collapse="\n")
+    so = read.yaml(text=yaml, keep.quotes=FALSE)
+    opts[names(so)] = so
   }
-}
 
-source.rps.extra.code = function(extra.code.file, rps) {
-  restore.point("source.rps.extra.code")
-  # Source extra.code
-  rps$extra.code.file = extra.code.file
-  if (!is.null(extra.code.file)) {
-    rps$extra.code.env = new.env()
-    source(extra.code.file, local = rps$extra.code.env)
-  } else {
-    rps$extra.code.env = NULL
-  }
-}
+  # priority opts overwrite settings and opts
+  opts[names(priority.opts)] = priority.opts
+  set.rt.opts(opts)
+  ps$opts = opts
 
-examples.parse.sol.rmd = function() {
-  library(restorepoint)
-  library(stringtools)
-  setwd("D:/libraries/RTutor/RTutor/vignettes/problemsets")
-  sol.file = "Example2_sol.Rmd"
-}
-
-parse.sol.rmd = function(sol.file=NULL, txt=NULL, te = get.empty.te()) {
-  if (is.null(txt))
-    txt = readLines(sol.file)
-
-  row = 0
-  while (row<length(txt)) {
-    row = row+1
-    te <- parse.sol.line(row=row,txt=txt,te=te)
-  }
-  te
-}
+  ps$static.types = opts$static.types
 
 
-write.sample.solution = function(file = paste0(ps.name,"_sample_solution.Rmd"), sol.txt=te$sol.txt,ps.name=te$ps.name, te,...) {
-  restore.point("write.sample.solution")
-  sol.txt = include.ps.extra.lines(sol.txt, ps.file=file, ps.name=ps.name,te=te,...)
-  writeLines(sol.txt, file, useBytes=TRUE)
-}
-
-output.solution.header = function(rps, te, ps.name=te$ps.name) {
-  libs = paste0("library(", c(rps$libs,"RTutor"),")", collapse="\n")  
-  source.txt = if (!is.null(rps$extra.code.file)) paste0('source("',rps$extra.code.file,'")') else ""
-  
-  knit.opts =  paste0(names(te$knit.print.params), " = ", te$knit.print.params, collapse=", ")
-  header = paste0(
-'
----
-title: Problem Set ', rps$ps.name,'
-output: 
-  html_document: 
-    keep_md: yes
-    toc: yes
----
-
-```{r setup, include=FALSE, echo=FALSE}
-# Load libraries and source extra code
-',libs,'
-',source.txt,'
-
-# render data frames similar to the RTutor browser
-RTutor::set.knit.print.opts(',knit.opts,')
-
-# continue knitting even if there is an error
-knitr::opts_chunk$set(error = TRUE) 
-```
-'
-)
-  header  
-}
-
-write.output.solution = function(file = paste0(ps.name,"_output_solution.Rmd"), out.txt=te$out.txt,ps.name=te$ps.name, te, rps,...) {
-  restore.point("write.output.solution")
-
-  header = output.solution.header(rps=rps, te=te, ps.name=ps.name)
-  
-  out.txt = c(header, out.txt)
-  out.txt = name.rmd.chunks(txt = out.txt,only.empty.chunks = FALSE,keep.options = TRUE,valid.file.name = TRUE)
-  out.txt = mark_utf8(out.txt)
-  writeLines(out.txt, file, useBytes=TRUE)
-}
-
-
-write.empty.ps = function(file = paste0(te$ps.name,".Rmd"), shown.txt=te$shown.txt,ps.name=te$ps.name, te,...) {
-
-
-  shown.txt = include.ps.extra.lines(shown.txt, ps.file=file, ps.name=ps.name,te=te,...)
-  writeLines(shown.txt, file, useBytes=TRUE)
-  invisible(shown.txt)
-}
-
-te.to.rps = function(te) {
-  restore.point("te.to.rps")
-  rps = new.env()
-
-  copy.into.envir(source=te, dest=rps,
-    names=c("ps.name","infos","awards")
-  )
-  ex.ind = 1
-
-  ex.ind = 3
-
-  # Create a data frame with chunk metadata
-  li = lapply(seq_along(te$ex), function(ex.ind) {
-    restore.point("te.to.rps.inner")
-    ex = te$ex[[ex.ind]]
-    if (length(ex$chunks)==0)
-      return(NULL)
-
-    add.chunk = sapply(ex$chunks, function(ck) isTRUE(ck$add))
-    num.e = sapply(ex$chunks, function(ck) length(ck$e.li))
-    num.e.shown = sapply(ex$chunks, function(ck) ck$num.e.shown)
-
-    str = sapply(ex$chunks, function(ck) str.trim(paste0(ck$test.txt,collapse="")))
-    has.test = nchar(str)>0
-
-    chunk.opt = lapply(ex$chunks, function(ck) ck$chunk.opt)
-
-    optional = sapply(ex$chunks, function(ck) isTRUE(ck$chunk.opt$optional))
-#     replace.sol = sapply(ex$chunks, function(ck) {
-#       if (!is.null(ck$chunk.opt[["replace.sol"]])) {
-#         return(ck$chunk.opt$replace.sol)    
-#       } else {
-#         return(NA)
-#       }
-#     })
+  df = find.rmd.nested(txt, dot.levels)
     
-
-    test.expr = lapply(ex$chunks, function(ck) {
-      lapply(ck$test.txt, parse.text)
-    })
-    hint.expr = lapply(ex$chunks, function(ck) {
-      lapply(ck$hint.txt, parse.text)
-    })
-    chunk.hint = lapply(ex$chunks, function(ck) {
-      if (is.null(ck$chunk.hint.txt)) return(NULL)
-      parse.text(ck$chunk.hint.txt)
-    })
-
-    sol.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$sol.txt, collapse="\n"))
-
-    shown.txt =  sapply(ex$chunks, function(chunk) paste0(chunk$shown.txt, collapse="\n"))
-    part =  lapply(ex$chunks, function(chunk) chunk$part)
-    e.li = lapply(ex$chunks, function(ck) {
-      ck$e.li
-    })
-    e.source.li = lapply(ex$chunks, function(ck) {
-      ck$e.source.li
-    })
-
-
-    dt = data.table(ex.ind = ex.ind, ex.name = names(te$ex)[ex.ind], chunk.ps.ind=0, chunk.ex.ind = seq_along(ex$chunks), chunk.name = names(ex$chunks), chunk.opt=chunk.opt, part=part, num.e = num.e, num.e.shown=num.e.shown, has.test = has.test, e.li = e.li, e.source.li = e.source.li, test.expr=test.expr, hint.expr=hint.expr, shown.txt = shown.txt, sol.txt=sol.txt, optional=optional, chunk.hint=chunk.hint)
-    # Remove chunks without expressions
-    dt = dt[add.chunk,]
-    if (NROW(dt)>0)
-      dt$chunk.ex.ind = 1:NROW(dt)
-    dt
-  })
-  cdt = do.call(rbind,li)
-  cdt$chunk.ps.ind = 1:NROW(cdt)
-  # Add has.passed for each test
-  cdt$e.tests.passed = lapply(cdt$test.expr, function(test.expr.li) {
-    lapply(test.expr.li, function(et) {
-      rep(FALSE, length(et))
-    })
-  })
+  # remove blocks inside addons
+  # those will be dealt by the addons themselves
+  builtin.types = rtutor.builtin.types()
+  df$is.addon = !(df$type %in% builtin.types)
+  parent_addon = get.levels.parents(df$level,df$is.addon)
+  del.rows = which(parent_addon>0)
+  df = del.rows.and.adapt.refs(df,del.rows,ref.cols = "parent")
   
-  cdt$points = pmax(
-    te$chunk.points + te$e.points * (cdt$num.e - cdt$num.e.shown),
-    # we may give points even for just 'click check' chunks
-    # this may bring a bit of happiness
-    te$min.chunk.points
+
+  ps$slides = opts$slides
+  ps$slide.type = opts$slide.type
+  
+  if (ps$slide.type=="auto") 
+    ps$slide.type = find.bdf.auto.slide.type(df)
+  
+  if (ps$slides) {
+    if (ps$slide.type %in% ps$static.types) {
+      ps$hidden.container.types = ps$slide.type 
+    }
+  } else {
+    ps$hidden.container.types = opts$menu.levels
+  }
+
+  ps$txt = txt
+  
+  df = adapt.for.back.to.blocks(df,ps=ps)
+  df$stype = df$type
+  
+  ps$addons = unique(df$type[df$is.addon])
+  ps$Addons = list()
+  for (addon in ps$addons) {
+    rtutor.init.Addon(ps=ps,addon=addon)
+  }
+
+  parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","note", "section","subsection","exercise")
+  pt = get.levels.parents.by.types(df$level, df$type, parent.types)
+  bdf = cbind(data.frame(index = 1:NROW(df)),df,pt) %>% as_data_frame
+  bdf$obj = bdf$ui = bdf$inner.ui = vector("list", NROW(bdf))
+  bdf = mutate(bdf,
+    stype.ind = 0,
+    id = paste0(type,"__",index,"__",ps.id),
+    name = NA_character_,
+    has.handler = FALSE,
+    is.task = FALSE,task.ind = 0,
+    is.container=FALSE,container.ind = 0,
+    is.static = TRUE,
+    div.id = "",
+    output.id=  "",   
+    shown.rmd = "", out.rmd = "",sol.rmd = "",
+    # determines required computation order of chunks / tasks
+    task.line = NA_character_,
+    task.in = vector("list", NROW(bdf)),
+    task.listeners = vector("list", NROW(bdf)),
+    
+    # These arguments deal with task.envs
+    need.task.env = FALSE,
+    change.task.env = FALSE,
+    presolve.task = opts$presolve
   )
-
-  items.df = te$items.df
-
-  # Addons data.table: ao.dt
-
-
-  li = lapply(te$addons, function(ao) {
-    rta = ao$rta
-    list(id=rta$id,type=rta$type,optional=rta$optional,changes.env=rta$changes.env, max.points=rta$max.points, solved=rta$solved, points=rta$points)
-  })
-
-  ao.dt = as_data_frame(rbindlist(li))
-
-  rows =  items.df$type == "addon"
-  ao.dt$award.name = items.df$award.name[rows]
-  ao.dt$item.pos = items.df$item.pos[rows]
-  ao.dt$ex.name = items.df$ex.name[rows]
-
-
-  rps$ao.dt = ao.dt
-  rps$Addons = te$Addons
-  rps$addons = te$addons
-
-
-  # Match awards to cdt
-  rows = match(cdt$chunk.name, items.df$id)
-  cdt$award.name = items.df$award.name[rows]
-  cdt$item.pos = items.df$item.pos[rows]
-
-  rps$cdt = cdt
-  rps$awards = te$awards
-
-
-  # Add has.passed for each test
-
-  li = lapply(cdt$chunk.ps.ind, function(ci) {
-    restore.point("dhfjdgjghbh")
-    ck = cdt[ci,]
-    exi = ck$ex.ind
-    li = lapply(seq_along(ck$test.expr[[1]]), function(ei) {
-      restore.point("dhfjdgjghbh nfhdbfhb")
-      et = ck$test.expr[[1]][[ei]]
-      data.table(ex.ind=exi, chunk.ps.ind=ci, e.ind=ei, test.e.ind = seq_along(et), test.ps.ind=0, test.passed=FALSE)
-    })
-    rbindlist(li)
-  })
-  tdt = rbindlist(li)
-  if (NROW(tdt)>0) {
-    tdt$test.ps.ind = 1:NROW(tdt)
-  } else {
-    tdt$test.ps.ind = c()
-  }
-  rps$tdt=tdt
-
-  # Just store exercise names
-  num.chunks = sapply(seq_along(te$ex), function(ex.ind) sum(cdt$ex.ind==ex.ind))
-  import.var = lapply(te$ex, function(act.ex) act.ex$import.var)
-
-  rps$edt = data.table(ex.ind = seq_along(te$ex),ex.name = names(te$ex), num.chunks=num.chunks, import.var = import.var)
-
-
-
-  rps
-}
-
-
-parse.sol.line = function(row,txt, te) {
-  restore.point("parse.sol.line")
-  str = txt[row]
-
-  te$row = row
-  chunk.starts = str.starts.with(str,"```{r")
-  chunk.ends = str.starts.with(str,"```") & ! chunk.starts
-  block.starts = str.starts.with(str,"#<")
-  block.ends = str.starts.with(str,"#>")
-
-  command.line  = str.starts.with(str,"#!")
-  #if (command.line) stop()
-
-  change = chunk.starts | chunk.ends | block.starts | block.ends | command.line
-
-  if (!change) {
-    parse.no.change.line(row,str,txt,te)
-  } else if (chunk.starts) {
-    parse.chunk.starts(row,str,txt,te)
-  } else if (chunk.ends) {
-    if (!is.true(te$in.chunk | te$block.type %in% te$markdown.blocks)) {
-      display("in row ", row, " there was a line ``` but no code chunk was opened. Interpret it as a verbatim chunk.")
-      parse.no.change.line(row,str,txt,te)
-    } else {
-      parse.chunk.ends(row,str,txt,te)
-    }
-  } else if (block.starts) {
-    parse.block.starts(row,str,txt,te)
-  } else if (block.ends) {
-    parse.block.ends(row,str,txt,te)
-  } else if (command.line) {
-    parse.command.line(row,str,txt,te)
-  }
-  te
-}
-
-parse.no.change.line = function(row,str,txt, te) {
-  restore.point("parse.no.change.line")
-  # Normal Markdown text without being in a block
-  if (!te$in.chunk & !te$in.block) {
-    te$shown.txt = c(te$shown.txt, str)
-    te$sol.txt = c(te$sol.txt, str)
-    te$out.txt = c(te$out.txt, str)
-
-
-    if (str.starts.with(str,"# Problemset ")) {
-      te$ps.name = str.trim(str.right.of(str, "# Problemset "))
-    } else if (str.starts.with(str,"## Exercise ")) {
-      parse.exercise.starts(row, str, txt, te)
-    } else {
-      part.rows = which(grepl("#'[ ]?([a-z]|[ivx]*)\\)",str))
-      if (length(part.rows)>0)
-        te$part = str.right.of(str.left.of(str,")"),"#' ",not.found = NA)
-    }
-
-  # Normal line of code without beeing in a block
-  # Treat as a "chunk" block
-  } else if (te$in.chunk & !te$in.block) {
-    te$block.txt = c(te$block.txt, str)
-
-  # Within a block
-  } else if (te$in.block) {
-    te$block.txt = c(te$block.txt, str)
-  }
-}
-
-parse.exercise.starts = function(row,str,txt, te) {
-  restore.point("te.exercise.starts")
-
-  te$prev.ex.name=te$ex.name
-  te$ex.name = str.trim(str.between(str, "# Exercise ","-- "))
-  te$part = ""
-  ex = get.empty.ex()
-  ex$ex.name = te$ex.name
-  te$act.ex = ex
-  te$ex[[ex$ex.name]] = ex
-}
-
-parse.chunk.starts = function(row,str,txt, te) {
-  restore.point("parse.chunk.starts")
-  if (te$block.type %in% te$markdown.blocks) {
-    te$block.txt = c(te$block.txt, str)
-  } else if (te$in.block | te$in.chunk) {
-    stop(paste0("in row ", row, " you start a chunk without having closed the chunk before."), call.=FALSE)
-  } else {
-    opt = chunk.opt.string.to.list(str, keep.name=TRUE)
-    chunk.name = opt[[1]]
-    te$chunk.head = str
-    te$chunk.opt = opt[-1]
-    te$chunk.name = gsub('"','', chunk.name, fixed=TRUE)
-    te$in.chunk = TRUE
-    te$chunk.str = paste0(" in chunk ", te$chunk.name)
-    te$block.type = "chunk"
-    te$block.start = row+1
-
-    ck = get.empty.chunk()
-    ck$chunk.name = te$chunk.name
-    ck$ex.name = te$act.ex$ex.name
-    ck$chunk.opt = te$chunk.opt
-
-    ck$part = te$part
-    te$act.ex$chunks[[te$chunk.name]] = ck
-    te$act.chunk = ck
-  }
-}
-
-parse.chunk.ends = function(row,str,txt, te) {
-  restore.point("parse.chunk.ends")
-
-  if (te$block.type %in% te$markdown.blocks) {
-    te$block.txt = c(te$block.txt, str)
-  } else if (te$in.block) {
-    stop(paste0(te$chunk.str, " ending in row ", row, " you forgot to close your ", te$block.type," block with #>"), call.=FALSE)
-  } else {
-    te$block.end = row-1
-    add.te.block(te)
-    add.te.chunk(te,te$act.chunk)
-
-    te$prev.chunk.name = te$chunk.name
-    te$prev.chunk.end = row
-    te$in.chunk = FALSE
-    te$chunk.name = ""
-    te$chunk.str = ""
-    te$chunk.code = NULL
-    te$block.txt = NULL
-  }
-}
-
-parse.block.starts = function(row,str,txt, te) {
-  restore.point("parse.block.starts")
-  #if (row==25) stop()
-  if (te$in.block) {
-    stop(paste0(te$chunk.str," in row ", row, " you start a new block without having closed the previous ", te$block.type, " block."), call.=FALSE)
+  
+  
+  # Filter bdf if only a subset of elements shall be compiled / shown
+  if (!is.null(filter.line)) {
+    # filter problem set
+    line = source.line.to.line(filter.line,ps = ps,source = 1)
+    bdf = bdf.part.filter(line=line)(bdf=bdf)
+    bdf = shorten.bdf.index(bdf)
+    lines = c(unlist(lapply(2:NROW(bdf), function(row) bdf$start[row]:bdf$end[row])))
+    ps$txt[-lines] = ""
+  } else if (!is.null(show.line) & isTRUE(ps$slides)) {
+    # set start slide to current source line
+    bi = source.line.to.bi(line = show.line,source = 1,bdf=bdf,ps=ps,type = ps$slide.type)
+    ps$start.slide = sum(seq_len(NROW(bdf))<=bi & bdf$stype == ps$slide.type)
   }
 
-  # Add the virtual code block
-  if (te$in.chunk & nchar(paste0(str.trim(te$block.txt),collapse=""))>0) {
-    te$block.end = row-1
-    add.te.block(te)
-  }
-  te$block.txt = NULL
-  te$block.start.row = row
-  te$block.head = str
-  te$block.type = str.trim(str.between(str,"#< "," "))
-  te$in.block = TRUE
+  ps$bdf = bdf
+  
+  # Load libs and create envs
+  ps$opts$libs = unique(c(ps$opts$libs,libs))
+  load.ps.libs(ps$opts$libs)
+  
+  ps$init.env = new.env(parent=parent.env(globalenv()))
+  ps$pre.env = new.env(parent=ps$init.env)
+  ps$env = new.env(parent=ps$init.env)
 
-  if (!te$block.type %in% te$blocks) {
-    stop(paste0(te$chunk.str," in row ", row, " you open a block of unknown type:\n  '", te$block.type,"'\nI only know the block types:\n  ", paste0(te$blocks, collapse=", "),"."), call.=FALSE)
-  }
-  if (te$in.chunk & !te$block.type %in% te$code.blocks) {
-    stop(paste0(te$chunk.str, " in row ", row, " you open a '", te$block.type,"' block. But '", te$block.type, "' blocks can only be opened in your markdown text outside of code chunks."), call.=FALSE)
-  }
-  if (!te$in.chunk & !te$block.type %in% te$markdown.blocks) {
-    stop(paste0(" in row ", row, " you open a '", te$block.type,"' block outside a code chunk. But '", te$block.type, "' blocks can only be opened inside code chunks."), call.=FALSE)
-  }
-}
+  if (isTRUE(ps$opts$use.memoise))
+    ps$memoise.fun.li = memoise.fun.li(ps$opts$memoise.funs)
 
-parse.block.ends = function(row,str,txt, te) {
-  restore.point("parse.block.ends")
-  if (!te$in.block) {
-    stop(paste0(te$chunk.str, " in row ", row, " you close a block with #>, but have no open block."), call.=FALSE)
-  } else {
-    add.te.block(te)
-    te$in.block = FALSE
-    te$block.txt = NULL
+    
+  source.extra.code.file(extra.code.file = extra.code.file, ps=ps)
 
-    if (te$in.chunk) {
-      te$block.type = "chunk"
-      te$block.start = row+1
-    } else {
-      te$block.type = ""
-    }
-  }
-}
-
-parse.command.line = function(row,str,txt, te) {
-  restore.point("parse.command.line")
-  #if (row==25) stop()
-
-  if (te$in.block) {
-    stop(paste0("In row ", row, " you have written the command \n",str,"\n inside a block. Command lines must be outside blocks"), call.=FALSE)
-  }
-  if (te$in.chunk) {
-    stop(paste0("In row ", row, " you have written the command \n",str,"\n inside a chunk. Command lines must be outside chuncks"), call.=FALSE)
+  # set knitr output for data frames
+  do.call(set.knit.print.opts, c(list(output="html"),ps$opts$knit.print.param))
+  
+  # Additional information for slides
+  if (ps$slides) {
+    ps$num.slides = sum(ps$bdf$type==ps$slide.type)
+    ps$slide.bis = which(ps$bdf$type==ps$slide.type)
+    
   }
 
-  str = str.trim(str.right.of(str,"#!"))
-  com = str.left.of(str," ")
-  if (com == "start_note" | com == "end_note") {
-    te$shown.txt = c(te$shown.txt, paste0("#! ", str))
-  } else {
-    stop(paste0("In row ", row, " you have written an unknown command:\n",str), call.=FALSE)
-  }
-
-}
-
-
-add.te.chunk = function(te,ck) {
-  restore.point("add.te.chunk")
-  if (length(ck$e.li)>0 | isTRUE(ck$has.shown)) {
-    te$shown.txt = c(te$shown.txt, te$chunk.head, ck$shown.txt,"```")
-    te$sol.txt = c(te$sol.txt, te$chunk.head, ck$sol.txt,"```")
-    te$out.txt = c(te$out.txt, te$chunk.head, ck$out.txt,"```")
-    ck$add = TRUE
-    add.te.item(te=te, type="chunk", id = ck$chunk.name)
-  }
-
-}
-
-add.te.item = function(te, type="", id="") {
-  num.items = te$num.items+1
-  te$num.items = num.items
-  te$items[[num.items]] = list(item.pos = num.items, ex.name=te$ex.name, type=type,id=id, award.name=NA_character_)
-}
-
-add.te.block = function(te) {
-  restore.point("add.struc.block")
-  type = te$block.type
-  args = str.trim(str.right.of(te$block.head, te$block.type))
-  ck = te$act.chunk
-  btxt = te$block.txt
-
-  # Check if code in block can be parsed
-  if (type %in% te$code.blocks) {
-    expr = tryCatch(parse.text(btxt),
-    error = function(e) {
-        str = paste0(" when parsing your code",te$chunk.str," between rows ", te$block.start, " and ", te$block.end, ":\n ", str.right.of(paste0(as.character(e), collapse="\n"),":") )
-      stop(str, call.=FALSE)
-    })
-  }
-  if (type %in% c("show","show_notest")) {
-    ck$has.shown = TRUE
-  }
-
-  # Add test code
-  if (type %in% c("chunk","show","show_notest","notest")) {
-    add.te.code(te,ck)
-  } else if (type == "extra_test") {
-    ind = length(ck$test.txt)
-    ck$test.txt[[ind]] = paste0(ck$test.txt[[ind]],"\n",btxt)
-  } else if (type == "test") {
-    test.txt = paste0(btxt, collapse="\n")
-    ck$test.txt[length(ck$test.txt)] <- test.txt
-    # Remove default hint for manual tests
-    ck$hint.txt[length(ck$hint.txt)] <- ""
-  } else if (type == "test_arg") {
-    test.txt = test.code.for.e(te$last.e, extra.arg = paste0(btxt,collapse=", "))
-    ck$test.txt[length(ck$test.txt)] <- test.txt
-  } else if (type == "test_hint_arg") {
-    #browser()
-    extra.arg = paste0(btxt,collapse=",")
-    test.txt = test.code.for.e(te$last.e, extra.arg = extra.arg)
-    ck$test.txt[length(ck$test.txt)] <- test.txt
-
-    hint.txt = hint.code.for.e(te$last.e, extra.arg = extra.arg)
-    ck$hint.txt[length(ck$hint.txt)] <- hint.txt
-
-  } else if (type == "test_calls") {
-     test.txt = test.code.for.e(te$last.e, extra.arg = paste0(btxt,collapse=", "))
-     ck$test.txt[length(ck$test.txt)] <- test.txt
-  } else if (type == "compute") {
-    var = args
-    add.te.compute(te,ck,var)
-  } else if (type == "hint") {
-    restore.point("shfkjdkfhdkhfurhui")
-
-    if (length(ck$hint.txt) == 0) {
-      ck$chunk.hint.txt =  paste0(btxt,collapse="\n")
-    } else {
-      ck$hint.txt[length(ck$hint.txt)] <- paste0(btxt,collapse="\n")
-    }
-  } else if (type == "add_to_hint") {
-    hint.txt = hint.code.for.e(te$last.e,extra.code = btxt)
-    ck$hint.txt[length(ck$hint.txt)] <- hint.txt
-  } else if (type == "settings") {
-    add.te.settings(te)
-  } else if (type == "info") {
-    add.te.info(te)
-  } else if (type == "award") {
-    add.te.award(te)
-  } else if (type == "ignore") {
-  } else if (type %in% names(te$Addons)) {
-    args.li = eval(parse(text=paste0("list(",args,")")))
-    add.te.addon(te,type=type, args=args.li)
-  } else {
-    str = paste0(chunk.str, " there is an unknown block head: ", te$block.head)
-    stop(str, call.=FALSE)
-  }
-  te$code.txt = NULL
-  te$block.head = NULL
-}
-
-add.te.code = function(te,ck) {
-  restore.point("add.te.code")
-
-  #if (te$block.type=="chunk")
-    #stop("")
-  show = te$block.type == "show" | te$block.type == "show_notest"
-  notest = te$block.type == "notest" | te$block.type == "show_notest"
-
-  ck$sol.txt = c(ck$sol.txt, te$block.txt)
-  ck$out.txt = c(ck$out.txt, te$block.txt)
-  if (show) {
-    ck$shown.txt = c(ck$shown.txt, te$block.txt)
-  }
-
-  if (!notest) {
-    code.txt = str.trim(te$block.txt)
-    code.txt = code.txt[nchar(code.txt)>0]
-
-    ret = tryCatch(parse.text.with.source(te$block.txt),
-      error = function(e) {
-        e.str = paste0(as.character(e), collapse="\n")
-        str = paste0(" when parsing your code",te$chunk.str," between rows ", te$block.start, "-", te$block.end, ":\n ", str.right.of(e.str,":"))
-        stop(str, call.=FALSE)
-    })
-    e.li = ret$expr
-    e.source.li = ret$source
-
-    if (length(e.li)>0) {
-      test.txt = sapply(seq_along(e.li), function(i) test.code.for.e( e.li[[i]]))
-      hint.txt = sapply(seq_along(e.li), function(i) hint.code.for.e( e.li[[i]]))
-
-      te$counter = te$counter+length(e.li)
-      ck$test.txt = c(ck$test.txt,test.txt)
-      ck$hint.txt = c(ck$hint.txt,hint.txt)
-      ck$e.li = c(ck$e.li, e.li)
-      ck$num.e = ck$num.e + length(e.li)
-      if (show) {
-        restore.point("jdsnndhfnruenfenrfkerfu84")
-        #stop()
-        ck$num.e.shown = ck$num.e.shown + length(e.li)
+  # Preparse blocks from outer to inner,
+  # i.e. ordered by start
+  binds = order(bdf$start)
+  bi = binds[1]
+  for (bi in binds) {
+    if (catch.errors) {
+      res = try(rtutor.preparse.block(bi,ps), silent=TRUE)
+      if (is(res,"try-error")) {
+        br = ps$bdf[bi,]
+        source = block.source.msg(bi=bi,ps=ps)
+        msg = paste0("Error when preparsing ",br$type," block. Source: \n",source, "\n\n", paste0(as.character(res), collape="\n"))
+        stop(msg)
       }
-      
-      ck$e.source.li  = c(ck$e.source.li, e.source.li)
-      te$last.e = e.li[[length(e.li)]]
-      if (CREATE.PS.ENV$add.enter.code.here) {
-        enter.code.str =  "\n# enter your code here ...\n"
-      } else {
-        enter.code.str =  ""
-      }
-      if (!show &
-        !identical(te$shown.txt[length(te$shown.txt)], enter.code.str)) {
-        ck$shown.txt = c(ck$shown.txt, enter.code.str)
-      }
-    # Empty code.txt
     } else {
-      te$last.e = NULL
+      res = rtutor.preparse.block(bi,ps)  
     }
-  }
-}
-
-# Add a compute block to te
-add.te.compute = function(te,ck,var) {
-  restore.point("add.te.compute")
-  hint.txt = hint.code.for.compute(te$block.txt,var=var)
-  test.txt = test.code.for.compute(te$block.txt,var=var)
-
-  ck$test.txt = c(ck$test.txt,test.txt)
-  ck$hint.txt = c(ck$hint.txt,hint.txt)
-  ck$sol.txt = c(ck$sol.txt, te$block.txt)
-  ck$out.txt = c(ck$out.txt, te$block.txt)
-
-  ret = tryCatch(parse.text.with.source(te$block.txt),
-    error = function(e) {
-      e.str = paste0(as.character(e), collapse="\n")
-      str = paste0(" when parsing your code",te$chunk.str," between rows ", te$block.start, "-", te$block.end, ":\n ", str.right.of(e.str,":"))
-      stop(str, call.=FALSE)
-  })
-  e.li = list(ret$expr)
-  e.source.li = list(ret$source)
-
-  te$counter = te$counter+length(e.li)
-  ck$e.li = c(ck$e.li, e.li)
-  ck$num.e = ck$num.e + length(e.li)
-
-  ck$e.source.li  = c(ck$e.source.li, e.source.li)
-  te$last.e = e.li[[length(e.li)]]
-
-  enter.code.str =  "\n# enter your code here ...\n"
-  enter.code.str =  ""
-  if (!identical(te$shown.txt[length(te$shown.txt)], enter.code.str)) {
-    ck$shown.txt = c(ck$shown.txt, enter.code.str)
-  }
-}
-
-
-add.te.settings = function(te) {
-  restore.point("add.te.settings")
-  txt = te$block.txt
-  env = new.env()
-  eval(base::parse(text=txt,srcfile=NULL), envir=env)
-  import.var = as.list(env$import.var)
-  if (length(import.var)>0) {
-    if (is.null(names(import.var)))
-      names(import.var) = rep("", length(import.var))
-    names(import.var)[names(import.var) == ""] = te$prev.ex.name
-  }
-  te$act.ex$import.var = import.var
-}
-
-
-add.te.info = function(te) {
-  restore.point("add.te.info")
-  #stop()
-  require(knitr)
-  require(markdown)
-  str = te$block.head
-  info.name = str.between(str, '"','"')
-
-  txt = te$block.txt
-
-  if (is.null(txt)) {
-    txt = "-- EMPTY INFO BLOCK --"
-    warning("You have an empty info block \n:", str)
-  }
-  #txt = c(paste0("**",info.name,":** "), txt)
-  ktxt = knit(text=txt)
-  html= markdownToHTML(text=ktxt, fragment.only=CREATE.PS.ENV$fragment.only)
-
-  if (FALSE) {
-    htmlFile <- tempfile(fileext=".html")
-    writeLines(html,htmlFile)
-    rstudioapi::viewer(htmlFile)
-  }
-  info = list(info.name=info.name,type="html", html=html, rmd=txt)
-  str = paste0('info("', info.name,'") # Run this line (Strg-Enter) to show info')
-  te$shown.txt = c(te$shown.txt,str)
-  te$sol.txt = c(te$sol.txt, str)
-  te$out.txt = c(te$out.txt,"\n***\n", paste0("### Info: ", info.name),te$block.txt,"\n***\n")
-
-  te$infos[[info.name]] = info
-}
-
-
-add.te.addon = function(te,type,args=NULL) {
-  restore.point("add.te.addon")
-  #stop()
-  name = args[[1]]
-
-  txt = te$block.txt
-  Addon = te$Addons[[type]]
-  ao = Addon$parse.fun(txt,type=type,name=name,args=args[-1])
-
-
-  rta = ao$rta
-  rta$id = paste0("addon__",type,"__",name)
-
-  if (rta$id %in% names(te$addons)) {
-    stop(paste0("You have defined more than once a ", type, " with name ",'"', name,'"', ". Please pick a unique name for every ", type, "."))
   }
   
-  placeholder = paste0("#! ", rta$id)
 
-
-  te$shown.txt = c(te$shown.txt,placeholder)
-  te$sol.txt = c(te$sol.txt, Addon$sol.txt.fun(ao))
-  te$out.txt = c(te$out.txt, Addon$out.txt.fun(ao))
-
-  te$addons[[rta$id]] = ao
-
-  add.te.item(te=te, type="addon", id = rta$id)
-}
-
-
-add.te.award = function(te) {
-  restore.point("add.te.award")
-  #stop()
-  require(knitr)
-  require(markdown)
-
-  str = te$block.head
-  name = str.between(str, '"','"')
-
-  txt = te$block.txt
-  txt = c(paste0("### Award: ",name,"\n"), txt)
-  ktxt = knit(text=txt)
-  html= markdownToHTML(text=ktxt, fragment.only=CREATE.PS.ENV$fragment.only)
-  if (FALSE) {
-    htmlFile <- tempfile(fileext=".html")
-    writeLines(html,htmlFile)
-    rstudioapi::viewer(htmlFile)
-  }
-
-  # item (chunk or addon) to which the award belongs
-  te$items[[te$num.items]]$award.name = name
-
-  award = list(award.name=name, html=paste0(html,collapse="\n"), txt=paste0(te$block.txt, collapse="\n"))
-  te$out.txt = c(te$out.txt,"\n***\n", paste0("### Award: ", name),te$block.txt,"\n***\n")
-
-  te$awards[[name]] = award
-
-}
-
-
-examples.test.code.for.e = function() {
-  f = function(e) {
-    e = substitute(e)
-    test.code.for.e(e)
-  }
-
-  f(fun <- function(x) {x*x})
-}
-
-get.expr.test.args = function(e) {
-  restore.point("get.expr.test.args")
-
-  funs = find.funs(e)
-
-  no.value.funs = c("plot","hist","qplot","geom_point","geom_line","geom_smooth","geom_density","lines","points","facet_wrap")
-  if (any(funs %in% no.value.funs)) {
-    args = "check.arg.by.value=FALSE, allow.extra.arg=TRUE,ok.if.same.val = FALSE"
-  } else {
-    args = ""
-  }
-  args
-
-}
-
-test.code.for.e = function(e, extra.arg=get.expr.test.args(e)) {
-  restore.point("test.code.for.e")
-  if (is.null(e))
-    return("")
-
-  extra.arg = ifelse(extra.arg=="","",paste0(",",extra.arg))
-  if (is.assignment(e)) {
-    var = deparse1(e[[2]],collapse="\n")
-    rhs = deparse1(e[[3]],collapse="\n")
-    call.name = name.of.call(e[[3]])
-    if (call.name == "function") {
-      code=paste0("check.function(", var, "<-",rhs,extra.arg,")")
+  
+  # Go through blocks and chunks, ordered by end
+  binds = order(bdf$end, -bdf$start)
+  bi = binds[1]
+  for (bi in binds) {
+    #restore.point("inner.make.ps")
+    if (catch.errors) {
+      res = try(rtutor.parse.block(bi,ps), silent=TRUE)
+      if (is(res,"try-error")) {
+        br = ps$bdf[bi,]
+        source = block.source.msg(bi=bi,ps=ps)
+        msg = paste0("Error when parsing ",br$type," block. Source: \n",source, "\n\n", paste0(as.character(res), collape="\n"))
+        stop(msg)
+      }
     } else {
-      code = paste0("check.assign(", var, "<- ",rhs,extra.arg,")")
+      res = rtutor.parse.block(bi,ps)  
     }
-  } else {
-    estr = deparse1(e)
-    code = paste0("check.call(", estr,extra.arg,")")
   }
-  code
+  ps$bdf$stype.ind = compute.value.index(ps$bdf$stype)
+
+  
+  ps$bdf$task.ind = cumsum(ps$bdf$is.task) * ps$bdf$is.task
+  # store task.chunks in a list ck.li and the
+  # corresponding user chunks in uk
+  create.ps.tasks(ps=ps)
+  
+  create.ps.rmc(ps=ps)
+  
+  # specify containers
+  ps$bdf$container.ind = cumsum(ps$bdf$is.container) * ps$bdf$is.container
+  
+  ps$bdf$parent_container = get.levels.parents(ps$bdf$level, ps$bdf$is.container) 
+  
+  
+  ps$navbar.ui = rtutor.navbar(ps=ps, nav.levels = opts$nav.levels)
+  
+  # tests
+  ids = ps$bdf$id
+  if (any(duplicated(ids))) {
+    stop(paste0("The bdf id ", paste0(ids[duplicated(ids)], collapse="\n"), " are duplicated. Check your addons, chunk id, or block id."))
+  }
+  
+  
+  remove.existing.ups(ps.name=ps.name, dir=dir)
+  write.rps(ps=ps,dir=dir)
+  write.ps.rmd(ps)
+  ps
 }
 
-hint.code.for.e = function(e, extra.code = NULL, extra.arg = NULL) {
-  restore.point("hint.code.for.e")
-  if (is.null(e))
-    return("")
-  if (!is.null(extra.arg))
-    extra.arg =  paste0(",", extra.arg)
+write.rps = function(ps, file.name=paste0(dir,"/",ps$ps.name,".rps"), dir=getwd()) {
+  restore.point("write.rps")
+  
+  suppressWarnings(saveRDS(ps, file.name))
+}
 
-  if (!is.null(extra.code)) {
-    extra.code = paste0("\n  ",paste0(extra.code,collapse="\n  "))
-  }
-  estr = deparse1(e)
-  if (is.assignment(e)) {
-    var = deparse1(e[[2]])
-    rhs = deparse1(e[[3]])
-    call.name = name.of.call(e[[3]])
+read.rps = function(file.name=paste0(dir,"/",ps.name,".rps"), dir=getwd(), ps.name="") {
+  readRDS(file.name)
+}
 
-    if (call.name == "function") {
-      rhs = deparse1(e[[3]], collapse="\n")
-      code = paste0("hint.for.function(",var ,"<-",rhs, extra.arg,")",
-                    extra.code)
+
+source.line.to.line = function(line, ps, source=1) {
+  restore.point("source.line.to.line")
+  lines = (which(ps$txt.lines <= line & ps$txt.source == source))
+  if (length(lines)==0) return(1)
+  return(max(lines))
+}
+
+source.line.to.bi = function(line,bdf=ps$bdf,ps, source=1,type=NULL) {
+  restore.point("source.line.to.bi")
+  line = source.line.to.line(line,ps,source)
+
+  if (is.null(type)) {
+    bi = max(which(bdf$start <= line))
+  } else {
+    bis = which(bdf$start <= line & bdf$type==type)
+    if (length(bis)==0) {
+      bi = min(which(bdf$type==type))      
     } else {
-      code = paste0("hint.for.assign(",var ,"<-",rhs,extra.arg,")",
-                    extra.code)
+      bi = max(bis)
     }
-  } else {
-    code = paste0("hint.for.call(",estr,extra.arg,")", extra.code)
   }
-  code
+  bi
 }
 
-test.code.for.compute = function(code, var, extra.arg="") {
-  restore.point("test.code.for.compute")
-  code.txt = paste0("{\n", paste0(code, collapse="\n"),"\n",var,"\n}")
-  test.txt = paste0("check.variable('", var,"',",code.txt,extra.arg,")")
-  test.txt
+block.source.msg = function(bi, ps) {
+  restore.point("block.source.msg")
+  
+  br = ps$bdf[bi,]
+  lines = br$start:br$end
+  df = data_frame(line=ps$txt.lines[lines],source=ps$txt.source[lines])
+  sdf = summarise(group_by(df, source), start=min(line),end=max(line))
+  sdf$file = ps$source.files[sdf$source]
+  
+  paste0(sdf$file, " lines ",sdf$start, " to ", sdf$end, collapse="\n")
+
 }
 
-hint.code.for.compute = function(code, var, extra.code = NULL) {
-  restore.point("hint.code.for.compute")
-  ec = parse.expr.and.comments(code, comment.start="## ")
-  comments = lapply(ec$comments, function(str) {
-    ret=gsub('"',"'",str, fixed=TRUE)
-    if (length(ret)==0)
-      ret=""
-    ret
+# Some default packages for addons
+# Can be used to automatically load packages
+rtutor.addon.packages = function() {
+  c(pane="EconCurves",plotpane="EconCurves",panequiz="EconCurves")
+}
+
+rtutor.init.Addon = function(ps, addon) {
+  restore.point("rtutor.init.Addon")
+  addon.fun = paste0("rtutor.addon.",addon)
+  if (exists(addon.fun)) {
+    ps$Addons[[addon]] = do.call(addon.fun,list())
+  } else {
+    pkgs = rtutor.addon.packages()
+    if (!addon %in% names(pkgs)) {
+      warning(paste0("\nWe don't have a built-in block type ", addon,". Bute I could not find the function ", addon.fun, " that identifies the block as an addon. (Have you loaded the required package with the addon?"))
+      ps$addons = setdiff(ps$addons,addon)
+      stop()
+    } else {
+      if (require(pkgs[addon],character.only = TRUE)) {
+        warning(paste0("\nI loaded the package ", pkgs[addon], " for the addon ", addon,".")) 
+        ps$Addons[[addon]] = do.call(addon.fun,list())
+      } else {
+        warning(paste0("\nWe don't have a built-in block type ", addon,". This addon is defined in the package ", pkgs[addon]," but you have not installed that package."))
+        stop()
+      }
+    }
+    
+  }
+}
+
+adapt.ignore.include = function(ps, txt=ps$txt, source.file="main") {
+  restore.point("adapt.ignore.include")
+
+    # Only capture elements between the lines <!-- START --> and <!-- END -->
+  res = rmd.between.start.end.lines(txt,return.start.end = TRUE)
+  txt = res$txt
+  ps$txt.lines = seq_along(txt)+res$start-1
+  ps$txt.source = rep(1, length(ps$txt.lines))
+  ps$source.files = source.file
+
+  changed.ig = changed.in = TRUE
+  counter = 0
+  ps$txt = txt
+  while(changed.ig | changed.in) {
+    counter = counter+1
+    changed.ig = adapt.ignore(ps)
+    changed.in = adapt.include(ps)
+    if (counter > 300) {
+      stop("#. include statements were nested deeper than 300 levels. Probably there is a recursion...")
+    }
+  }
+  invisible()
+}
+
+adapt.ignore = function(ps,txt=ps$txt) {
+  restore.point("adapt.ignore")
+  
+  # all rows that will be deleted 
+  # in this precompilation state
+  del.lines = NULL
+  df = find.rmd.blocks(txt)
+  
+  # remove content in ignore blocks
+  ig.rows = which(df$type=="ignore")
+  if (length(ig.rows)>0) {
+    del.lines = c(del.lines,unlist(lapply(ig.rows, function(ig.row) df$start[ig.row]:df$end[ig.row])))
+  }  
+
+  if (length(del.lines)==0) return(FALSE)
+  del.lines =unique(del.lines)
+  txt = txt[-del.lines]
+  ps$txt.lines = ps$txt.lines[-del.lines]
+  ps$txt.source = ps$txt.source[-del.lines]
+  
+  ps$txt = txt
+  return(TRUE)
+}
+
+adapt.include = function(ps,txt=ps$txt) {
+  restore.point("adapt.include")
+  lines = which(str.starts.with(txt,"#. include "))
+  if (length(lines)==0) return(FALSE)
+  
+  files = str.trim(str.right.of(txt[lines],"#. include "))
+  
+  i = 1
+  for (i in seq_along(lines)) {
+    file = files[i]
+    source = match(file, ps$source.files)
+    if (is.na(source)) {
+      ps$source.files = c(ps$source.files, file)
+      source = length(ps$source.files)
+    }
+    line = lines[i]
+    ntxt = readLines(paste0(ps$dir,"/",file),warn=FALSE,encoding = "UTF8")
+    ntxt = mark_utf8(ntxt)
+    ps$txt = insert.into.vec(txt,ntxt,pos=line, replace=TRUE)
+    ps$txt.lines = insert.into.vec(ps$txt.lines,seq_along(ntxt),pos=line, replace=TRUE)
+    
+    ps$txt.source = insert.into.vec(ps$txt.source,rep(source,length(ntxt)),pos=line, replace=TRUE)    
+    lines = lines+length(ntxt)-1
+    txt = ps$txt
+  }
+  return(TRUE)
+}
+
+insert.into.vec = function(vec, new, pos, replace=FALSE) {
+  restore.point("insert.into.vec")
+  
+  keep.left = seq_len(min(pos)-1)
+  
+  if (replace) {
+    keep.right = if (max(pos)<length(vec)) (max(pos)+1):length(vec) else integer(0)  
+  } else {
+    keep.right= if (min(pos)<=length(vec)) (min(pos)):length(vec) else integer(0)    
+  }
+  
+  c(vec[keep.left],new,vec[keep.right])  
+  
+}
+
+
+adapt.for.back.to.blocks = function(bdf,ps, line.start=ps$txt.start) {
+  restore.point("adapt.for.back.to.blocks")
+  
+  is_backto = str.starts.with(bdf$type,"back_to_")
+  bttype = str.right.of(bdf$type[is_backto],"back_to_")
+  rows = which(is_backto)
+  if (length(rows)==0) return(bdf)
+  i = 1
+  for (i in seq_along(rows)) {
+    row = rows[i]
+    parent = bdf$parent[row]
+    do.stop = parent == 0
+    if (!do.stop) do.stop = (bdf$type[parent] != bttype[i])
+    if (do.stop) {
+      msg = paste0("In line ", bdf$start[row]+line.start-1, " you have a ", bdf$type[row], " statement without a ", bttype[row]," parent.")
+      stop(msg)
+    }
+    bdf$parent[bdf$parent==row] = parent 
+  }
+  # remove from txt
+  ps$txt[bdf$start[rows]] = ""
+  
+  # adapt parent indexes for removed rows
+  old.ind = 1:NROW(bdf)
+  new.ind = c(0,old.ind - cumsum(is_backto))
+  bdf$parent = new.ind[bdf$parent+1]
+  
+  bdf = bdf[-rows,]
+  
+  bdf
+}
+
+
+
+shorten.bdf.index = function(bdf, new = 1:NROW(bdf), old = bdf$index) {
+  restore.point("shorten.bdf.index")
+  
+  long = rep(NA_integer_,max(old))
+  long[old] = new
+  bdf$index = new
+  cols = c("parent",colnames(bdf)[str.starts.with(colnames(bdf),"parent_")])
+  pmat = as.matrix(bdf[,cols])
+  pvec = as.numeric(pmat)
+  pvec[pvec==0] = NA_integer_
+  #pvec[pvec==0] = 0
+  nmat = matrix(long[as.numeric(pvec)],NROW(pmat),ncol(pmat))
+  nmat[pmat==0] = 0
+  nmat[is.na(nmat)] = 0
+  
+  bdf[,cols] = nmat
+  rows = bdf$parent == 0 & bdf$index > 1
+  bdf$parent[rows] = 1
+  bdf$level[rows] = 2
+  
+  bdf
+}
+
+rtutor.dot.levels = function() {
+  dot.levels = c(
+    ps = -1000,
+    section = -3,
+    subsection = -2,
+    subsubsection = -1,
+    frame = 1,
+    row = 2,
+    references = 2,
+    column = 3,
+    success = 3,
+    when = 3
+  )
+  backto = dot.levels+1
+  names(backto) = paste0("back_to_",names(dot.levels))
+  lev = c(dot.levels, backto)  
+  lev = rank(lev,ties.method = "min")
+  lev
+}
+
+
+rtutor.preparse.block = function(bi,ps, opts = ps$opts) {
+  restore.point("rtutor.preparse.block")
+  type = ps$bdf$type[[bi]]
+  
+  if (type %in% c(opts$new.task.line.parts,opts$nested.task.line.parts)) {
+    set.task.line(bi=bi,ps=ps, opts=opts)    
+  }
+}
+
+
+rtutor.parse.block = function(bi,ps) {
+  restore.point("rtutor.parse.block")
+  
+  # Don't parse blocks inside chunks here
+  if (ps$bdf$parent_chunk[[bi]] >0) return()
+
+  type = ps$bdf$type[[bi]]
+  fun.name = paste0("rtutor.parse.",type)
+  
+  if (ps$bdf$is.addon[[bi]]) {
+    return(rtutor.parse.addon(bi=bi, ps=ps))
+  }
+  
+  fun.call = parse(text=paste0("rtutor.parse.",type,"(bi,ps)"))
+  res = eval(fun.call)
+  res
+  #fun(bi,ps)
+}
+
+rtutor.parse.settings = function(bi, ps,...) {
+  
+}
+
+rtutor.parse.css = function(bi, ps,...) {
+  css = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
+  ps$css = paste0(c(ps[["css"]],css),collapse="\n")
+}
+
+
+rtutor.parse.head = function(bi, ps,...) {
+  head = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
+  ps$head = paste0(c(ps[["head"]],head),collapse="\n")
+}
+
+
+rtutor.parse.layout = function(bi, ps,...) {
+  restore.point("rtutor.parse.layout")
+  br = ps$bdf[bi,]
+  name = br$arg.str
+  ps$bdf$name[bi] = name
+  inner = ps$txt[(ps$bdf$start[bi]+1):(ps$bdf$end[bi]-1)]
+  li = parse.hashdot.yaml(inner, hashdot="##. ")
+  li$name = name
+  ps$bdf$obj[[bi]] = li
+  if (is.null(ps[["layouts"]]))
+    ps$layouts = list()
+  
+  ps$layouts[[name]] = li
+}
+
+
+
+rtutor.parse.addon = function(bi, ps, opts=ps$opts) {
+  restore.point("rtutor.parse.addon")
+  
+  bdf = ps$bdf; br = bdf[bi,];
+  type = br$type
+  Ao = ps$Addons[[type]]
+  
+  args = parse.block.args(arg.str = br$arg.str)
+  if (!is.null(args$name)) ps$bdf$name[[bi]] = args$name
+  ao = Ao$parse.fun(
+    block.txt = ps$txt[br$start:br$end],
+    inner.txt = ps$txt[(br$start+1):(br$end-1)],
+    id = paste0(type,"__",bi),
+    args = args,
+    type = type,
+    bdf=bdf,
+    bi = bi,
+    ps = ps
+  )
+  if (!is.null(Ao$ui.fun)) {
+    if (isTRUE(Ao$is.static)) {
+      ui = Ao$ui.fun(ao=ao)
+      set.bdf.ui(ui,bi,ps)
+      ps$bdf$is.static[[bi]] = TRUE
+    } else {
+      # the addon will be put inside a container
+      ps$bdf$is.container[[bi]] = TRUE
+      set.container.div.and.output(bi,ps)
+      ps$bdf$is.static[[bi]] = FALSE
+    }
+  }
+
+  if (isTRUE(Ao$is.task)) {
+    ps$bdf$is.task[[bi]] = Ao$is.task
+    ao$task.ind = sum(ps$bdf$is.task[1:bi])
+    
+    create.bi.task.env.info(bi=bi,ps=ps,need.task.env = isTRUE(Ao$need.task.env),change.task.env = isTRUE(Ao$change.task.env),args=list(optional = TRUE),presolve.task = opts$presolve, opts=opts)  
+
+  }
+  ps$bdf$obj[[bi]] = list(ao=ao)
+  
+  
+  return()
+}
+
+rtutor.parse.chunk = function(bi,ps) {
+  restore.point("rtutor.parse.chunk")
+  bdf = ps$bdf; br = bdf[bi,]; str = ps$txt[br$start:br$end]
+  args = parse.chunk.args(header = str[1])
+  
+  if (!is.null(args$label))
+    ps$bdf$name[bi] = args$label 
+  
+  chunk.precompute = br$parent_precompute >0 | isTRUE(args$precompute)
+  chunk.preknit = isTRUE(args$preknit) | br$parent_info | br$parent_preknit
+  chunk.task = isTRUE(args$task_chunk) | (!chunk.preknit & !chunk.precompute)
+  
+  code = str[-c(1,length(str))]
+  mstr = merge.lines(str) 
+  if (chunk.precompute) {
+    restore.point("parse.precompute.chunk")
+    ps$bdf$stype[[bi]] = "precompute_chunk"
+    expr = parse(text=code)
+    res = eval(expr,ps$pre.env)
+    ps$bdf$obj[[bi]]$pre.env = copy.env(ps$pre.env)
+    ps$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
+  }
+  if (chunk.preknit) {
+    restore.point("parse.preknit.chunk")
+    ps$bdf$stype[[bi]] = "preknit_chunk"
+    args$comment = NA
+    rmd = code.to.rmd.chunk(code,args=args)
+    ui = knit.rmd(rmd,envir = ps$pre.env,out.type="shiny")
+    #ui = tagList(ui, highlight.code.script())
+    set.bdf.ui(ui, bi,ps)
+    ps$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = mstr
+  }
+  if (chunk.task) {
+    ps$bdf$stype[[bi]] = "task_chunk"
+    # a task chunk is the classic RTutor chunk
+    rtutor.parse.task.chunk(bi=bi,ps=ps,args=args)
+  }
+}
+
+code.to.rmd.chunk = function(code, args, label=args$label) {
+  restore.point("code.to.rmd.chunk")
+  
+  if (is.null(label)) {
+    label = "chunk"
+  }
+  args = args[setdiff(names(args),"label")]
+  args = lapply(args, function(arg) {
+    if (is.character(arg)) return(paste0("'",arg,"'"))
+    arg
   })
-  comment.code = paste0("list(",paste0('"',comments,'"', collapse=", "),")")
-
-  code = paste0(code, collapse="\n")
-  com = paste0("hint.for.compute({\n",code,"\n},",comment.code,", var= '",var,"'",
-               extra.code,"\n)")
-  com
+  if (length(args)>0) {
+    head = paste0('```{r "',label, '", ',paste0(names(args)," = ", args, collapse=", "),'}')
+  } else {
+    head = paste0('```{r "',label, '" }')
+  }
+  c(head,code,"```")
 }
 
-get.empty.ex = function() {
-  ex = new.env()
-  ex$chunks = list()
-  ex
-}
-get.empty.chunk = function() {
-  ck = new.env()
-  ck$test.txt = NULL
-  ck$hint.txt = NULL
-  ck$chunk.hint.txt = NULL
-  ck$shown.txt = NULL
-  ck$sol.txt = NULL
-  ck$out.txt = NULL
-  ck$expr = NULL
-  ck$num.e = 0
-  ck$num.e.shown = 0
-  ck
-}
-
-get.empty.te = function(Addons=NULL) {
-  te = new.env()
-  te$Addons = Addons
-  te$block.type = ""
-  te$in.block = FALSE
-  te$in.chunk = FALSE
-  te$block.head = NULL
-
-  te$shown.txt = NULL
-  te$sol.txt = NULL
-  te$out.txt = NULL
-  te$code.txt = NULL
-
-  te$part = NULL
-  te$last.e = NULL
-  te$counter = 0
-
-  te$markdown.blocks = c("info","award","ignore",names(te$Addons))
-  te$code.blocks = c("test","test_arg","test_hint_arg","extra_test","test_calls",
-                  "hint","add_to_hint",
-                  "show","show_notest","notest",
-                  "compute","settings")
-  te$blocks = c(te$markdown.blocks, te$code.blocks, names(te$Addons))
-  te$act.chunk = NULL
-  te$act.ex = NULL
-  te$ps.name = NULL
-  te$ex = te$infos = te$awards = te$addons = list()
-
-  te$items = vector("list",1000)
-  te$num.items = 0
-
-  te
+rtutor.parse.preknit = function(bi,ps) {
+  restore.point("rtutor.parse.preknit")
+  bdf = ps$bdf; br = bdf[bi,];
+  
+  # new code: children are knitted
+  children = bdf$parent == bi 
+  res = get.children.and.fragments.ui.list(bi,ps, keep.null=FALSE, children=children)
+  ui.li = res$ui.li
+  set.bdf.ui(ui.li,bi,ps)
+  set.bdf.rmd(bi=bi,ps = ps,res$shown.rmd,res$sol.rmd,res$out.rmd)
+  return()
+  
+  # old code knit everything
+  bdf = ps$bdf; br = bdf[bi,];
+  str = ps$txt[(br$start+1):(br$end-1)]
+  
+  ui = knit.rmd(str,envir = ps$pre.env,out.type="shiny")
+  set.bdf.ui(ui,bi,ps)
 }
 
-include.ps.extra.lines = function(txt, ps.file, ps.name=te$ps.name,te=NULL,...) {
-  chunk.row = which(str.starts.with(txt,"# Problemset"))[1]
-  if (is.na(chunk.row))
-    chunk.row = 1
-  str = ps.rtutor.chunk(ps.name=ps.name, ps.file=ps.file,...)
-  txt[chunk.row] = paste0(txt[chunk.row],"\n\n",paste0(str,collapse="\n"))
-  txt
+rtutor.parse.precompute = function(bi,ps) {
+  # all work is done in the chunks inside
+  rtutor.parse.as.container(bi,ps,is.static = TRUE)
 
 }
 
-ps.rtutor.chunk = function(ps.name,ps.dir = "C:/problemsets/", ps.file = paste0(ps.name,".Rmd"), header="", user.name="ENTER A USER NAME HERE",...) {
+rtutor.parse.gv = function(bi, ps) {
+  restore.point("rtutor.parse.gv")
+  arg.str= ps$bdf$arg.str[[bi]]
+  
+  bdf = ps$bdf; br = bdf[bi,];
+  txt = get.bi.inner.txt(bi=bi, ps=ps)
+  library(svgdiagram)
+  svg = gv.to.svg(gv=txt, to.clipboard = FALSE)
+  ui = HTML(svg)
+  set.bdf.ui(ui,bi,ps)
+}
 
-  str = paste0("
-```{r include=FALSE}
-",header,"
-ps.dir =  '",ps.dir,"' # set to the folder in which this file is stored
-ps.file = '",ps.file,"' # set to the name of this file
-user.name = '",user.name,"' # set to your user name
+rtutor.parse.portrait = function(bi,ps) {
+  restore.point("rtutor.parse.image")
+  bdf = ps$bdf; br = bdf[bi,];
+  
+  args = get.yaml.block.args(bi,ps)
+  if (is.null(args$height)) args$height = "auto"
 
-library(RTutor)
-check.problem.set('",ps.name,"', ps.dir, ps.file, user.name=user.name, reset=FALSE)
+  if (is.null(args$width)) args$width = "70px"
+  if (is.null(args$height)) args$height = "auto"
+  if (is.null(args$align)) args$align = "left"
+  
+  if (!is.null(args$file)) {
+    file.path = paste0(ps$figure.dir,"/",args$file)
+    has.file = file.exists(file.path)
+  } else {
+    has.file = FALSE
+  }
+  wh = NULL
+  if (!is.null(args$width)) wh = paste0(wh," width ='",args$width,"'")
+  if (!is.null(args$height)) wh = paste0(wh," height ='",args$height,"'")
 
-# To check your solution in RStudio save (Ctrl-S) and then run all chunks (Ctrl-Alt-R)
-```
-")
+   if (has.file) {
+    html = paste0('<img src=figure/',args$file,wh,'>')
+  } else if (!is.null(args$url)) {
+    html = paste0('<img src=',args$url,wh,'>')
+  } else {
+    html('<p>...figure here...</p>')
+  }
+  if (!is.null(args$link)) {
+    html = paste0("<a href='",args$link,"' target='_blank'>",html,"</a>")
+  }
+  
+  if (is.null(args$name)) {
+    name.html = ""
+  } else {
+    args$name = gsub("\n","<br>",args$name, fixed=TRUE)
+    name.html = paste0("<tr><td style='padding-bottom: 2px;padding-left: 5px;padding-right: 5px;text-align: center;white-space: normal;word-wrap: break-all;'><font size=1>",args$name,"</font></td></tr>")
+  }
+  tab = paste0("<table  align='",args$align,"'><tr><td STYLE='padding-left:5px;padding-right:5px;'>",html,'</td></tr>',name.html,"</table>")
+  set.bdf.ui(HTML(tab),bi,ps)
+}
+
+rtutor.parse.image = function(bi,ps, download.image=TRUE) {
+  restore.point("rtutor.parse.image")
+  bdf = ps$bdf; br = bdf[bi,];
+  
+  args = get.yaml.block.args(bi,ps)
+  if (is.null(args$height)) args$height = "auto"
+
+  if (!is.null(args$file)) {
+    file.path = paste0(ps$figure.dir,"/",args$file)
+    has.file = file.exists(file.path)
+  } else {
+    has.file = FALSE
+  }
+  wh = NULL
+  if (!is.null(args$width)) wh = paste0(wh," width ='",args$width,"'")
+  if (!is.null(args$height)) wh = paste0(wh," height ='",args$height,"'")
+
+  if (has.file) {
+    html = paste0('<img src=figure/',args$file,wh,' >')
+  } else if (!is.null(args$url)) {
+    html = paste0('<img src=',args$url,wh,'>')
+  } else {
+    html('<p>...figure here...</p>')
+  }
+  set.bdf.ui(HTML(html),bi,ps)
+}
+
+ 
+rtutor.parse.solved = function(bi,ps) {
+  restore.point("rtutor.parse.solved")
+  rtutor.parse.as.container(bi,ps)
+}
+
+
+rtutor.parse.column = function(bi,ps) {
+  restore.point("rtutor.parse.column")
+  bdf = ps$bdf; br = bdf[bi,];
+  args = parse.block.args(arg.str = br$arg.str)
+  if (is.null(args$width)) args$width = 6 
+  if (is.null(args$offset)) args$offset = 0 
+  ui.fun = function(ui) {
+    column(width = args$width, offset=args$offset,ui)
+  }
+  rtutor.parse.as.container(bi,ps, is.static=TRUE, ui.fun=ui.fun)
+}
+
+rtutor.parse.row = function(bi,ps) {
+  restore.point("rtutor.parse.row")
+  rtutor.parse.as.container(bi,ps, is.static=TRUE, ui.fun=fluidRow)
+}
+
+rtutor.parse.ps = function(bi,ps) {
+  restore.point("rtutor.parse.ps")
+  rtutor.parse.as.container(bi,ps, is.static=TRUE, only.children.ui = TRUE)
+}
+
+
+
+rtutor.parse.exercise = function(bi,ps) {
+  restore.point("rtutor.parse.exercise")
+  rtutor.parse.as.section(bi,ps,type="exercise", rmd.prefix="## Exercise")
+}
+
+rtutor.parse.section = function(bi,ps) {
+  restore.point("rtutor.parse.section")
+  rtutor.parse.as.section(bi,ps,type="section", rmd.prefix="## Section")
+}
+
+rtutor.parse.subsection = function(bi,ps) {
+  restore.point("rtutor.parse.subsection")
+  rtutor.parse.as.section(bi,ps,type="subsection", rmd.prefix="### Subsection")
+}
+
+
+rtutor.parse.subsubsection = function(bi,ps) {
+  restore.point("rtutor.parse.subsection")
+  rtutor.parse.as.section(bi,ps,type="subsubsection", rmd.prefix="####  Subsubsection")
+}
+
+rtutor.parse.frame = function(bi,ps) {
+  restore.point("rtutor.parse.frame")
+  rtutor.parse.as.section(bi,ps,type="frame", rmd.prefix="### Frame") 
+}
+
+rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section") {
+  restore.point("rtutor.parse.as.section")
+  bdf = ps$bdf; br = bdf[bi,];
+  arg.str= ps$bdf$arg.str[[bi]]
+  args = parse.block.args(arg.str =arg.str, allow.unquoted.title = TRUE)
+  # extract layout in [ ]
+  if (str.starts.with(arg.str,"[")) {
+    args$layout.name = str.between(args$name,"[","]")
+    args$layout = ps$layouts[[args$layout.name]]
+    if (is.null(args[["layout"]])) {
+      cat("\nWarning could not find layout", args$layout.name)
+    } else {
+      inner = get.bi.inner.txt(bi,ps=ps)
+      args$layout.txt = sep.lines(txt.to.layout(txt=inner,layout=args$layout))
+    }
+    args$name = str.trim(str.right.of(args$name,']'))
+  }
+  title = first.non.null(args$title, args$name)
+  type = ps$bdf$stype[[bi]]
+  if (isTRUE(type %in% ps$opts$hide_title)) title = NULL
+  
+  rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=paste0(rmd.prefix," ",title), title = title)
+  if (is.null(args$title.offset)) args$title.offset=0
+  button.label = str.left.of(args$name," --")
+  ps$bdf$obj[[bi]] = list(title = args$name,button.label = button.label, args=args)
+  
+}
+
+
+rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types, extra.class = "", only.children.ui = FALSE) {
+  restore.point("rtutor.parse.as.container")
+  bdf = ps$bdf; br = bdf[bi,];
+  if (is.null(inner.ui) | is.null(rmd.li)) {
+    if (only.children.ui) {
+      res = get.children.ui.list(bi,ps,keep.null=TRUE, layout.txt = args$layout.txt)
+    } else {
+      res = get.children.and.fragments.ui.list(bi,ps,keep.null=TRUE, layout.txt = args$layout.txt)
+    }
+    if (is.null(inner.ui))
+      inner.ui = res$ui.li
+    if (is.null(rmd.li)) rmd.li = res
+  }
+  if (!is.null(ui.fun)) {
+    inner.ui = ui.fun(inner.ui)
+  }
+  if (!is.null(inner.ui)) {
+    inner.ui = tagList(
+      inner.ui,
+      if (highlight.code) highlight.code.script() else NULL
+    )
+  }
+  
+  
+  type = ps$bdf$type[[bi]]
+  
+  header = NULL
+  # Add slide header
+  if (ps$slides & identical(ps$slide.type,type)) {
+    slide.ind = sum(ps$bdf$type[1:bi]==ps$slide.type)
+    header = slide.title.bar.ui(title = title,slide.ind=slide.ind,num.slides = ps$num.slides) 
+    
+  # Add title as header
+  } else {
+    if (!is.null(title))
+      header = container.title.html(title = title)  
+  } 
+  if (!is.null(header)) {
+    inner.ui = list(header, inner.ui)
+  }
+  
+  set.bdf.rmd(bi, ps, rmd.li=rmd.li, rmd.prefix=rmd.prefix, rmd.postfix=rmd.postfix)
+  ps$bdf$is.static[[bi]] = is.static
+  
+  
+  
+  # A dynamic container will be loaded in an uiOutput
+  if (!is.static) {
+    ps$bdf$inner.ui[[bi]] = inner.ui
+    set.container.div.and.output(bi,ps, is.hidden=is.hidden)
+  
+  # A static container will not be loaded in a uiOutput
+  } else {
+    restore.point("jnxjkfhiufhriuhf")
+    
+    style = ""
+    if (is.hidden) style = "display: none;"
+    
+    ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
+    
+    div.class = paste0("rtutor-static-container-div ",type,"-container-div")
+    if (isTRUE(ps$slides)) {
+      if (type == ps$slide.type) {
+        div.class = paste0(div.class," slide-container-div")
+      }
+    }
+    
+    ps$bdf$ui[[bi]] = div(id=div.id,class=div.class,  style=style,
+      inner.ui
+    )
+  }
+  ps$bdf$is.container[[bi]] = TRUE
+}
+
+container.title.html = function(title,type=NULL, ps=NULL, class=NULL) {
+  if (is.null(title)) return(NULL)
+  h4(class=class, title)      
+}
+
+set.container.div.and.output = function(bi, ps, is.hidden = ps$bdf$type[bi] %in% ps$hidden.container.types) {
+  bdf = ps$bdf; br = bdf[bi,];
+  
+  style = ""
+  if (is.hidden) style = "display: none;"
+
+  
+  ps$bdf$div.id[[bi]] = div.id = paste0(ps$prefix, br$id,"_div")
+  ps$bdf$output.id[[bi]] = output.id = paste0(ps$prefix, br$id,"_output")
+  type = br$stype
+  div.class = paste0("rtutor-container-div ",type,"-container-div")
+  if (isTRUE(ps$slide)) {
+    if (type == ps$slide.type) {
+      div.class = paste0(div.class," slide-container-div")
+    }
+  }
+  ps$bdf$ui[[bi]] = div(id=div.id,class=div.class, style=style,
+    uiOutput(output.id)
+  )
+  
+}
+
+get.container.default.rmd = function(bi,ps) {
+  title = paste0("## Frame ", args$name)
+
+}
+
+parse.container.inner.ui.and.rmd = function(bi, ps) {
+  restore.point("rtutor.parse.frame")
+  #stop()
+  bdf = ps$bdf; br = bdf[bi,];
+  args = parse.block.args(arg.str = br$arg.str)
+  
+  children = bdf$parent == bi 
+  res = get.children.and.fragments.ui.list(bi,ps, children=children, keep.null=TRUE)
+  
+  ui.li = res$ui.li
+  is.child = !res$is.frag
+
+  title = args$name
+  set.bdf.rmd(bi, ps, rmd.li=res,rmd.prefix = title)
+  
+  if (is.null(args$title.offset)) args$title.offset=0
+  if (!is.null(args$name)) {
+    title = fluidRow(column(offset=args$title.offset,width=12-args$title.offset,h4(args$name)))
+  } else {
+    title = NULL
+  }
+  ui = tagList(
+    ui.li,
+    highlight.code.script()
+  )
+  ps$bdf$obj[[bi]] = list(title = args$name, args=args)
+  set.bdf.ui(ui,bi,ps)
+  
+}
+
+
+rtutor.parse.info = function(bi,ps) {
+  restore.point("rtutor.parse.info")
+  rtutor.parse.as.collapse(bi,ps,title.prefix="Info")
+}
+
+rtutor.parse.note = function(bi,ps) {
+  restore.point("rtutor.parse.note")
+  rtutor.parse.as.collapse(bi,ps)
+}
+
+rtutor.parse.award = function(bi,ps) {
+  restore.point("rtutor.parse.award")
+  br = ps$bdf[bi,]
+  
+  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]])
+  award.name = args$name
+  
+  res = get.children.and.fragments.ui.list(bi,ps, keep.null=FALSE)
+  out.rmd = merge.lines(c("---\n### Award",res$out.rmd,"---"))
+  rmd.li = list(shown.rmd="",sol.rmd="",out.rmd=out.rmd)
+  content.ui=res$ui.li
+  obj = list(award.bi =bi, award.name=award.name, html=as.character(tagList(content.ui)), txt = res$out.rmd)
+
+  title = paste0("Award: ",award.name) 
+  
+  inner.ui = tagList(br(),shinyBS::bsCollapse(id = paste0("award_collapse_",bi), myCollapsePanel(title=title,header.style="background-color: #DFC463;box-shadow: 2px 2px 2px #888888;",content.ui)))
+
+  rtutor.parse.as.container(bi=bi,ps=ps,args = args, inner.ui=inner.ui,rmd.li = rmd.li,highlight.code = TRUE,is.static = TRUE,title = NULL, is.hidden = TRUE)  
+}
+
+rtutor.parse.references = function(bi,ps) {
+  restore.point("references.block.render")
+  title = "References"
+  if (isTRUE(ps$opts$lang=="de")) {
+    title = "Referenzen"
+  }
+  rtutor.parse.as.collapse(bi,ps, title=title, is.static=TRUE)
+}
+
+rtutor.parse.as.collapse  =  function(bi,ps,title.prefix=NULL, title=NULL, rmd.head=paste0("### ", title), rmd.foot="---",is.static=TRUE,...) {
+  restore.point("rtutor.parse.as.collapse")
+  #stop()
+  bdf = ps$bdf; br = bdf[bi,];
+  args = parse.block.args(arg.str = br$arg.str)
+  children = bdf$parent == bi 
+  res = get.children.and.fragments.ui.list(bi,ps, children=children, keep.null=TRUE)
+  
+  ui.li = res$ui.li
+  is.child = !res$is.frag
+
+  if (is.null(title)) title = paste0(title.prefix, " ",args$name)
+  if (is.null(title)) title = bs$type[[bi]]
+  inner.ui = make.rtutor.collapse.note(id=paste0(ps$bdf$type[[bi]],"_collapse_",bi),content=ui.li, title=title)  
+  rmd.li = list(
+    shown.rmd = merge.lines(c(rmd.head,res$shown.rmd,rmd.foot)),
+    sol.rmd  = merge.lines(c(rmd.head,res$sol.rmd,rmd.foot)),
+    out.rmd = merge.lines(c(rmd.head,res$out.rmd,rmd.foot))
+  )
+  rtutor.parse.as.container(bi,ps,args=args, inner.ui=inner.ui, rmd.li=rmd.li, is.static=is.static,...)
+}
+
+
+set.bdf.rmd = function(bi, ps, shown.rmd=rmd.li$shown.rmd, sol.rmd=rmd.li$sol.rmd, out.rmd = rmd.li$out.rmd, rmd.li=NULL, rmd.prefix="", rmd.postfix) {
+  restore.point("set.bdf.rmd")
+  
+  ps$bdf[bi,c("shown.rmd","sol.rmd","out.rmd")] = c(
+    merge.lines(c(rmd.prefix,unlist(shown.rmd),rmd.postfix)),
+    merge.lines(c(rmd.prefix,unlist(sol.rmd),rmd.postfix)),
+    merge.lines(c(rmd.prefix,unlist(out.rmd),rmd.postfix))
+  )
+}
+
+get.bi.ps.str = function(bi,ps, remove.header.footer=TRUE) {
+  restore.point("get.bi.ps.str")
+  
+  start = (ps$bdf$start[bi]+1)
+  end = ps$bdf$end[bi]-1*(ps$bdf$form[[bi]]=="block")
+  if (end<start) return(NULL)
+  str = ps$txt[start:end]
   str
 }
 
-
-#' Generate default header text for a Rmd file
-#' @export
-install.header.txt = function() {
-"
-# Remove comments below if you need to install packages
-# install.packages('devtools');install.packages('whisker');install.packages('stringr')
-# install.packages('RJSONIO');
-# library(devtools)
-# install_github(repo = 'restorepoint', username = 'skranz')
-# install_github(repo = 'RTutor', username = 'skranz')
-"
+make.rtutor.collapse.note = function(id, html, title="Note", content=NULL) {
+  if (is.null(content))
+    content = HTML(paste0(html, collapse="\n"))
+  
+  shinyBS::bsCollapse(id =id, shinyBS::bsCollapsePanel(title=title,content))
+  
 }
 
-#' Generate default footer text for a Rmd file
-zip.submit.footer.txt = function(ps.name) {
-paste0("
-#'
-#'## Sumbitting your solution
-#'
-#' Submit your solution as a zip file with name
-#'`solution_",ps.name,"_by_username.zip`
-#' that contains the files
-#' `",ps.name,".rmd, ", ps.name,".log, username_",ps.name,".ups`
-#' (replace `username` by your user name)
-#'
-#' If you have installed RTools (http://cran.r-project.org/bin/windows/Rtools/) and updated your Windows PATH variable you can also try calling
-#' `zip.solution()`
-#' to generate the zip file automatically.
-")
+set.in.bdf = function(bi,ps,...) {
+  args = list(...)
+  restore.point("set.in.bdf")
+
+  cols = match(names(args),colnames(ps$bdf))
+  if (is(ps$bdf,"data.table")) {
+    for (j in seq_along(cols)) {
+      set(ps$bdf,bi,cols[j],args[j])
+    }
+  } else {
+    for (j in seq_along(cols)) {
+      ps$bdf[bi,cols[j]]=args[[j]]
+    }
+  }
+}
+
+
+set.bdf.ui = function(ui,bi,ps) {
+  ps$bdf$ui[[bi]] = ui
+  #ps$bdf$has.ui[[bi]] = TRUE
+}
+
+fragment.to.html = function(txt, bi, ps) {
+  restore.point("fragment.to.html")
+  
+  if (isTRUE(ps$opts$use.whiskers)) {
+    .whiskers = ps$pre.env[[".whiskers"]]
+    if (length(.whiskers)>0)
+      txt = replace.whiskers(paste0(txt,collapse="\n"),.whiskers)
+  }
+  
+  #txt = unicode.html.math(txt)
+  
+  HTML(md2html(txt, fragment.only = TRUE))  
+}
+
+get.children.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi, layout.txt=NULL) {
+  restore.point("get.children.ui.list")
+  
+
+  ui = lapply(which(children), function(ind) {
+    bdf$ui[[ind]]
+  })
+  sol.rmd = bdf$sol.rmd[children]
+  shown.rmd = bdf$shown.rmd[children]
+  out.rmd = bdf$out.rmd[children]
+
+  if (!keep.null) {
+    null.ui = sapply(ui, is.null)
+    ui = ui[!is.null(ui)]
+  }
+  names(ui) = NULL
+  list(ui.li=ui, sol.rmd=sol.rmd,shown.rmd=shown.rmd,out.rmd=out.rmd, is.frag=rep(FALSE,length(ui)))
+}
+
+
+get.children.and.fragments.ui.list = function(bi,ps,bdf=ps$bdf, keep.null=TRUE, empty.as.null=FALSE, children=ps$bdf$parent == bi, layout.txt=NULL) {
+  restore.point("get.children.and.fragments.ui.list")
+  
+  res = get.non.children.fragments(bi,ps, child.ind = which(children), layout.txt=layout.txt)
+  is.frag = res$is.frag
+  is.child = !is.frag
+  ui = sol.rmd = shown.rmd = out.rmd = res$frag
+
+  ui[is.frag] = lapply(ui[is.frag], function(txt) {
+    fragment.to.html(txt=txt, bi=bi, ps=ps)
+  })
+  
+  ui[is.child] = lapply(which(children), function(ind) {
+    bdf$ui[[ind]]
+  })
+  sol.rmd[is.child] = bdf$sol.rmd[children]
+  shown.rmd[is.child] = bdf$shown.rmd[children]
+  out.rmd[is.child] = bdf$out.rmd[children]
+
+    
+  if (!keep.null) {
+    null.ui = sapply(ui, is.null)
+    ui = ui[!is.null(ui)]
+    is.frag = is.frag[null.ui]
+  }
+  names(ui) = NULL
+  list(ui.li=ui, sol.rmd=sol.rmd,shown.rmd=shown.rmd,out.rmd=out.rmd, is.frag=is.frag)
+}
+
+get.child.and.fragment.txt.li = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE) {
+  restore.point("get.child.and.fragment.txt.li")
+  
+  cpos = cbind(bdf$start[child.ind],bdf$end[child.ind])
+  has.footer = bdf$form[[bi]] != "dotblock"
+  start = bdf$start[bi]+ (1-keep.header.footer)
+  end = bdf$end[bi] - (1- (keep.header.footer | !has.footer))
+  
+  pos = pos.complement(cpos, is.sorted=TRUE, keep.pos=TRUE, start=start, end = end)
+  is.frag = attr(pos,"complement")
+  
+  # we may have one end line too much
+  valid = pos[,1]<=pos[,2]
+  pos = pos[valid,,drop=FALSE]
+  is.frag = is.frag[valid]
+  
+  txt.li = lapply(1:NROW(pos), function(row) {
+    ps$txt[pos[row,1]:pos[row,2]]
+  })
+  list(txt.li = txt.li, is.frag=is.frag)
+}
+
+get.non.children.fragments = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE, layout.txt = NULL) {
+  restore.point("get.non.children.fragments")
+  
+  if (!is.null(layout.txt)) {
+    return(get.non.children.fragments.from.layout.txt(bi,ps,bdf, child.ind, keep.header.footer, layout.txt))
+  }
+  cpos = cbind(bdf$start[child.ind],bdf$end[child.ind])
+  has.footer = bdf$form[[bi]] != "dotblock"
+  start = bdf$start[bi]+ (1-keep.header.footer)
+  end = bdf$end[bi] - (1- (keep.header.footer | !has.footer))
+  
+  pos = pos.complement(cpos, is.sorted=TRUE, keep.pos=TRUE, start=start, end = end)
+  is.frag = attr(pos,"complement")
+  
+  # we may have one end line too much
+  valid = pos[,1]<=pos[,2]
+  pos = pos[valid,,drop=FALSE]
+  is.frag = is.frag[valid]
+  
+  if (NROW(pos)==0) return(NULL)
+  
+  frag.li = lapply(1:NROW(pos), function(row) {
+    if (!is.frag[row]) return(NULL)
+    ps$txt[pos[row,1]:pos[row,2]]
+  })
+  list(frags = frag.li, is.frag=is.frag)
+}
+
+get.non.children.fragments.from.layout.txt = function(bi,ps,bdf=ps$bdf, child.ind = which(bdf$parent == bi), keep.header.footer=FALSE, layout.txt = NULL) {
+  restore.point("get.non.children.fragments.from.layout.txt")
+  child.header = ps$txt[bdf$start[child.ind]]
+  
+  child.start = match(child.header, layout.txt)
+  child.len = bdf$end[child.ind]-bdf$start[child.ind]+1
+  child.end = child.start + child.len -1
+  
+  cpos = cbind(child.start, child.end)
+  pos = pos.complement(cpos, is.sorted=TRUE, keep.pos=TRUE, start=1, end = length(layout.txt))
+  is.frag = attr(pos,"complement")
+  
+  # we may have one end line too much
+  valid = pos[,1]<=pos[,2]
+  pos = pos[valid,,drop=FALSE]
+  is.frag = is.frag[valid]
+  
+  if (NROW(pos)==0) return(NULL)
+  
+  frag.li = lapply(1:NROW(pos), function(row) {
+    if (!is.frag[row]) return(NULL)
+    layout.txt[pos[row,1]:pos[row,2]]
+  })
+  list(frags = frag.li, is.frag=is.frag)
+}
+
+
+copy.env = function(env) {
+  new = as.environment(as.list(env))
+  parent.env(new) = parent.env(env)
+  new
+}
+
+#' Parse the name of a knitr chunk and its arguments
+#' @export
+parse.chunk.args = function(header, arg.str=NULL) {
+  restore.point("parse.chunk.opt.and.name")
+  if (!is.null(arg.str)) {
+    if (is.na(arg.str)) return(list())
+    return(knitr:::parse_params(arg.str))
+  }
+
+  str = str.right.of(header,"r ",not.found = NA)
+  if (is.na(str)) return(list())
+  knitr:::parse_params(str.left.of(str,"}"))
+}
+
+
+make.ps.ui = function(ps, bdf=ps$bdf) {
+  rows = which(bdf$parent == 0)
+  
+  ui.li = bdf$ui[rows]
+  
+}
+
+get.yaml.block.args = function(bi,ps) {
+  restore.point("get.yaml.block.args")
+  
+  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]])
+  yaml = get.bi.ps.str(bi,ps)
+  if (!is.null(yaml)) {
+    yaml.arg = yaml.load(paste0(yaml,collapse="\n"))
+    args[names(yaml.arg)] = yaml.arg
+  }
+  args
+}
+
+default.navbar.link.fun = function(title, level, bi=NULL) {
+  return(title)
+  #paste0("<a role='button'>", title,"</a>")
+}
+
+default.navbar.li.fun = function(titles, child.li, levels=NULL,bis=NULL) {
+  restore.point("default.navbar.li.fun")
+  
+  li = lapply(seq_along(titles), function(i) {
+    child.ui = child.li[[i]]
+    tabPanel(title = titles[i],value = paste0("rtutor_menu_tab_",bis[i]), child.ui)
+  })
+  ui = do.call(tabsetPanel,li)
+  return(ui)
+  #inner = paste0("<li>", titles, "\n", child.li, "</li>")
+  #paste0("<ul>", paste0(inner, collapse="\n"),"</ul>")
+
+}
+
+del.rows.and.adapt.refs = function(df, del.rows, ref.cols=NULL) {
+  restore.point("del.rows.and.adapt.refs")
+  
+  if (NROW(df)==0 | NROW(del.rows)==0) return(df)
+  if (!is.logical(del.rows)) 
+    del.rows = (1:NROW(df)) %in% del.rows
+    
+  cum.del = cumsum(del.rows)
+  #rbind(row = 1:NROW(df), parent = df[[col]], del.rows, cum.del, pcum.del = cum.del[ df[[col]] ] )
+
+  for (col in ref.cols) {
+    ref = df[[col]]
+    valid = ref %in% 1:NROW(df)
+    ref = ref[valid]
+    df[[col]][valid] = ref - cum.del[ ref ]
+  }
+  df = df[!del.rows,,drop=FALSE]
+  rownames(df) = NULL
+  df  
+}
+
+get.bi.inner.txt = function(bi,txt = ps$txt, ps) {
+  restore.point("get.bi.inner.txt")
+  bdf = ps$bdf
+  has.footer = bdf$form[[bi]] != "dotblock"
+  lines = (bdf$start[bi]+1):(bdf$end[bi]-has.footer)
+  ps$txt[lines]
+
+}
+
+source.extra.code.file = function(extra.code.file, ps) {
+  restore.point("source.extra.code.file")
+  # Source extra.code
+  ps$extra.code.file = extra.code.file
+  if (!is.null(extra.code.file)) {
+    for (file in extra.code.file)
+      source(extra.code.file, local = ps$init.env)
+  }
+}
+
+# data frame that contains chunk info used
+# for rmarkdown based problem sets only
+create.ps.rmc = function(ps) {
+  restore.point("create.ps.rmc")
+  
+  bi = which(ps$bdf$stype == "task_chunk")
+  task.ind = match(bi,ps$task.table$bi)
+  
+  shown.code = sapply(ps$bdf$shown.rmd[bi], function(code) {
+    txt = sep.lines(code)
+    merge.lines(txt[-c(1,length(txt))])
+  })
+  
+  rmc = data_frame(chunk.ind = seq_along(task.ind), bi, task.ind, task.line = ps$task.table$task.line[task.ind], chunk.name = ps$bdf$name[bi], shown.code = shown.code, all.required=vector("list", length(task.ind)))
+  ps$rmc = rmc
+  
+  for (r in seq_len(NROW(rmc))[-1]) {
+    ps$rmc$all.required[r] = list(compute.all.required.chunks(r,ps,use.prev.req=TRUE))
+  }
+}
+
+compute.all.required.chunks = function(chunk.ind, ps, use.prev.req=FALSE) {
+  restore.point("compute.all.required.chunks")
+  if (!use.prev.req) stop("Only implemented with use.prev.req")
+  if (chunk.ind == 1) return(NULL)
+  
+  rmc = ps$rmc
+  task.ind = rmc$task.ind[chunk.ind]
+  lines = c(rmc$task.line[chunk.ind],ps$task.table$task.in[[task.ind]] )
+  
+  all.req = unique(unlist(lapply(lines, function(line) {
+    chunks = which(rmc$task.line == line & rmc$chunk.ind < chunk.ind)
+    if (length(chunks)==0) return(NULL)
+    chunk = max(chunks)
+    return(c(chunk,rmc$all.required[[chunk]]))
+  })))
+  if (!is.null(all.req)) all.req = sort(all.req)
+  
+  all.req
+}
+
+get.chunk.lines = function(txt) {
+  restore.point("get.chunk.lines")
+  chunk.start = str.starts.with(txt,"```{")
+  chunk.end = which(str.starts.with(txt,"```") & !chunk.start)
+  chunk.start = which(chunk.start)
+  chunk.end = remove.verbatim.end.chunks(chunk.start,chunk.end)
+
+  header = txt[chunk.start]
+  chunk.name = sapply(header,USE.NAMES=FALSE, function(str) chunk.opt.string.to.list(str, keep.name=TRUE)[[1]])
+
+  quick.df(chunk.name=chunk.name, start.line=chunk.start, end.line=chunk.end)
+}
+
+
+remove.verbatim.end.chunks = function(chunk.start, chunk.end) {
+  restore.point("remove.verbatim.end.chunks")
+  df = data.frame(ind =c(0, seq_along(chunk.start), seq_along(chunk.end)),
+                  row=c(0, chunk.start,chunk.end),
+                  type=c("f",
+                         rep("s",length(chunk.start)),
+                         rep("e",length(chunk.end))
+                       )
+                  )
+  df = arrange(df,row)
+  df$del =  df$type == "e" & !is.true(lag(df$type) == "s")
+
+  keep.ind = df$ind[df$type=="e" & !df$del]
+  chunk.end[keep.ind]
+}
+
+
+chunk.opt.string.to.list = function(str, keep.name=FALSE) {
+  restore.point("chunk.opt.string.to.list")
+  #str = "```{r 'out_chunk_2_1_b', fig.width=5, fig.height=5, eval=FALSE, echo=TRUE}"
+
+  tokens = str.split(str,",")
+  str = str.between(str,"{r","}")
+  code = paste0("list(",str,")")
+  li = eval(base::parse(text=code,srcfile=NULL))
+
+  if (keep.name) return(li)
+  if (length(li)==0) return(li)
+
+  #if ("replace.sol" %in% names(li))
+  #  stop("nbfbfurb")
+  # remove chunk.name
+  if (is.null(names(li))) {
+    return(li[-1])
+  } else if (nchar(names(li)[1]) == 0) {
+    return(li[-1])
+  }
+  li
+}
+
+
+fast.name.rmd.chunks = function(txt,prefix = "chunk_", chunk.lines = NULL, method="number") {
+  restore.point("name.rmd.chunks.by.number")
+  
+  if (is.null(chunk.lines)) {
+    chunk.lines = which(str.starts.with(txt,"```{r"))
+  }
+  if (length(chunk.lines)==0) return(txt)
+  str = str.right.of(txt[chunk.lines],'```{r')
+
+  comma.pos = str.locate.first(str,",")[,1]
+  eq.pos = str.locate.first(str,"=")[,1]
+  brace.pos = str.locate.first(str,"}")[,1]
+  
+  has.eq = !is.na(eq.pos) & !is.true(comma.pos < eq.pos)
+  has.comma = !is.na(comma.pos) & !has.eq
+  
+  if (method=="number") {
+    name = paste0('"chunk_',seq_along(str),'"')
+  } else {
+    name = random.string(length(str),nchar = 14)
+  }
+  right = str
+  right[has.eq] = paste0(", ",str[has.eq])
+  right[has.comma] = substring(str[has.comma],comma.pos[has.comma])
+  right[!has.comma & !has.eq] = "}"
+  
+  new =  paste0("```{r ",name,right)
+  txt[chunk.lines] = new
+  txt
 }
 
 
@@ -1150,197 +1586,3 @@ str.to.valid.file.name = function(str, replace.char = "_") {
   str = gsub("[ \\(\\)\\.\\:]",replace.char,str)
   str
 }
-get.chunk.lines = function(txt) {
-  restore.point("get.chunk.lines")
-  chunk.start = str.starts.with(txt,"```{")
-  chunk.end = which(str.starts.with(txt,"```") & !chunk.start)
-  chunk.start = which(chunk.start)
-  chunk.end = remove.verbatim.end.chunks(chunk.start,chunk.end)
-
-  header = txt[chunk.start]
-  chunk.name = sapply(header,USE.NAMES=FALSE, function(str) chunk.opt.string.to.list(str, keep.name=TRUE)[[1]])
-
-  quick.df(chunk.name=chunk.name, start.line=chunk.start, end.line=chunk.end)
-}
-
-make.shiny.dt = function(rps, rmd.file, txt = readLines(rmd.file)) {
-  restore.point("make.shiny.dt")
-  library(stringtools)
-  library(markdown)
-  txt = sep.lines(merge.lines(txt))
-
-  chunk.start = str.starts.with(txt,"```{")
-  chunk.end = which(str.starts.with(txt,"```") & !chunk.start)
-  chunk.start = which(chunk.start)
-
-  chunk.end = remove.verbatim.end.chunks(chunk.start,chunk.end)
-
-  chunk.end.plus1 = chunk.end+1
-  ex.start = which(str.starts.with(txt,"## Exercise "))
-  info.start = which((str.starts.with(txt,"info(")))
-  addon.start = which((str.starts.with(txt,"#! addon__")))
-  cont.start = which((str.starts.with(txt,"#. continue")))
-
-  note.start = which((str.starts.with(txt,"#! start_note")))
-  note.end = which((str.starts.with(txt,"#! end_note")))
-  if (length(note.start) != length(note.end)) {
-    stop(paste0("You have ",length(note.start)," '#! start_node' commands but ",length(note.end), " end_node commands!"))
-  }
-  note.name = str.right.of(txt[note.start],"#! start_note ")
-  note.name = str.between(note.name,'"','"')
-
-
-  df.chunk = data.frame(start=chunk.start, type="chunk", type.ind=seq_along(chunk.start))
-  df.info = data.frame(start=info.start, type=rep("info", length(info.start)), type.ind=seq_along(info.start))
-  df.addon = data.frame(start=addon.start, type=rep("addon", length(addon.start)), type.ind=seq_along(addon.start))
-  df.cont = data.frame(start=cont.start, type=rep("continue", length(cont.start)), type.ind=seq_along(cont.start))
-
-  if (length(note.start)>0) {
-    df.note.start = data.frame(start=note.start, type="note.start", type.ind=seq_along(note.start))
-    df.note.end = data.frame(start=note.end, type="note.end", type.ind=seq_along(note.end))
-  } else {
-    df.note.start = df.note.end = NULL
-  }
-
-
-  df.shown = data.frame(start=sort(c(1,ex.start,note.start+1, note.end+1,chunk.end+1,addon.start+1, info.start+1, cont.start+1)), type="show")
-
-
-
-  df.shown$type.ind = 1:NROW(df.shown)
-
-
-  df = rbind(df.chunk,df.info,df.addon,df.cont, df.shown, df.note.start, df.note.end)
-  df = df[!duplicated(df$start),]
-  df = arrange(df, start)
-  df$end = c(df$start[-1]-1, length(txt))
-  df
-
-  in.note = cumsum(df$type=="note.start") - cumsum(df$type=="note.end")
-  df$note.ind = cumsum(df$type=="note.start")*in.note
-  df$note.label = ""
-  df$note.label[in.note==1] = note.name[df$note.ind[in.note==1]]
-
-  df = df[! df$type %in% c("note.start","note.end"),]
-
-  n = NROW(df)
-
-  df.ex = data.frame(start=c(1,ex.start), ex.ind = c(0,seq_along(ex.start)))
-  if (df.ex$start[2]==1)
-    df.ex = df.ex[-1,]
-  #df.ex$end = c(df.ex$start[-1]-1, length(txt))
-  df.ex
-
-  df$ex.ind = df.ex$ex.ind[findInterval(df$start, df.ex$start)]
-
-  # views
-  views = sort(c(cont.start, ex.start))
-  df$view.ind = findInterval(df$start, views)
-  df
-
-
-  dt = data.table(fragment.ind = 1:n,ex.ind=df$ex.ind, view.ind=df$view.ind, type=df$type, type.ind=df$type.ind, chunk.name="",chunk.ind=0,info.name="", html=vector("list", n), code="", note.ind = df$note.ind, note.label=df$note.label, addon.id="")
-  keep.row = rep(TRUE, NROW(dt))
-
-  i = 5
-  for (i in 1:n) {
-    if (dt$type[i]=="chunk") {
-      header = txt[df$start[i]]
-      opt = chunk.opt.string.to.list(header, keep.name=TRUE)
-      chunk.name = opt[[1]]
-      chunk.ind = which(rps$cdt$chunk.name == chunk.name)[1]
-      if (is.na(chunk.ind)){
-        keep.row[i] = FALSE
-        next
-      }
-      dt$chunk.name[i] = chunk.name
-      dt$chunk.ind[i] = chunk.ind
-      code = txt[(df$start[i]+1):(df$end[i]-1)]
-      dt$code[[i]] = paste0(code, collapse="\n")
-      #dt$code[[i]] = mark_utf8(paste0(code, collapse="\n"))
-      #shiny.dt$html[[i]] = editChunkUI(chunk.name=chunk.name,code=code)
-    } else if (dt$type[i]=="show") {
-      code = txt[df$start[i]:df$end[i]]
-      #dt$code[[i]] = code
-      #if (any(str.starts.with(code, "a)"))) {
-      #restore.point("jkhskjfhdkjfkjdn")
-      #  stop()
-      #}
-      if (nchar(paste0(code, collapse="\n"))==0)  {
-        keep.row[i] = FALSE
-      } else {
-        #dt$html[[i]] = withMathJax(HTML(markdownToHTML(text=code, fragment.only=!TRUE)))
-        dt$html[[i]] = HTML(markdownToHTML(text=code, fragment.only=CREATE.PS.ENV$fragment.only))
-      }
-    } else if (dt$type[i]=="info") {
-      header = txt[df$start[i]]
-      info.name = str.between(header,'"','"')
-      #html = withMathJax(HTML(rps$infos[[info.name]]$html))
-      html = HTML(rps$infos[[info.name]]$html)
-
-      collapseId = paste0("collapse_info_",i)
-      collapsePanelId = paste0("collapse_panel_info_",i)
-      dt$html[[i]] = bsCollapse(open = NULL, id = collapseId,
-        bsCollapsePanel(paste0("Info: ",info.name),value=collapsePanelId, html )
-      )
-    } else if (dt$type[i]=="addon") {
-      dt$addon.id[[i]] = str.right.of(txt[df$start[i]],"#! ")
-    } else if (dt$type[i]=="continue") {
-    }
-  }
-
-  
-  
-  dt = dt[keep.row,]
-  
-  # Mark as UTF8 to deal with special characters like
-  # German Umlaute
-  # dt$html = lapply(dt$html, function(html) {
-  #   txt = mark_utf8(as.character(html))
-  #   HTML(txt)
-  # })
-  # 
-  dt
-}
-
-remove.verbatim.end.chunks = function(chunk.start, chunk.end) {
-  restore.point("remove.verbatim.end.chunks")
-  df = data.frame(ind =c(0, seq_along(chunk.start), seq_along(chunk.end)),
-                  row=c(0, chunk.start,chunk.end),
-                  type=c("f",
-                         rep("s",length(chunk.start)),
-                         rep("e",length(chunk.end))
-                       )
-                  )
-  df = arrange(df,row)
-  df$del =  df$type == "e" & !is.true(lag(df$type) == "s")
-
-  keep.ind = df$ind[df$type=="e" & !df$del]
-  chunk.end[keep.ind]
-}
-
-
-chunk.opt.string.to.list = function(str, keep.name=FALSE) {
-  restore.point("chunk.opt.string.to.list")
-  #str = "```{r 'out_chunk_2_1_b', fig.width=5, fig.height=5, eval=FALSE, echo=TRUE}"
-
-  tokens = str.split(str,",")
-  str = str.between(str,"{r","}")
-  code = paste0("list(",str,")")
-  li = eval(base::parse(text=code,srcfile=NULL))
-
-  if (keep.name) return(li)
-  if (length(li)==0) return(li)
-
-  #if ("replace.sol" %in% names(li))
-  #  stop("nbfbfurb")
-  # remove chunk.name
-  if (is.null(names(li))) {
-    return(li[-1])
-  } else if (nchar(names(li)[1]) == 0) {
-    return(li[-1])
-  }
-  li
-}
-
-
