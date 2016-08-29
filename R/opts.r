@@ -8,6 +8,9 @@ default.ps.opts = function(
   # menu
   show.together = "section",
   menu.levels = c("section", "subsection"),
+  toc.levels = c("section", "subsection"),
+  number.levels = NULL,
+  
   menu.placement = c("top","fixed"),
   stats.aggregate.by = "section",
   # task.env
@@ -54,6 +57,7 @@ default.ps.opts = function(
   memoise.funs = rtutor.default.memoise.funs(),
   add.enter.code.here = isTRUE(ps.type == "rmd"),
   
+  hide_title = if (slides) c("section","subsection") else NULL, 
   ...
 ) {
   args = c(as.list(environment()),list(...))

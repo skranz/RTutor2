@@ -1,0 +1,33 @@
+mathblock:
+  whiskers:
+  default: |
+    <div class="mathblock">
+    <span stlye="mathblock-title">{{title}}</span>
+    {{main}}
+    </div>
+figure.2col:
+  whiskers:
+    default:
+      leftcol.width: 50%
+  default: |
+    <div width="100%">
+    <table><tr>
+    <table>
+    <tr><td class="leftcol" style="width: {{leftcol.width}}">
+    {{leftcol}}
+    </td><td class="rightcol">
+    {{rightcol}}
+    </td></tr></table>
+    </tr><tr>
+    {{caption}}
+    </tr></table>
+    
+figure:
+  whiskers:
+  default: |
+    <div width="100%">
+    <table><tr><td align="center">
+    {{main}}
+    </td></tr><tr><td style="font-style: italic; font-size: small; text-align: justify;" align="center">
+    {{caption}}
+    </td></tr></table>

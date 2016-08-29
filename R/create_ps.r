@@ -35,10 +35,21 @@ rtutor.builtin.types = function() {
     "column","row","ps","info","note","award","references",
     "show","notest","show_notest","hint","test","test_args",
     "settings","css","head","layout",
-    "gv"
+    "toc", "figure",
+    "gv",
+    "theorem","assumption","condition","fact","conjecture",
+    "proposition","proof","lemma","remark"
   )
 }
 
+error.in.bi = function(err.msg, bi,line= paste0(ps$bdf$start[bi])[1], just.start.line=TRUE, ps=get.ps()) {
+  restore.point("error.in.bi")
+
+  org.line = ps$txt.lines[line]
+  file = ps$source.files[ps$txt.source[line]]
+  msg = paste0(err.msg,"\nSee line ", org.line, " in file ", file)
+  stop(msg,call. = FALSE)
+}
 
 #' Generate a problem set from a solution file
 #'
@@ -53,7 +64,7 @@ rtutor.builtin.types = function() {
 #' @param rps.has.sol shall the sample solution be stored in the .rps file. Set this option to FALSE if you use problem sets in courses and don't want to assess students the sample solution easily
 #' @param use.memoise shall functions like read.csv be memoised? Data sets then only have to be loaded once. This can make problem sets run faster. Debugging may be more complicated, however.
 #' @export
-create.ps = function(txt=readLines(file,warn=FALSE),file = NULL,ps.name = "ps", ps.id=ps.name, bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE, opts=default.ps.opts(ps.type=ps.type, use.memoise=use.memoise), priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main", libs=NULL, check.old.rtutor.sol=TRUE, extra.code.file=NULL, use.memoise = FALSE, ps.type=c("shiny","slides","rmd")[1] , ...) {
+create.ps = function(txt=readLines(file,warn=FALSE),file = NULL,ps.name = "ps", ps.id=ps.name, bdf.filter = NULL,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", plugins=c("stats","export","dataexplorer"),catch.errors=TRUE, priority.opts=list(), figure.web.dir = "figure", filter.line=NULL, filter.type="auto", show.line=NULL, source.file="main", libs=NULL, check.old.rtutor.sol=TRUE, extra.code.file=NULL, use.memoise = NA, ...) {
   restore.point("create.ps")
 
   ps = new.env()
@@ -71,6 +82,8 @@ create.ps = function(txt=readLines(file,warn=FALSE),file = NULL,ps.name = "ps", 
   ps$figure.dir = figure.dir
   ps$plugins = plugins
   ps$css = ps$head = NULL
+  
+  ps$css = paste0(readLines(system.file("defaults/default.css",package="RTutor2")))
   
   if (length(txt)==1)  
     txt = sep.lines(txt)
@@ -99,17 +112,24 @@ create.ps = function(txt=readLines(file,warn=FALSE),file = NULL,ps.name = "ps", 
   dot.levels = rtutor.dot.levels()
   df = find.rmd.nested(txt, dot.levels)
   
- 
+
+  # first load settings in opts 
   # settings in rmd file overwrite opts
   bis = which(df$type == "settings")
+  opts = list()
+  if (!is.na(use.memoise)) opts$use.memoise = use.memoise
   for (bi in bis) {
     yaml = paste0(txt[(df$start[bi]+1):(df$end[bi]-1)], collapse="\n")
     so = read.yaml(text=yaml, keep.quotes=FALSE)
     opts[names(so)] = so
   }
-
-  # priority opts overwrite settings and opts
+  
+  # now install default opts given the settings
+  opts = do.call(default.ps.opts, opts)
+  
+  # priority opts overwrite settings
   opts[names(priority.opts)] = priority.opts
+  
   set.rt.opts(opts)
   ps$opts = opts
 
@@ -149,7 +169,11 @@ create.ps = function(txt=readLines(file,warn=FALSE),file = NULL,ps.name = "ps", 
   ps$addons = unique(df$type[df$is.addon])
   ps$Addons = list()
   for (addon in ps$addons) {
-    rtutor.init.Addon(ps=ps,addon=addon)
+    res = try(rtutor.init.Addon(ps=ps,addon=addon), silent = TRUE)
+    if (is(res,"try-error")) {
+      row = which(df$type == addon)[1]
+      error.in.bi(as.character(res), line=df$start[row], ps=ps)
+    }
   }
 
   parent.types = c("frame","row", "column","chunk","preknit","precompute","knit","compute","info","note", "section","subsection","exercise")
@@ -349,7 +373,7 @@ rtutor.init.Addon = function(ps, addon) {
   } else {
     pkgs = rtutor.addon.packages()
     if (!addon %in% names(pkgs)) {
-      warning(paste0("\nWe don't have a built-in block type ", addon,". Bute I could not find the function ", addon.fun, " that identifies the block as an addon. (Have you loaded the required package with the addon?"))
+      stop(paste0("\nWe don't have a built-in block type ", addon,". But I could not find the function ", addon.fun, " that identifies the block as an addon. (Have you loaded the required package with the addon?)"))
       ps$addons = setdiff(ps$addons,addon)
       stop()
     } else {
@@ -357,7 +381,7 @@ rtutor.init.Addon = function(ps, addon) {
         warning(paste0("\nI loaded the package ", pkgs[addon], " for the addon ", addon,".")) 
         ps$Addons[[addon]] = do.call(addon.fun,list())
       } else {
-        warning(paste0("\nWe don't have a built-in block type ", addon,". This addon is defined in the package ", pkgs[addon]," but you have not installed that package."))
+        stop(paste0("\nWe don't have a built-in block type ", addon,". This addon is defined in the package ", pkgs[addon]," but you have not installed that package."))
         stop()
       }
     }
@@ -738,6 +762,18 @@ rtutor.parse.gv = function(bi, ps) {
   set.bdf.ui(ui,bi,ps)
 }
 
+rtutor.parse.figure = function(bi,ps) {
+  restore.point("rtutor.parse.figure")
+  bdf = ps$bdf; br = bdf[bi,];
+  args = list()
+  txt = get.bi.inner.txt(bi,ps=ps)
+  layout = get.ps.layout("figure", ps=ps, load.defaults=TRUE)
+  args$layout.txt = txt.to.layout(txt, layout)
+  rtutor.parse.as.container(bi=bi,ps=ps,args = args, is.static = TRUE)
+  
+}
+
+
 rtutor.parse.portrait = function(bi,ps) {
   restore.point("rtutor.parse.image")
   bdf = ps$bdf; br = bdf[bi,];
@@ -885,7 +921,7 @@ rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section
   type = ps$bdf$stype[[bi]]
   if (isTRUE(type %in% ps$opts$hide_title)) title = NULL
   
-  rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=paste0(rmd.prefix," ",title), title = title)
+  rtutor.parse.as.container(bi,ps,args = args, rmd.prefix=paste0(rmd.prefix," ",title), title = title, anchor=paste0("part",bi))
   if (is.null(args$title.offset)) args$title.offset=0
   button.label = str.left.of(args$name," --")
   ps$bdf$obj[[bi]] = list(title = args$name,button.label = button.label, args=args)
@@ -893,7 +929,7 @@ rtutor.parse.as.section = function(bi, ps, type="section", rmd.prefix="# Section
 }
 
 
-rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types, extra.class = "", only.children.ui = FALSE) {
+rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=NULL, highlight.code = !is.static, is.static=ps$bdf$type[[bi]] %in% ps$static.types, rmd.head=NULL, rmd.prefix="", rmd.postfix="", ui.fun=NULL, title = ps$bdf$obj[[bi]]$title, is.hidden = ps$bdf$type[[bi]] %in% ps$hidden.container.types, extra.class = "", only.children.ui = FALSE, anchor=NULL) {
   restore.point("rtutor.parse.as.container")
   bdf = ps$bdf; br = bdf[bi,];
   if (is.null(inner.ui) | is.null(rmd.li)) {
@@ -928,7 +964,7 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   # Add title as header
   } else {
     if (!is.null(title))
-      header = container.title.html(title = title)  
+      header = container.title.html(title = title, anchor=anchor)  
   } 
   if (!is.null(header)) {
     inner.ui = list(header, inner.ui)
@@ -967,9 +1003,13 @@ rtutor.parse.as.container = function(bi, ps,args=NULL, inner.ui = NULL, rmd.li=N
   ps$bdf$is.container[[bi]] = TRUE
 }
 
-container.title.html = function(title,type=NULL, ps=NULL, class=NULL) {
+container.title.html = function(title,type=NULL, ps=NULL, class=NULL, anchor=NULL) {
   if (is.null(title)) return(NULL)
-  h4(class=class, title)      
+  res = h4(class=class, title)      
+  if (!is.null(anchor)) {
+    res = a(name=anchor, class="title-anchor", res)
+  }
+  res
 }
 
 set.container.div.and.output = function(bi, ps, is.hidden = ps$bdf$type[bi] %in% ps$hidden.container.types) {
@@ -1387,7 +1427,11 @@ create.ps.rmc = function(ps) {
   restore.point("create.ps.rmc")
   
   bi = which(ps$bdf$stype == "task_chunk")
+  if (length(bi)==0) return(NULL)
+  
   task.ind = match(bi,ps$task.table$bi)
+  
+  
   
   shown.code = sapply(ps$bdf$shown.rmd[bi], function(code) {
     txt = sep.lines(code)

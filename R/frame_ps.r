@@ -110,6 +110,7 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
     with.mathjax(ps.content.ui)    
   )
   
+  
   resTags = rtutor.html.ressources()
   app$ui = tagList(
     head,

@@ -1,0 +1,48 @@
+.title-anchor {
+  pointer-events: none;
+  cursor: text;
+  text-decoration: none;
+  color: inherit;
+} 
+
+.title-anchor:hover {
+  pointer-events: none;
+  cursor: text;
+  text-decoration: none;
+  color: inherit;
+} 
+
+span.toc-1 {
+  font-size: 120%;
+}
+span.toc-2 {
+  font-size: 100%;
+}
+span.toc-3 {
+  font-size: 100%;
+}
+
+li.toc-li {
+    display: block
+}
+
+.mathblock {
+  display: block;
+  margin: 12px 0;
+  font-style: italic;
+}
+
+.mathblock-title {
+  font-weight: bold;
+  font-style: normal;
+}
+.proof {
+    display: block;
+    margin: 12px 0;
+    font-style: normal;
+}
+
+.proof-before {
+    content: "Proof.";
+    font-style: italic;
+}

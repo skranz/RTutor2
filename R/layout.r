@@ -3,6 +3,8 @@
 txt.to.layout = function(txt, layout, mode="default") {
   restore.point("txt.to.layout")
   
+  if (is.character(layout))
+    layout = get.ps.layout(layout)
   df = rmdtools:::split.text.in.startline.blocks(txt=txt, start.with = "##. ")
   if (df$end[1]==0) {
     df=df[-1,]
@@ -37,3 +39,39 @@ txt.to.layout = function(txt, layout, mode="default") {
   #cat(res)
   res
 }
+
+parse.layout = function(txt, name) {
+  li = parse.hashdot.yaml(txt, hashdot="##. ")
+  li$name = name
+}
+
+load.default.layouts = function() {
+  file = system.file("defaults/layouts.yaml",package="RTutor2")
+  li = read.yaml(file)
+  for (i in seq_along(li)) {
+    li[[i]]$name = names(li)[i]
+  }
+  li
+}
+
+
+
+add.layout.to.ps = function(layout, ps=get.ps()) {
+  if (is.null(ps[["layouts"]]))
+    ps$layouts = list()
+  ps$layouts[[name]] = layout
+}
+
+get.ps.layout = function(name, ps=get.ps(), load.defaults=FALSE) {
+  restore.point("get.ps.layout")
+  
+  if (is.list(name)) return(name)
+  if (load.defaults & (!name %in% names(ps$layouts) )) {
+    def = load.default.layouts()
+    new = setdiff(names(def), names(ps$layouts))
+    ps$layouts[new] = def[new]
+  }
+  ps$layouts[[name]]
+}
+
+
