@@ -1,5 +1,5 @@
 examples.translate.old.sol = function() {
-  setwd("D:/libraries/RTutor3/examples/intro")
+  setwd("D:/libraries/RTutor2/examples/intro")
   in.file = "intro_sol.Rmd"
   out.file = "intro_sol_new.Rmd"
   

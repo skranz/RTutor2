@@ -174,7 +174,7 @@ rtutor.html.ressources = function() {
   # fails to work (very hard to detect bug)
   # Link to local highlightjs version
   dir = paste0(system.file('www', package='RTutor2'),"/highlightjs")
-  addResourcePath('highlightjs', paste0(system.file('www', package='RTutor3'),"/highlightjs"))
+  addResourcePath('highlightjs', paste0(system.file('www', package='RTutor2'),"/highlightjs"))
 
   tagList(
     tags$head(tags$link(rel = 'stylesheet', type = 'text/css',href = 'highlightjs/styles/mycode.css')),

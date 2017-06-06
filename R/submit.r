@@ -31,7 +31,7 @@ make.submission = function(ps = get.ps(),from.knitr=!interactive(),...) {
   sub$by.part = stat
   sub$rmd.code = ps$stud.code 
   sub$grade.time = Sys.time()
-  sub$rtutor.version = packageVersion("RTutor3")
+  sub$rtutor.version = packageVersion("RTutor2")
   
   sub$hash = digest::digest(list(sub$user.name,sub$ps.name,sub$grade.time,sub$total))
   

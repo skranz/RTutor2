@@ -1,7 +1,7 @@
 # To DO: More effective click handler in shinyEvents: register only a single javascript handler... dispatch in R to the corresponding function.
 
 examples.frame.ps = function() {
-  setwd("D:/libraries/RTutor3")
+  setwd("D:/libraries/RTutor2")
   ps = create.ps(file="test.rmd", catch.errors=FALSE)
   bdf = ps$bdf
   

@@ -63,7 +63,7 @@ default.ps.opts = function(
   add.enter.code.here = isTRUE(ps.type == "rmd"),
   
   hide_title = if (slides) c("section","subsection") else NULL, 
-  block.packages = c("RTutor3","armd"),  
+  block.packages = c("RTutor2","armd"),  
   name = "ps",
   id = "ps",
   

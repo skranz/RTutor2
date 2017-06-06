@@ -1,11 +1,11 @@
-Package: RTutor3
+Package: RTutor2
 Type: Package
-Title: Temporary package: Complete rewrite of RTutor internals combined with armd 
+Title: Complete rewrite of RTutor internals combined with armd 
 Version: 0.1
-Date: 2016-10-16
+Date: 2017-06-06
 Author: Sebastian Kranz
 Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
-Description: Temporary package: complete rewrite of RTutor internals combined with armd 
+Description: Complete rewrite of RTutor internals combined with armd 
 License: Programm code: GPL >= 2.0
     Contributed problem sets: Creative Commons (CY)
 Imports: armd

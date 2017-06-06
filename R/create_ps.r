@@ -1,7 +1,7 @@
 examples.create.ps = function() {
   restore.point.options(display.restore.point = TRUE)
 
-  setwd("D:/libraries/RTutor3/")
+  setwd("D:/libraries/RTutor2/")
   file = "ex1.Rmd"
   ps = create.ps(file=file)
   app = rtutorApp(ps)

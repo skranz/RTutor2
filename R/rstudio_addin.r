@@ -55,5 +55,5 @@ checkProblemSet3Addin = function(...) {
   writeLines(txt, doc$path)
   
   
-  res = try(RTutor3::check.problem.set(ps.name = ps.name,stud.short.file = file, stud.path = dir))
+  res = try(RTutor2::check.problem.set(ps.name = ps.name,stud.short.file = file, stud.path = dir))
 }

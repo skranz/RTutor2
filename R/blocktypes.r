@@ -1,7 +1,7 @@
 
 # blocks specified in RTutor
-RTutor3.block.types.df = function(...) {
-  restore.point("RTutor3.block.types.df")
+RTutor2.block.types.df = function(...) {
+  restore.point("RTutor2.block.types.df")
 
   types = c(
     "chunk","quiz","award",
@@ -14,7 +14,7 @@ RTutor3.block.types.df = function(...) {
   remove.inner = c("rmdform","quiz")
   
   n = length(types)
-  bt.df = data_frame(type=types, package="RTutor3", is.widget=types %in% widgets, parse.inner.blocks = (type!="chunk"), remove.inner.blocks= types %in% remove.inner, is.parent=types %in% parent.types, is.container = types %in% container.types, dot.level=0, arg.li = vector("list",n))
+  bt.df = data_frame(type=types, package="RTutor2", is.widget=types %in% widgets, parse.inner.blocks = (type!="chunk"), remove.inner.blocks= types %in% remove.inner, is.parent=types %in% parent.types, is.container = types %in% container.types, dot.level=0, arg.li = vector("list",n))
   
   bt.df
 }
