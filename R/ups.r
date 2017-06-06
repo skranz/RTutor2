@@ -58,7 +58,7 @@ init.ups = function(user.name=ps$user.name, nick=user.name, user.id=user.name, p
   )
   
   # small task states, can be used to init 
-  # addons from ups
+  # widgets from ups
   sts = vector("list",n)
   
   ups = as.environment(list(ps.name=ps$ps.name, user.name=user.name, nick=nick,user.id=user.id, task.ind = task.ind, utt=utt, utt.dates=utt.dates, sts=sts))
@@ -106,7 +106,7 @@ load.ups = function(user.name, nick=user.name, user.id=user.name, ps = get.ps(),
 }
 
 # need to rewrite
-update.ups = function(ups = get.ups(), ps=get.ps(), task.ind=NULL, addon=NULL, award=NULL,task=NULL, hint=NULL,...) {
+update.ups = function(ups = get.ups(), ps=get.ps(), task.ind=NULL, widget=NULL, award=NULL,task=NULL, hint=NULL,...) {
   restore.point("update.ups")
   
   if (!is.null(task.ind)) {

@@ -23,7 +23,7 @@ check.assign = function(call,check.arg.by.value=TRUE, allow.extra.arg=FALSE, ign
   }
   restore.point("check.assign")
 
-  part.str = if (isTRUE(opts$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
+  part.str = if (isTRUE(opts$is.shiny)) "" else paste0(" in chunk ",  uk$ck$chunk.name)
 
   if (noeval) {
     mco.env=make.base.env()
@@ -274,7 +274,7 @@ check.function({
 #' @param check.args.order if TRUE make sure that the checked arguments appear in the same order in the user function than in the solution
 #' @param allow.extra.arg if TRUE the user function can have additional arguments (at the end) that are not in the solution
 #' @export
-check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, check.args.order=TRUE, allow.extra.arg = TRUE, ps=get.ps(),task.env = ps$task.env, verbose=FALSE, part = NULL) {
+check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, check.args.order=TRUE, allow.extra.arg = TRUE, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, verbose=FALSE, part = NULL) {
 
   test.calls = eval(substitute(alist(...)), task.env)
 
@@ -283,7 +283,7 @@ check.function = function(code, ..., check.args = TRUE, check.defaults=FALSE, ch
 
   #restore.point("check.function")
 
-  part.str = if (isTRUE(ps$is.shiny)) "" else paste0(" in chunk ",  ps$chunk.name)
+  part.str = if (isTRUE(opts$is.shiny)) "" else paste0(" in chunk ",  uk$ck$chunk.name)
 
   env = new.env(parent=task.env)
   eval(code,env)
@@ -401,7 +401,7 @@ standardize.assign = function(call, null.if.no.assign=TRUE) {
 check.file.exists = function(
   file,
   failure.message=paste0('Sorry, but I cannot find the file "', file,'" in your current working directory.'),
-  success.message=paste0('Great, I have found the file "', file,'"!'), ps = get.ps(), part=NULL,
+  success.message=paste0('Great, I have found the file "', file,'"!'), part=NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env,
 ...) {
 # Check given variables
 
@@ -416,7 +416,7 @@ check.file.exists = function(
 
 #' Check whether an object from a call to lm, glm or some other regression function is correct
 #' @export
-check.regression = function(var, str.expr, part=NULL, ps=get.ps(),task.env = ps$task.env, verbose=FALSE,  failure.message = paste0("Hmm... your regression ", var," seems incorrect."), success.message = paste0("Great, your regression ", var," looks correct."), tol = 1e-10) {
+check.regression = function(var, str.expr, part=NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, verbose=FALSE,  failure.message = paste0("Hmm... your regression ", var," seems incorrect."), success.message = paste0("Great, your regression ", var," looks correct."), tol = 1e-10) {
   restore.point("check.regression")
 
   ret = check.variable(var,str.expr=str.expr,check.all=FALSE,exists=TRUE, class=TRUE)
@@ -431,8 +431,7 @@ check.regression = function(var, str.expr, part=NULL, ps=get.ps(),task.env = ps$
     isTRUE(max(sort(coef1)-sort(coef2))<',tol,') & setequal(names(coef1),names(coef2))
   }
   ')
-  ret = holds.true(cond.str = cond.str, success.message = success.message,
-             failure.message = failure.message)
+  ret = holds.true(cond.str = cond.str, success.message = success.message, failure.message = failure.message)
 
   if (!ret) return(FALSE)
   return(TRUE)
@@ -452,7 +451,7 @@ check.regression = function(var, str.expr, part=NULL, ps=get.ps(),task.env = ps$
 check.expr = function(check.expr, correct.expr,
     failure.message = "{{check_expr}} has the wrong values!",
     success.message = "Great, {{check_expr}} seems correct.",
-    part =NULL, ps=get.ps(),task.env = ps$task.env, verbose=FALSE,
+    part =NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, verbose=FALSE,
     unsubst.check.expr = NULL, unsubst.correct.expr=NULL,
     str.check.expr=NULL,str.correct.expr=NULL,
     tol = .Machine$double.eps ^ 0.5) {
@@ -502,7 +501,7 @@ check.expr = function(check.expr, correct.expr,
   return(TRUE)
 }
 
-check.class = function(expr, classes,unsubst.expr=NULL, str.expr=NULL, ps=get.ps(),task.env = ps$task.env, part=NULL) {
+check.class = function(expr, classes,unsubst.expr=NULL, str.expr=NULL, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, part=NULL) {
 
   if (!is.null(unsubst.expr)) {
     expr = unsubst.expr
@@ -544,7 +543,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
     failure.values = "Column {{col}} of {{df}} has wrong values.",
     failure.message.add = NULL,
     success.message = "Great, column {{col}} of {{df}} has correct {{tests}}.",part=NULL,
-    ps=get.ps(),task.env = ps$task.env, verbose=FALSE,unsubst.expr = NULL, str.expr = NULL) {
+    uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, verbose=FALSE,unsubst.expr = NULL, str.expr = NULL) {
 
 
   if (!is.null(unsubst.expr)) {
@@ -628,7 +627,7 @@ check.col = function(df,col, expr=NULL, class.df = c("data.frame","data.table","
 }
 
 
-check.var.exists = function(var, ps=get.ps(),task.env = ps$task.env) {
+check.var.exists = function(var, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env) {
   if (!exists(var,task.env, inherits=FALSE)) {
       msg = paste0("You have not yet generated the variable '", var,"'.")
       add.failure(log,msg, var = var)
@@ -651,7 +650,7 @@ check.variable = function(var, expr, length=check.all,dim=check.all, class=check
   failure.class = "Your variable {{var}} has a wrong class. It should be {{class_sol}} but it is {{class_stud}}.",
   failure.values = "Your variable {{var}} has wrong values.",
   success.message = "Great, {{var}} has correct {{tests}}.",
-  ps=get.ps(),task.env = ps$task.env, verbose=FALSE, part=NULL) {
+  uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, verbose=FALSE, part=NULL) {
 
   expr = substitute(expr)
   restore.point("check.variable")
@@ -813,7 +812,7 @@ test.H0.rejected = function(test.expr,p.value,test.name="",
   warning.message="The null hypothesis from the test '{{test_name}}', should not be rejcected, but I get a fairly low p.value of {{p_value}}.",
   failure.message="I couldn't significantly reject the null hypothesis from the test '{{test_name}}', p.value = {{p_value}}",
   success.message = "Great, I could significantly reject the null hypothesis from the test '{{test_name}}', p.value = {{p_value}}!",
-  check.warning=TRUE, ps=get.ps(),task.env = ps$task.env, part=NULL,...)
+  check.warning=TRUE, uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, part=NULL,...)
 {
 
 
@@ -858,7 +857,7 @@ test.H0 = function(test.expr,p.value,test.name="",
                    success.message = "Great, I could not significantly reject the null hypothesis from the test '{{test_name}}', p.value = {{p_value}}!",
 
                   check.warning=TRUE, part=NULL,
-                  ps=get.ps(),task.env = ps$task.env,...) {
+                  uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env,...) {
 
 
   #browser()
@@ -896,82 +895,9 @@ test.H0 = function(test.expr,p.value,test.name="",
   return(TRUE)
 }
 
-#' Test: The variance of the distribution from which a vector of random numbers has been drawn
-#' @export
-test.variance = function(vec, true.val, test = "t.test",short.message,warning.message,failure.message, success.message = "Great, I cannot statistically reject that {{var}} has the desired variance {{vari_sol}}!", ps=get.ps(),task.env = ps$task.env,part=NULL,...) {
-  call.str = as.character(match.call())
-
-  var.name = call.str[2]
-  p.value = sigma.test(vec,sigmasq=true.val)$p.value
-
-  if (missing(short.message)) {
-    short.message ="wrong variance {{var}}: is {{vari_stud}} shall {{vari_sol}}, p.value = {{p_value}}"
-  }
-  if (missing(failure.message)) {
-    failure.message = "{{var}} has wrong variance! \n Your random variable {{var}} has a sample variance of {{vari_stud}} but shall have {{vari_sol}}. A chi-square test tells me that if that null hypothesis were true, it would be very unlikely (p.value={{p_value}}) to get a sample as extreme as yours!"
-  }
-  if (missing(warning.message)) {
-    warning.message = "{{var}} has a suspicious variance! \n Your random variable {{var}} has a sample variance of {{vari_stud}} but shall have {{vari_sol}}. A chi-square test tells me that if that null hypthesis were true, the probability would be just around {{p_value}} to get such an extreme sample variance"
-  }
-  test.H0(p.value=p.value,short.message=short.message, warning.message=warning.message, failure.message=failure.message, success.message=success.message,
-  var = var.name, vari_stud = var(vec), vari_sol=true.val,...)
-
-
-}
-
-
-#' Test: The mean of the distribution from which a vector of random numbers has been drawn
-#' @export
-test.mean = function(vec, true.val, test = "t.test", short.message,warning.message,failure.message, success.message = "Great, I cannot statistically reject that {{var}} has the desired mean of {{mean_sol}}!", ps=get.ps(),task.env = ps$task.env,part=NULL,...) {
-  call.str = as.character(match.call())
-
-  stopifnot(test=="t.test")
-
-  var.name = call.str[2]
-  p.value = t.test(vec,mu=true.val)$p.value
-
-  if (missing(short.message)) {
-    short.message ="wrong mean {{var}}: is {{mean_stud}} shall {{mean_sol}}, p.value = {{p_value}}"
-  }
-  if (missing(failure.message)) {
-    failure.message = "{{var}} has wrong mean! \n Your random variable {{var}} has a sample mean of {{mean_stud}} but shall have {{mean_sol}}. A t-test tells me that if that null hypothesis were true, it would be very unlikely (p.value={{p_value}}) to get a sample mean as extreme as yours!"
-  }
-  if (missing(warning.message)) {
-    warning.message = "{{var}} has a suspicious mean!\n Your random variable {{var}} has a sample mean of {{mean_stud}} but shall have {{mean_sol}}. A t-test tells me that if that null hypthesis were true, the probability would be just around {{p_value}} to get such an extreme sample mean_"
-  }
-  test.H0(p.value=p.value,short.message=short.message, warning.message=warning.message, failure.message=failure.message,success.message=success.message,
-        var = var.name, mean_stud = mean(vec), mean_sol=true.val,...)
-}
-
-#' Test: Has a vector of random numbers been drawn from a normal distribution?
-#' @export
-test.normality = function(vec,short.message,warning.message,failure.message,ps=get.ps(),task.env = ps$task.env, success.message = "Great, I cannot statistically reject that {{var}} is indeed normally distributed!",part=NULL,...) {
-  call.str = as.character(match.call())
-  restore.point("test.normality")
-
-  var.name=call.str[2]
-
-  # Cannot use more than 5000 observations
-  if (length(vec)>5000)
-    vec = vec[sample.int(n=length(vec), size=5000)]
-  p.value = shapiro.test(vec)$p.value
-
-  if (missing(short.message)) {
-    short.message ="{{var}} not normally distributed, p.value = {{p_value}}"
-  }
-  if (missing(failure.message)) {
-    failure.message = "{{var}} looks really not normally distributed.\n A Shapiro-Wilk test rejects normality at an extreme significance level of {{p_value}}."
-  }
-  if (missing(warning.message)) {
-    warning.message = "{{var}} looks not very normally distributed.\n A Shapiro-Wilk test rejects normality at a significance level of {{p_value}}."
-  }
-  test.H0(p.value=p.value,short.message=short.message, warning.message=warning.message, failure.message=failure.message,success.message=success.message,
-        var = var.name,...)
-}
-
 #' Test: Does a certain condition on the stud's generated variables hold true
 #' @export
-holds.true = function(cond, short.message = failure.message,failure.message="Failure in holds.true",success.message="Great, the condition {{cond}} holds true in your solution!",part=NULL,ps=get.ps(),task.env = ps$task.env, cond.str=NULL,...) {
+holds.true = function(cond, short.message = failure.message,failure.message="Failure in holds.true",success.message="Great, the condition {{cond}} holds true in your solution!",part=NULL,uk=parent.frame()$uk,opts=parent.frame()$opts, log=uk$log, task.env = uk$task.env, cond.str=NULL,...) {
 
   
   if (is.null(cond.str)) {

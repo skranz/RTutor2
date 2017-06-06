@@ -1,11 +1,11 @@
 # Tutorial for Developing Interactive R Problem Sets with RTutor
 
-**Date: 2015-01-23
+**Date: 2016-10-16
 
 **Author: Sebastian Kranz, Ulm University** 
 
 
-## RTUTOR 2 is a tempory package that tries to completely rewrite RTutor internals, to better accomodate more flexible problem set designs (e.g. frames). Later we will merge this into a new RTutor version.
+## RTUTOR 3 is a tempory package that tries to completely rewrite RTutor internals, to better accomodate more flexible problem set designs (e.g. frames). Later we will merge this into a new RTutor version.
 
 
 RTutor is an R package that allows to develop interactive R exercises. Problem sets can be solved off-line or can be hosted in the web with shinyapps.io. Problem sets can be designed as a Markdown  .rmd file (to be solved directly in RStudio) or use a browser-based interface powered by RStudio's Shiny. While the web interface looks nicer, I personally use problem sets in the Markdown format when teaching advanced economic classes.

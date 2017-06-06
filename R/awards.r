@@ -9,9 +9,11 @@ give.award = function(award.bi, ups = get.ups(), ps=get.ps()) {
   ps$given.awards.bi = c(ps$given.awards.bi, award.bi)
   
   if (!isTRUE(ps$is.shiny)) {
+    award = get.award(award.bi)
+
     message(paste0('
 **********************************************************
-* Congrats, you earned the award "', award.name, '"
+* Congrats, you earned the award "', award$award.name, '"
 **********************************************************
 
 PS: awards() shows all your awards
@@ -26,12 +28,11 @@ has.award = function(award.bi, ps=get.ps()) {
 }
 
 get.award = function(award.bi, ps =get.ps()) {
-  ps$bdf$obj[[bi]]  
+  ps$bdf$obj[[award.bi]]  
 }
 
 show.award = function(award.bi, ps=get.ps()) {
   restore.point("show.award")
-  
   
   if (isTRUE(ps$is.shiny)) {
     show.container(ps=ps,bi=award.bi)
@@ -40,7 +41,8 @@ show.award = function(award.bi, ps=get.ps()) {
   
   award = get.award(award.bi)
   htmlFile <- tempfile(fileext=".html")
-  writeLines(award$html,htmlFile )
+  html = paste0("<h4>Award: ", award$award.name,"</h4>", award$html)
+  writeLines(html,htmlFile)
   if (require(rstudioapi)) {
     rstudioapi::viewer(htmlFile)
   } else {
@@ -86,3 +88,25 @@ awards = function(as.html=FALSE, details=TRUE, ps = get.ps()) {
 has.award = function(award.name,ups=get.ups()) {
   award.name %in% names(ups$awards)
 }
+
+rtutor.parse.award = function(bi,ps) {
+  restore.point("rtutor.parse.award")
+  br = ps$bdf[bi,]
+  
+  args = parse.block.args(arg.str = ps$bdf$arg.str[[bi]])
+  award.name = args$name
+  
+  res = get.children.and.fragments.ui.list(bi,ps, keep.null=FALSE)
+  out.rmd = merge.lines(c(paste0("---\n### Award ",award.name),res$rmd$rmd,"---"))
+  rmd = list(shown="",sol="",rmd=out.rmd, newline=FALSE)
+  content.ui=res$ui.li
+  obj = list(award.bi =bi, award.name=award.name, html=as.character(tagList(content.ui)), txt = res$out.rmd)
+  ps$bdf$obj[[bi]] = obj
+  
+  title = paste0("Award: ",award.name) 
+  
+  inner.ui = tagList(br(),shinyBS::bsCollapse(id = paste0("award_collapse_",bi), myCollapsePanel(title=title,header.style="background-color: #DFC463;box-shadow: 2px 2px 2px #888888;",content.ui)))
+
+  armd.parse.as.container(bi=bi,am=ps,args = args, inner.ui=inner.ui,rmd = rmd,highlight.code = TRUE,is.widget = FALSE,title = NULL, is.hidden = TRUE)  
+}
+

@@ -5,9 +5,9 @@
 #'
 #' The command will be put at the top of a student's problem set. It checks all exercises when the problem set is sourced. If something is wrong, an error is thrown and no more commands will be sourced.
 #'@export
-check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, set.warning.1=TRUE, user.name="user", do.check=interactive(), verbose=FALSE, catch.errors=TRUE, from.knitr=!interactive(), use.null.device=TRUE, just.init=FALSE) {
+check.problem.set = function(ps.name,stud.path=getwd(), stud.short.file, reset=FALSE, set.warning.1=TRUE, user.name=NULL, do.check=interactive(), verbose=FALSE, catch.errors=TRUE, from.knitr=!interactive(), use.null.device=TRUE, just.init=FALSE, for.submission=FALSE, stud.code = NULL) {
 
-  restore.point("check.problem.set", deep.copy=FALSE)
+  restore.point("check.problem.set")
 
   if (from.knitr) {
     # Allows knitting to HTML even when there are errors
@@ -40,8 +40,15 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
 
   setwd(stud.path)
 
-  if (user.name=="ENTER A USER NAME HERE") {
-    stop('You have not picked a user name. Change the variable "user.name" in your problem set file from "ENTER A USER NAME HERE" to some user.name that you can freely pick.',call. = FALSE)
+  if (is.null(stud.code))
+    stud.code = readLines(stud.short.file)
+  
+  if (is.null(user.name)) {
+    user.name = get.user.name.from.rmd(stud.code)
+  }
+  
+  if (user.name=="ENTER YOUR USERNAME HERE") {
+    stop('You have not picked a user name. Change the text "ENTER YOUR USERNAME HERE" at the beginning of your Rmd file to some username that you can freely pick.',call. = FALSE)
   }
 
   if (verbose)
@@ -54,9 +61,9 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
   ps$use.null.device = use.null.device
 
   set.ps(ps)
-  ps$stud.code = readLines(ps$stud.file)
+  ps$stud.code = stud.code
   rmc = ps$rmc
-  if (!has.col(rmc,"chunk.was.run")) {
+  if (!has.col(rmc,"successfully.run")) {
     rmc$successfully.run = FALSE
   } 
   if (!has.col(rmc,"old.stud.code")) {
@@ -69,7 +76,7 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
   rmc$old.stud.code = rmc$stud.code
 
 
-  if (!any(rmc$chunk.changed)) {
+  if (!any(rmc$chunk.changed) & !for.submission) {
     code.change.message = "\nBTW: I see no changes in your code... did you forget to save your file?"
   } else {
     code.change.message = NULL
@@ -81,18 +88,22 @@ check.problem.set = function(ps.name,stud.path, stud.short.file, reset=FALSE, se
 
   
   # Check chunks
-  check.chunks = get.check.chunks(ps)
-  check.chunks = c(check.chunks, setdiff(ps$rmc$chunk.ind, check.chunks))
+  check.chunks = get.check.chunks(ps, for.submission=for.submission)
+  #check.chunks = c(check.chunks, setdiff(ps$rmc$chunk.ind, check.chunks))
 
   for (chunk.ind in check.chunks) {
     res = check.chunk.in.rstudio(chunk.ind=chunk.ind, ps=ps, verbose=verbose)
     if (!res) {
-      save.ups()
-      return()
+      if (!for.submission) {
+        save.ups()
+        return()
+      }
     }
   }
   
   save.ups()
+  if (for.submission) return()
+  
   display("\n****************************************************")
   stats()
   display("You solved the problem set. Congrats!")
@@ -134,7 +145,7 @@ check.chunk.in.rstudio = function(chunk.ind, ps, verbose=TRUE) {
   
   #save.ups()
   if (ret==FALSE) {
-    rmc$successfully.run[i] = FALSE
+    ps$rmc$successfully.run[i] = FALSE
     if (rmc$code.as.shown[chunk.ind]) {
       message = paste0("You have not yet started with chunk ", rmc$chunk.name[i],"\nIf you have no clue how to start, try hint().")
       cat(message)
@@ -150,15 +161,18 @@ check.chunk.in.rstudio = function(chunk.ind, ps, verbose=TRUE) {
     message(paste0("Warning: ", message))
     return(TRUE)
   } else {
+    ps$rmc$successfully.run[i] = TRUE   
     cat("... chunk ok!\n")
     return(TRUE)
   }
 }
 
-get.check.chunks = function(ps) {
+get.check.chunks = function(ps, for.submission=FALSE) {
   restore.point("get.check.chunks")
   
   rmc = ps$rmc
+  if (for.submission) return(seq.int(NROW(rmc)))
+  
   # all changed chunks
   # and chunks different from shown code that have not been run
   cc = unique(c(which(rmc$chunk.changed),which(!rmc$code.as.shown & !rmc$successfully.run)))
@@ -266,4 +280,16 @@ get.stud.chunk.code = function(txt = ps$stud.code,chunks = ps$rmc$chunk.name, ps
   chunk.txt
 }
 
-
+get.user.name.from.rmd = function(txt) {
+  txt = txt[1:min(10, length(txt))]
+  rows = which(str.starts.with(txt,"Username:"))
+  if (length(rows)==0) {
+    stop("Within the first 10 lines of your Rmd file, you need a line of the form:\n\nUsername: Your username\n\nwhere you can replace 'Your username' with your username.")
+  }
+  rows = rows[1]
+  user.name = str.trim(str.right.of(txt[rows],"Username:"))
+  if (nchar(user.name)==0) {
+    stop("Within the first 10 lines of your Rmd file, you need a line of the form:\n\nUsername: Your username\n\nwhere you can replace 'Your username' with your username.")
+  }
+  return(user.name)
+}

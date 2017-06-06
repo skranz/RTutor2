@@ -1,6 +1,5 @@
 export.ui = function(ps=get.ps()) {
   restore.point("export.ui")
-  make.export.handlers()
   if (file.exists("downloads.zip")) {
     zip.ui = list(
       downloadButton("downloadZipBtn","Download additional material"),
@@ -57,8 +56,8 @@ shiny.to.rmd.txt = function(ps=get.ps(), user.name=get.user.name()) {
   
   txt[start.lines] = paste0(txt[start.lines],"\n",stud.code)
   
-  addon.lines = which(str.starts.with(txt,"#! addon__"))
-  txt[addon.lines] = sapply(txt[addon.lines],make.rmd.addon.txt,ps=ps)
+  widget.lines = which(str.starts.with(txt,"#! addon__"))
+  txt[widget.lines] = sapply(txt[widget.lines],make.rmd.widget.txt,ps=ps)
   
   if (length(clear.lines)>0)
     txt = txt[-clear.lines]
@@ -67,17 +66,17 @@ shiny.to.rmd.txt = function(ps=get.ps(), user.name=get.user.name()) {
 
 }
 
-make.rmd.addon.txt = function(str, ps=get.ps(), ups=get.ups()) {
-  restore.point("make.rmd.addon.txt")
+make.rmd.widget.txt = function(str, ps=get.ps(), ups=get.ups()) {
+  restore.point("make.rmd.widget.txt")
   id = str.right.of(str, "#! ")
   str = str.right.of(str,"#! addon__")
   type = str.left.of(str,"__")
   name = str.right.of(str,"__")
   
-  Addon = ps$rps$Addons[[type]]
-  ao = ps$rps$addons[[id]]
-  rta = ao$rta
+  Widget = ps$rps$Widgets[[type]]
+  wid = ps$rps$widgets[[id]]
+  rta = wid$rta
 
-  res = Addon$out.txt.fun(ao,solved=isTRUE(rta$was.solved))
+  res = Widget$out.txt.fun(wid,solved=isTRUE(rta$was.solved))
   paste0(res, collapse="\n")
 }

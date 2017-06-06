@@ -3,7 +3,7 @@ get.or.init.rmd.ps = function(ps.name, user.name, dir, stud.short.file = paste0(
 
   # Just take current problem set information
   if (!is.null(ps) & !reset) {
-    if (isTRUE(ps$ps.name == ps.name & ps$stud.path==dir & ps$stud.short.file == stud.short.file & ps$user.name == user.name)) {
+    if (isTRUE(ps$ps.name == ps.name & ps$stud.path==dir & ps$stud.short.file == stud.short.file & ps$user.name == user.name & isTRUE(ps$is.initialzed))) {
       return(ps)
     }
   }
@@ -36,7 +36,7 @@ init.rmd.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = past
   ps$stud.short.file = stud.short.file
   ps$log.file = log.file
     
-  load.ps.libs(ps$libs)
+  load.ps.libs(ps$opts$libs)
 
   if (isTRUE(ps$opts$use.memoise)) {
     copy.into.env(dest=ps$init.env, source=ps$memoise.fun.li)
@@ -50,7 +50,7 @@ init.rmd.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = past
   
   log.event(type="init_rmd_ps")
 
-  
+  ps$is.initialzed = TRUE  
   return(ps)
 }
 

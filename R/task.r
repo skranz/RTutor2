@@ -89,11 +89,11 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
     if (ps$org.task.states[[i]]$stype == "task_chunk") {
       return(ps$org.task.states[[i]]$ck$max.points)
     } else {
-      #max.points = ps$org.task.states[[i]]$ao$max.points
+      #max.points = ps$org.task.states[[i]]$wid$max.points
       #if (is.null(max.points)) {
-      #  stop("a task ao object has not defined max.points")
+      #  stop("a task wid object has not defined max.points")
       #}
-      return(first.non.null(ps$org.task.states[[i]]$ao$max.points,0))
+      return(first.non.null(ps$org.task.states[[i]]$wid$max.points,0))
     }
   })
   
@@ -193,8 +193,8 @@ init.task.state.without.ups = function(org.ts,obj=NULL,opts=rt.opts(),ps=get.ps(
   if (ts$stype=="task_chunk") {
     ts$log = new.env()
   } else {
-    Addon = ps$Addons[[ts$stype]]
-    Addon$init.task.state(ts, ups=NULL, opts=opts)
+    Widget = ps$Widgets[[ts$stype]]
+    Widget$init.task.state(ts, ups=NULL, opts=opts)
   }
   ts
 }
@@ -228,11 +228,11 @@ init.task.state = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts(), ps=ge
       }
     }
   } else {
-    restore.point("init.task.state.addon")
+    restore.point("init.task.state.widget")
     ts = as.environment(as.list(org.ts))
-    Addon = ps$Addons[[ts$stype]]
+    Widget = ps$Widgets[[ts$stype]]
     
-    ts = Addon$init.task.state(ts, ups=ups,opts=opts)
+    ts = Widget$init.task.state(ts, ups=ups,opts=opts)
   }
   return(ts)
 }
@@ -248,15 +248,15 @@ make.org.task.state = function(bi, ps, opts = rt.opts()) {
     ck = ps$bdf$obj[[bi]]$ck
     ts = make.user.chunk(ck)
   } else {
-    Addon = ps$Addons[[stype]]
-    ao = ps$bdf$obj[[bi]]$ao
+    Widget = ps$Widgets[[stype]]
+    wid = ps$bdf$obj[[bi]]$wid
     
-    if (is.null(Addon$make.org.task.state)) {
+    if (is.null(Widget$make.org.task.state)) {
       ts = new.env()
     } else {
-      ts = Addon$make.org.task.state(ao)
+      ts = Widget$make.org.task.state(wid)
     }
-    ts$ao = ao
+    ts$wid = wid
   }
   ts$task.ind = task.ind
   ts$stype = stype
@@ -291,8 +291,8 @@ call.task.listeners = function(ts, ps = get.ps()) {
   tl =  ps$bdf$task.listeners[[ts$bi]]
   if (length(tl)==0) return()
   for (bi in tl) {
-    Ao = get.Addon(bi=bi)
-    Ao$listener.handler(target.ts=ts, target.ao=ts$ao, target.bi=ts$bi, ts=ts, bi=bi)
+    Wid = get.Widget(bi=bi)
+    Wid$listener.handler(target.ts=ts, target.wid=ts$wid, target.bi=ts$bi, ts=ts, bi=bi)
   }
 }
 
@@ -342,8 +342,8 @@ process.checked.task = function(ts,ps = get.ps(), ups=get.ups(), save.ups=TRUE,.
 
 }
 
-process.checked.addon = function(ts, ps = get.ps(), ups=get.ups(),...) {
-  restore.point("process.checked.addon")
+process.checked.widget = function(ts, ps = get.ps(), ups=get.ups(),...) {
+  restore.point("process.checked.widget")
   process.checked.task(ts)
   
   return()

@@ -90,5 +90,8 @@ rtutorClickHandler = function(button.handler=TRUE, image.handler = TRUE, use.fra
   res = bottomScript(HTML(code))  
   registerEvent("documentClickHandlerEvent", jscript="", overwrite=TRUE)
   registerEvent("buttonHandlerEvent", jscript="", overwrite=TRUE)
+  
+  #classEventHandler("StopClickPropagation", function(...) {cat("\nStopClickPropagation clicked")}, stop.propagation = TRUE)
+
   return(res)
 }

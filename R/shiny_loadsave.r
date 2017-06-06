@@ -9,7 +9,7 @@
 #   num.failure = TRUE,
 #   solved = TRUE,
 #   award = TRUE,
-#   addon = TRUE,
+#   widget = TRUE,
 #   code = TRUE,
 #   current.chunk = FALSE
 # )

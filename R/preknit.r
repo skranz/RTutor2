@@ -13,7 +13,7 @@ preknit.rps = function(rps=read.rps(file=file),precomp=TRUE,file=paste0(ps.name,
   }
 
   # Load all required libraries
-  load.ps.libs(rps$libs)
+  load.ps.libs(rps$opts$libs)
 
   
 

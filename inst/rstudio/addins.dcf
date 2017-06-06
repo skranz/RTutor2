@@ -1,20 +1,4 @@
-Name: Check Problemset 2
-Description: Check your solution of a RTutor2 problem set
-Binding: checkProblemSet2Addin
+Name: Check Problemset 3
+Description: Check your solution of a RTutor3 problem set
+Binding: checkProblemSet3Addin
 Interactive: false
-
-
-Name: RTutor Show Part
-Description: To be called in a _sol.Rmd file, to preview an RTutor frame block
-Binding: showRTutorPartAddin
-Interactive: true
-
-Name: RTutor Show Problemset
-Description: To be called in a _sol.Rmd file, to preview RTutor frames blocks
-Binding: showRTutorAddin
-Interactive: true
-
-Name: RTutor Create Slides
-Description: To be called in a _sol.Rmd file to create offline html slides
-Binding: createRTutorOfflineSlides
-Interactive: true

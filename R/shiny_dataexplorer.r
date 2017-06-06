@@ -8,10 +8,13 @@ data.explorer.ui = function() {
       tabPanel("Plot", uiOutput("dataPlotUI"))
     )
   )
+  ui
+}
+
+data.explorer.init.handlers = function() {
   radioBtnGroupHandler("radioDataExplorer", function(value,...,ps=get.ps()) {
     update.data.explorer.data(var=value)
   })
-  ui
 }
 
 update.data.explorer.ui = function(ps=get.ps(), session=ps$session) {

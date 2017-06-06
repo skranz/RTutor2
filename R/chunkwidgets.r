@@ -34,3 +34,4 @@ chunk.output.htmlwidget = function(txt, widget.name,chunk.ind=ps$chunk.ind, widg
   
   ui
 }
+

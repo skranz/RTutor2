@@ -2,6 +2,7 @@
   display: block;
   margin: 12px 0;
   font-style: italic;
+  border: solid 1px black;
 }
 
 .mathblock-title {

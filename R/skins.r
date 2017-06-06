@@ -1,9 +1,73 @@
-ps.layout = function(ps, ps.content.ui, opts = rt.opts(), main.layout = opts$main.layout) {
+make.rtutor.ui = function(ps,...) {
+  if (ps$slides) {
+    ui =rtutor.slides.ui(ps,...)
+  } else {
+    ui = rtutor.default.ui(ps,...)
+  }
+  ui
+}
+
+aceHeaders = function() {
+  singleton(tags$head(
+      tags$script(src = 'shinyAce/ace/ace.js'),
+      tags$script(src = 'shinyAce/ace/ext-language_tools.js'),
+      tags$script(src = 'shinyAce/shinyAce.js'),
+      tags$link(rel = 'stylesheet',
+                type = 'text/css',
+                href = 'shinyAce/shinyAce.css')
+  ))
+}
+
+rtutor.slides.ui = function(ps = NULL, add.page=TRUE, start.slide = first.non.null(ps$start.slide,1)) {
+  restore.point("rtutor.slides.ui")
+
+  css = if (!is.null(ps$css)) tags$head(tags$style(merge.lines(ps$css))) else NULL
+  head = if (!is.null(ps$head)) tags$head(HTML(ps$head)) else NULL
+  content.ui = ps$bdf$ui[[1]]
+  mcss = tags$head(tags$style(math.css()))
+
+  slide.ids = ps$bdf$div.id[ps$slide.bis]
+  start.js = paste0('
+    rtNumSlides = ', ps$num.slides,';
+    rtSlideIds = [', paste0('"',slide.ids,'"', collapse=","),'];
+    rtShowSlide(', start.slide,');
+    '
+  )
+
+  ui = tagList(
+    tags$head(HTML("\n<!-- MyHeadStart -->\n")),
+    #aceHeaders(),
+    singleton(tags$head(tags$link(rel = 'stylesheet', type = 'text/css',href = 'highlightjs/styles/mycode.css'))),
+    singleton(tags$head(tags$script(src = 'highlightjs/highlight.min.js',class="remove_offline", type = 'text/javascript'))),
+    singleton(tags$head(tags$script(src = 'highlightjs/languages/r.min.js', class="remove_offline",type = 'text/javascript'))),
+    head,
+    css,
+    mcss,
+    #tags$style("table { max-width: 100%;}"),
+    div(id="maindiv",
+      content.ui
+    ),
+    tags$script(class="remove_offline_print",
+      src="armd/armd_slides.js"
+    ),
+    tags$script(
+      class="remove_offline_print",
+      HTML(start.js)
+    )
+  )
+  if (add.page) ui = bootstrapPage(ui)
+  with.mathjax(ui)
+}
+
+
+
+
+ps.layout = function(ps, ps.content.ui, opts = ps$opts, main.layout = opts$main.layout) {
   default.ps.layout(ps, ps.content.ui)
 }
 
 
-default.ps.layout = function(ps, ps.content.ui,...) {
+rtutor.default.ui = function(ps, ps.content.ui=ps$bdf$ui[[1]],...) {
   restore.point("default.ps.layout")
   
   json.opts =
@@ -69,10 +133,10 @@ center: {
 '<button id="toogleEastBtn" type="button" class="btn btn-default action-button shiny-bound-input btn-xs" onclick="mainLayoutLayoutVar.toggle(\'east\')">
         <i class="fa fa-bars"></i>
 </button>')
-    sidebar.ui = sidebar.ui()
+    sidebar.ui = sidebar.ui(ps=ps)
   }
   
-  tagList(jqueryLayoutHeader(), jqueryLayoutPanes(id="mainLayout",style=style,json.opts = json.opts,
+  inner = tagList(jqueryLayoutHeader(), jqueryLayoutPanes(id="mainLayout",style=style,json.opts = json.opts,
     north = div(
       style="margin-left: 0px; margin-right: 0px;color: #333;",
       HTML("<table width='100%'><tr><td style='white-space: nowrap;  padding-left: 4px;'>"),
@@ -96,6 +160,22 @@ center: {
       sidebar.ui
     )
   ))
+  
+  resTags = rtutor.html.ressources()
+
+  css = if (!is.null(ps$css)) tags$head(tags$style(ps$css)) else NULL
+  head = if (!is.null(ps$head)) tags$head(HTML(ps$head)) else NULL
+
+  ui = tagList(
+    head,
+    resTags,
+    css,
+    bootstrapPage(
+      inner
+    ),
+    tags$script(HTML("$('pre code.r').each(function(i, e) {hljs.highlightBlock(e)});"))
+  ) 
+
 }
 
 
@@ -173,13 +253,13 @@ east: {
       with.mathjax(ps.content.ui)
     ),
     east = div(
-      sidebar.ui()
+      sidebar.ui(ps=ps)
     )
   )
 }
 
 
-rtutor.navbar = function(ps, opts=rt.opts(), nav.levels = c("section","subsection","frame")) {
+rtutor.navbar = function(ps, opts=ps$opts, nav.levels = c("section","subsection","frame")) {
   restore.point("rtutor.navbar")
   
   bdf = ps$bdf

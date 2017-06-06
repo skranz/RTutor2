@@ -7,18 +7,18 @@ examples.show.rmdform = function() {
 show.rmdform = function(file = NULL, txt=readLines(file,warn = FALSE, encoding = "UTF8")) {
   restore.point("show.rmdform")
   txt = mark_utf8(txt)
-  ao = rtutor.rmdform.parse(txt)
+  wid = rtutor.rmdform.parse(txt)
   ts = new.env(parent=globalenv())
-  ts$ao = ao
+  ts$wid = wid
   ts$data.env = new.env(parent=globalenv())
-  try(ao$fun.env$update(ts=ts))
-  ui = render.compiled.rmd(ao$cr,envir = ts$data.env)
+  try(wid$fun.env$update(ts=ts))
+  ui = render.compiled.rmd(wid$cr,envir = ts$data.env)
   if (is.character(ui)) ui = HTML(ui)
   ui = with.mathjax(ui)
   view.html(ui=ui)
 }
 
-rtutor.addon.rmdform = function() {
+rtutor.widget.rmdform = function() {
   list(
     package = "RTutor",
     type = "rmdform",
@@ -43,33 +43,33 @@ rtutor.rmdform.init.task.state = function(ts,ups=NULL, task.ind=ts$task.ind,...)
   restore.point("rtutor.rmdform.init.task.state")
   
   ts$ready = TRUE
-  if (!is.null(ts$ao$fun.env$update)) {
-    ts$ao$fun.env$update(ts=ts)
+  if (!is.null(ts$wid$fun.env$update)) {
+    ts$wid$fun.env$update(ts=ts)
   }
   ts
 }
 
-rtutor.rmdform.update = function(ao, bi, ps=get.ps(),...) {
+rtutor.rmdform.update = function(wid, bi, ps=get.ps(),...) {
   restore.point("rtutor.rmdform.update")
   
   ts = get.ts(bi = bi)
-  if (!is.null(ao$fun.env[["update"]]))
-    ao$fun.env$update(ts=ts, ao=ao, bi=bi,...)
+  if (!is.null(wid$fun.env[["update"]]))
+    wid$fun.env$update(ts=ts, wid=wid, bi=bi,...)
 }
 
 
 
 
-rtutor.rmdform.ui = function(ts, ao=ts$ao, ps= get.ps(),...) {
+rtutor.rmdform.ui = function(ts, wid=ts$wid, ps= get.ps(),...) {
   restore.point("rtutor.rmdform.ui")
   if (is.false(ts[["ready"]])) {
-    return(ts$ao$notready.ui)
+    return(ts$wid$notready.ui)
   }
   if (is.null(ts$data.env))
     ts$data.env = new.env(parent=globalenv())
-  if (!is.null(ts$ao$form))
-    set.form(ts$ao$form)
-  ui = render.compiled.rmd(ts$ao$cr,envir = ts$data.env)
+  if (!is.null(ts$wid$form))
+    set.form(ts$wid$form)
+  ui = render.compiled.rmd(ts$wid$cr,envir = ts$data.env)
   if (is.character(ui)) {
     ui = HTML(ui)
   }
@@ -79,42 +79,42 @@ rtutor.rmdform.ui = function(ts, ao=ts$ao, ps= get.ps(),...) {
 
 set.task.data = function(ts, data) {
   ts$data.env = as.environment(data)
-  if (!is.null(ts$ao$fun.env)) {
-    parent.env(ts$data.env) = ts$ao$fun.env
+  if (!is.null(ts$wid$fun.env)) {
+    parent.env(ts$data.env) = ts$wid$fun.env
   } else {
     parent.env(ts$data.env) = parent.env(globalenv())
   }
 }
 
-rtutor.rmdform.init.handlers = function(ao=ts$ao,ps=get.ps(), app=getApp(),ts=NULL,...) {
+rtutor.rmdform.init.handlers = function(wid=ts$wid,ps=get.ps(), app=getApp(),ts=NULL,...) {
   restore.point("rtutor.rmdform.init.handlers")
   
-  if (!is.null(ao$form)) {
+  if (!is.null(wid$form)) {
     library(webforms)
-    add.form.handlers(ao$form, rtutor.rmdform.submit.handler, ts=ts)
+    add.form.handlers(wid$form, rtutor.rmdform.submit.handler, ts=ts)
   }
-  if (!is.null(ao$fun.env$init.extra.handlers)) {
-    ao$fun.env(init.extra.handlers(ts=ts, ps=ps))
+  if (!is.null(wid$fun.env$init.extra.handlers)) {
+    wid$fun.env(init.extra.handlers(ts=ts, ps=ps))
   }
 }
 
 
 rtutor.listener.handler = function(ts, bi, target.ts, ps = get.ps(), ...) {
   restore.point("rtutor.listener.handler")
-  if (!is.null(ts$ao$update))
-    ts$ao$update(ts=ts, target.ts=target.ts)
-  render.rtutor.addon(ps=ps,bi=bi,ts=ts, init.handlers=FALSE)
+  if (!is.null(ts$wid$update))
+    ts$wid$update(ts=ts, target.ts=target.ts)
+  render.rtutor.widget(ps=ps,bi=bi,ts=ts, init.handlers=FALSE)
 }
 
 
-rtutor.rmdform.submit.handler = function(values,ts,ps=get.ps(), app=getApp(),ao=ts$ao,...) {
+rtutor.rmdform.submit.handler = function(values,ts,ps=get.ps(), app=getApp(),wid=ts$wid,...) {
   restore.point("rtutor.rmdform.submit.handler")
-  ao.submit.handler = ao$fun.env$submit.handler
+  wid.submit.handler = wid$fun.env$submit.handler
   # by default a valid form entry makes the task solved
-  # the ao.submit.handler may overwrite this decision however
+  # the wid.submit.handler may overwrite this decision however
   ts$solved = TRUE
-  if (!is.null(ao.submit.handler)) {
-    ao.submit.handler(values=values, ts=ts, ps=ps, ...)
+  if (!is.null(wid.submit.handler)) {
+    wid.submit.handler(values=values, ts=ts, ps=ps, ...)
   }
   process.checked.task(ts=ts)
 }
@@ -149,7 +149,7 @@ rtutor.rmdform.parse = function(inner.txt,type="rmdform",name="",id=paste0("addo
     if (!is.null(code))
       eval(parse(text=code), fun.env)
   }
-  ao = list(id=id,settings=settings,form=form,cr=cr,notready.ui=notready.ui, fun.env=fun.env)
-  ao
+  wid = list(id=id,settings=settings,form=form,cr=cr,notready.ui=notready.ui, fun.env=fun.env)
+  wid
 }
  

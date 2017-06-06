@@ -20,13 +20,13 @@ make.view.ui = function(view.ind, ps=get.ps()) {
         return(list(ps$cdt$ui[[chunk.ind]],uiOutput(award.ui.id)))
       }
       return(ps$cdt$ui[[chunk.ind]])
-    } else if (shiny.dt$type[i]=="addon") {
-      ao = ps$rps$addons[[ shiny.dt$addon.id[i] ]]
-      Addon = ps$rps$Addons[[ao$rta$type]]
-      html = Addon$shiny.ui.fun(ao)
+    } else if (shiny.dt$type[i]=="widget") {
+      wid = ps$rps$widgets[[ shiny.dt$widget.id[i] ]]
+      Widget = ps$rps$Widgets[[wid$rta$type]]
+      html = Widget$shiny.ui.fun(wid)
       
-      row = which(ps$rps$ao.dt$id == ao$rta$id)
-      award.name = ps$rps$ao.dt$award.name[row]
+      row = which(ps$rps$wid.dt$id == wid$rta$id)
+      award.name = ps$rps$wid.dt$award.name[row]
       if (!is.na(award.name)) {
         award.ui.id = get.award.ui.id(award.name)
         return(list(mathJaxRTutor(html),uiOutput(award.ui.id)))
@@ -174,7 +174,7 @@ rtutor.html.ressources = function() {
   # fails to work (very hard to detect bug)
   # Link to local highlightjs version
   dir = paste0(system.file('www', package='RTutor2'),"/highlightjs")
-  addResourcePath('highlightjs', paste0(system.file('www', package='RTutor2'),"/highlightjs"))
+  addResourcePath('highlightjs', paste0(system.file('www', package='RTutor3'),"/highlightjs"))
 
   tagList(
     tags$head(tags$link(rel = 'stylesheet', type = 'text/css',href = 'highlightjs/styles/mycode.css')),

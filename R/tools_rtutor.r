@@ -1,3 +1,11 @@
+call.fun = function(.fun,...) {
+  if (is.list(.fun)) {
+    .fun = do.call(first.none.null, .fun)
+  }
+  
+  do.call(.fun, list(...))
+}
+
 has.col = function(x,col) {
   col %in% names(x)
 }

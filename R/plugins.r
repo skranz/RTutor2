@@ -1,7 +1,7 @@
 # A plugin is something that can be shown on the RHS toolbar
 
 
-sidebar.ui = function(ps=app$ps, app=getApp()) {
+sidebar.ui = function(ps) {
   restore.point("sidebar.ui")
   plugins = ps$plugins
   Plugins = getPlugins()
@@ -15,8 +15,17 @@ sidebar.ui = function(ps=app$ps, app=getApp()) {
     )
   ))
   divs = lapply(seq_along(Plugins), function(i) {
-    hidden_div(id=paste0(plugins[i],"_plugin_div"),Plugins[[i]]$sidebar.ui())
+    hidden_div(id=paste0(plugins[i],"_plugin_div"),Plugins[[i]]$sidebar.ui(ps=ps))
   })
+  tagList(
+    div(style="background-color: #eeeeee; width: 100%; border-bottom: solid #999999 1px;",ns$ui),
+    div(style="padding-left: 2px; padding-right: 2px;",
+      divs
+    )
+  )
+}
+
+sidebar.ui.handlers = function(...) {
   
   nestedSelectorHandler("plugin_sel", function(value,..., ps=get.ps()) {
     #args = list(...)
@@ -26,12 +35,7 @@ sidebar.ui = function(ps=app$ps, app=getApp()) {
     call.plugin.handler("activate.handler",plugin=plugin)
   })
   
-  tagList(
-    div(style="background-color: #eeeeee; width: 100%; border-bottom: solid #999999 1px;",ns$ui),
-    div(style="padding-left: 2px; padding-right: 2px;",
-      divs
-    )
-  )
+  
 }
 
 get.plugin.state = function(plugin=ps$active.plugin, ps=get.ps()){
@@ -88,7 +92,8 @@ rtutor.plugin.export = function() {
   list(
     name = "export",
     menu.label = "Export",
-    sidebar.ui = function(...) {export.ui()}
+    sidebar.ui = function(...) {export.ui()},
+    activate.handler = function(...) {make.export.handlers()}
   )
 }
 
@@ -97,7 +102,10 @@ rtutor.plugin.dataexplorer = function() {
     name = "dataexplorer",
     menu.label = "Data",
     sidebar.ui = function(...) {data.explorer.ui()},
-    activate.handler = function(...) {update.data.explorer.ui()},
+    activate.handler = function(...) {
+      data.explorer.init.handlers()
+      update.data.explorer.ui()
+    },
     task.select.handler = function(...) {update.data.explorer.ui()}
   )
 }

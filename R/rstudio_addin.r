@@ -9,8 +9,7 @@ guess.rtutor.file = function(txt = readLines(file)) {
   return("ps")
 }
 
-checkProblemSet2Addin = function(...) {
-  library(RTutor2)
+checkProblemSet3Addin = function(...) {
   doc = rstudioapi::getActiveDocumentContext()
   restore.point("checkProblemSet2Addin")
   cat("\nCheck Problemset")
@@ -51,69 +50,10 @@ checkProblemSet2Addin = function(...) {
   
   ps.name = tools::file_path_sans_ext(basename(rps.file))
   
-  res = try(check.problem.set(ps.name = ps.name,stud.short.file = file, stud.path = dir))
-}
-
-showRTutorPartAddin = function(...) {
-  preview.rtutor.part.addin(single.part=TRUE)
-}
-
-showRTutorAddin = function(...) {
-  preview.rtutor.part.addin(single.part=FALSE)
-}
-
-
-createRTutorOfflineSlides = function(...) {
-  doc = rstudioapi::getActiveDocumentContext()
-
-  file = basename(doc$path)
-  
-  if (nchar(file)==0) {
-    cat("\nRStudio has not detected your RTutor .rmd tab. Please try again!")
-    return()
-  }
-  dir = dirname(doc$path)
-  setwd(dir)
-  create.offline.slides(file)
-}
-
-preview.rtutor.part.addin = function(single.part=TRUE,...) {
-  library(rstudioapi)
-  library(RTutor2)
-  doc = rstudioapi::getActiveDocumentContext()
-  restore.point("preview.rtutor.part.addin")
-  cat("\nView frame")
-  
-  file = basename(doc$path)
-  dir = dirname(doc$path)
-  
-  if (nchar(file)==0) {
-    cat("\nRStudio has not detected your RTutor .rmd tab. Please try again!")
-    return()
-  }
-  
-  setwd(dir)
+  # save file
   txt = doc$contents
-  
-  guess = guess.rtutor.file(txt=txt)
-  if (guess == "rmdform") {
-    show.rmdform(txt=txt)
-    return()
-  }
-  
-  range = doc$selection[[1]]$range
-  line = range$start[1]
+  writeLines(txt, doc$path)
   
   
-  show.line = filter.line = NULL
-  if (single.part) {
-    filter.line = line 
-  } else {
-    show.line = line
-  }
-
-  ps = create.ps(txt=txt, dir=dir, source.file = file, show.line=show.line, filter.line = filter.line)
-  app = rtutorApp(ps=ps, dir=dir)
-  
-  viewApp(app)
-} 
+  res = try(RTutor3::check.problem.set(ps.name = ps.name,stud.short.file = file, stud.path = dir))
+}

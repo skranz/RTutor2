@@ -1,14 +1,7 @@
 examples.translate.old.sol = function() {
-  setwd("D:/libraries/RTutor/examples")
-  in.file = "The Impact of Shrouded Fees 3_sol.Rmd"
-  out.file = "The Impact of Shrouded Fees - 3_sol.Rmd"
-  
-  in.file = "Problem_Set_Sol.Rmd"
-  out.file = "Bank Runs 2_sol.Rmd"
-  
-  setwd("D:/libraries/RTutor/examples")
+  setwd("D:/libraries/RTutor3/examples/intro")
   in.file = "intro_sol.Rmd"
-  out.file = "intro2_sol.Rmd"
+  out.file = "intro_sol_new.Rmd"
   
   translate.old.rtutor.sol(in.file=in.file, out.file=out.file)
 }
@@ -35,7 +28,7 @@ translate.old.rtutor.sol = function(txt = readLines(in.file), in.file=NULL, out.
   
   
   if (!is.null(out.file)) {
-    cat("\nWrote new RTutor format to: ", backup.in.file)
+    cat("\nWrote new RTutor format to: ", out.file)
     writeLines(txt, out.file)
   }
   invisible(txt)

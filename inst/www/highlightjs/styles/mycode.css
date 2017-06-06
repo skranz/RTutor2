@@ -40,7 +40,7 @@ pre .cs .keyword {
 pre .comment {
  color: #070;
  /*font-weight: bold;*/
- font-family: Sniglet;
+ font-family: Sniglet,'Comic Sans MS', 'Lucida Console';
 }
 
 pre .keyword {

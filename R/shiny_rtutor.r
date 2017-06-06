@@ -186,10 +186,10 @@ init.shiny.ps = function(ps.name,dir=getwd(), user.name="Seb",  sav.file=NULL, l
     sample.solution = FALSE
   }
 
-  # init addons for shiny
-  for (ao in ps$rps$addons) {
-    Addon = ps$rps$Addons[[ao$rta$type]]
-    Addon$shiny.init.handlers.fun(ao=ao,ps=ps)
+  # init widgets for shiny
+  for (wid in ps$rps$widgets) {
+    Widget = ps$rps$Widgets[[wid$rta$type]]
+    Widget$shiny.init.handlers.fun(wid=wid,ps=ps)
   }
 
   ups.init.shiny.ps(ps=ps, ups=ps$ups, sample.solution=sample.solution, ups.save=ups.save)  
@@ -298,6 +298,7 @@ inner.rtutor.eval.to.string = function(expr.li, envir) {
 
 eval.in.ace.console = function(code,envir=parent.frame(), consoleId,session=app$session, app=getApp()) {
   restore.point("eval.in.ace.console")
+  if (is.null(code)) code = ""
   out = rtutor.eval.to.string(code,envir, convert=TRUE)
 
   #iconv(out,"UTF-8", "LATIN2")

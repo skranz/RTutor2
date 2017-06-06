@@ -21,10 +21,9 @@ first.toupper = function(txt) {
 
 #' Shows your progress
 #' @export
-compute.stats = function(by=opts$stats.aggregate.by,ups=get.ups(), ps=get.ps(), opts=rt.opts()) {
+compute.stats = function(by=opts$stats.aggregate.by,ups=get.ups(), ps=get.ps(), opts=ps$opts) {
   restore.point("compute.stats")
 
-  by = "section"
   tas = cbind(ups$utt, ps$task.table)
   parent.bi = unlist(ps$bdf[tas$bi,paste0("parent_",by)])
   parent.ind = ps$bdf$stype.ind[parent.bi]

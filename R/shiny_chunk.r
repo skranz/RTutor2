@@ -6,11 +6,14 @@ set.nali.names = function(x, nali) {
 }
 
 # update a chunk.ui to the specified mode
-update.chunk.ui = function(uk, mode=uk$mode,app=getApp()) {
+update.chunk.ui = function(uk, mode=uk$mode,app=getApp(),dset=TRUE) {
   restore.point("update.chunk.ui")
   ck = uk$ck
   uk$mode = mode
   ui = get.chunk.ui(uk)
+  #cat(as.character(ui))
+  #if (dset)
+  #  dsetUI(ck$nali$chunkUI, ui)
   setUI(ck$nali$chunkUI, ui)
 }
 
@@ -239,8 +242,10 @@ make.chunk.handlers = function(uk, nali= uk$ck$nali, opts=rt.opts()) {
   buttonHandler(nali$editBtn, edit.shiny.chunk, uk=uk)
 }
 
-run.shiny.chunk = function(uk, envir = get.task.env(ts=uk), code=uk$stud.code, opts=rt.opts(),...) {
+run.shiny.chunk = function(uk, envir = get.task.env(ts=uk), code=getInputValue(uk$ck$nali$editor), opts=rt.opts(),...) {
   restore.point("run.shiny.chunk")
+  if (is.null(code)) code = ""
+
   chunk.is.selected(uk)
   ck = uk$ck
   if (opts$in.R.console) {
@@ -253,7 +258,9 @@ run.shiny.chunk = function(uk, envir = get.task.env(ts=uk), code=uk$stud.code, o
 run.line.shiny.chunk = function(uk, envir=get.task.env(ts=uk), cursor=NULL, selection=NULL,code=getInputValue(uk$ck$nali$editor),..., app=getApp(), opts=rt.opts()) {
   restore.point("run.line.shiny.chunk")
 
+  if (is.null(code)) code = ""
   uk$stud.code = code
+  
   chunk.is.selected(uk)
 
   if (selection == "") {
@@ -271,9 +278,11 @@ run.line.shiny.chunk = function(uk, envir=get.task.env(ts=uk), cursor=NULL, sele
 
 check.shiny.chunk = function(uk, internal=FALSE, max.lines=300, store.output=FALSE, opts=rt.opts(), app=getApp(),...) {
   uk$stud.code = getInputValue(uk$ck$nali$editor)
+  if (is.null(uk$stud.code)) uk$stud.code = ""
+  
   chunk.is.selected(uk)
   
-  #uk$task.env = make.fresh.task.env(ts=uk)
+  uk$task.env = make.fresh.task.env(ts=uk)
   restore.point("check.shiny.chunk")
   ck = uk$ck
   if (!is.false(opts$catch.errors)) {
@@ -357,7 +366,9 @@ proceed.with.successfuly.checked.chunk = function(uk,opts=rt.opts()) {
 hint.shiny.chunk = function(uk, code=getInputValue(uk$ck$nali$editor), ...,opts=rt.opts(),app=getApp()) {
   restore.point("hint.shiny.chunk")
   
+  if (is.null(code)) code = ""
   uk$stud.code = code
+  
   chunk.is.selected(uk)
 
   if (!isTRUE(opts$hint.noeval)) {
@@ -443,8 +454,9 @@ edit.shiny.chunk = function(uk, opts = rt.opts(),...) {
 
 chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.task.env(ts=uk), eval=TRUE, success.message=isTRUE(uk$solved), echo=TRUE, nali=NULL, quiet=TRUE) {
   restore.point("chunk.to.html")
-  if (is.null(txt))
-    return("")
+  #if (is.null(txt))
+  #  return("")
+  if (is.null(txt)) txt = ""
   ck = uk$ck
 
 
@@ -511,8 +523,12 @@ chunk.to.html = function(uk,txt = uk$stud.code, opts=rt.opts(), envir=get.task.e
   html
 }
 
-default.chunk.out.args = function() {
-  list(fig.width=6.5, fig.height=4.5, fig.align='center', "warning"=FALSE, cache=FALSE, collapse=TRUE, comment=NA)
+default.chunk.out.args = function(...) {
+  args = list(fig.width=6.5, fig.height=4.5, fig.align='center', "warning"=FALSE, cache=FALSE, collapse=TRUE, comment=NA)
+
+  given = list(...)
+  args[names(given)] = given
+  args
 }
 
 chunk.is.selected = function(uk, ps = get.ps()) {
