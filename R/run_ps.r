@@ -7,7 +7,7 @@ examples.frame.ps = function() {
   
   app = rtutorApp(ps,catch.errors = FALSE)
   viewApp(app)
-  viewApp(app, launch.browser = rstudio::viewer)
+  viewApp(app, launch.browser = rstudioapi::viewer)
 }
 
 # Init ps for a new session

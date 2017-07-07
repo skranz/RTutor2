@@ -13,6 +13,40 @@
 #     answer: 3.14
 #     roundto: 0.01
 # #>
+# 
+examples.quiz = function() {
+yaml = '
+question: Mit welchen Vorzeichen gehen folgende Komponenten in das BIP, d.h. die gesamtwirtschaftliche Nachfrage ein? Markieren Sie alle richtigen Antworten.
+cols: [positiv,negativ]
+rows:
+  - Staatsausgaben | positiv
+  - Importe | negativ
+  - Exporte | positiv
+'
+
+yaml = '
+question: Welche Komponente der gesamtwirtschaftlichen Nachfrage ist ein Deutschland von 2007 bis 2009 am stärksten gefallen?
+rank:
+  - Konsüm C | 3
+  - Investitionen I | 1
+  - Staatsausgaben G | 4
+  - Nettoexporte X | 2
+'
+yaml = '
+question: |
+  (Vemutung) Welche Aussage trifft in unserem Solow Modell ohne technologischem Fortschritt zu?
+sc:
+  - Bei positiver Sparquote \\(s\\gt0\\), wachsen BIP  immer unbeschränkt im Zeitablauf.
+  - Einkomen und Kapitalstock wachsen nur dann unbeschränkt im Zeitablauf, wenn die Sparquote höher ist, als die Abschreibungsrate \\(\\delta\\).*
+'
+
+qu = shinyQuiz(yaml=yaml)
+app =eventsApp()
+app$ui = qu$ui
+viewApp(app)
+
+
+}
 
 
 
@@ -192,6 +226,10 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   restore.point("init.quiz.part")
 
   part = copy.into.missing.fields(dest=part, source=defaults)
+  
+  if (!is.null(part[["rows"]]) | !is.null(part[["rank"]])) {
+    return(init.quiz.grid.part(part=part,qu=qu,defaults=defaults, whiskers=whiskers, add.check.btn=add.check.btn))
+  }
 
   if (!is.null(part[["sc"]])) {
     part$choices = part$sc
@@ -273,6 +311,134 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   part
 }
 
+init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=quizDefaults(), whiskers=list(), add.check.btn=TRUE) {
+  restore.point("init.quiz.grid.part")
+
+  part = copy.into.missing.fields(dest=part, source=defaults)
+
+  if (!is.null(part[["rank"]])) {
+    part$rows = part$rank
+    row.has.answers = all(has.substr(part$rows,"|"))
+    if (!row.has.answers) {
+      part$rows = paste0(part$rows, " | ", seq_along(part$rows))
+      # shuffle rows
+      part$rows = sample(part$rows)
+    }
+    part$cols = 1:NROW(part$rank)
+  }
+  
+  # a grid part specifies rows and cols
+  rows = part$rows
+  cols = part$cols
+  
+  part$row.has.answers = row.has.answers = all(has.substr(rows,"|"))
+  col.has.answers = all(has.substr(rows,"|"))
+  if (!row.has.answers & ! col.has.answers) {
+    stop("You must specify the answers after a |")
+  }
+  if (row.has.answers) {
+    answers = str.right.of(rows,"|")
+    part$rows = rows = str.trim(str.left.of(rows,"|"))
+  } else {
+    answers = str.right.of(cols,"|")
+    part$cols = cols = str.trim(str.left.of(cols,"|"))    
+  }
+  answers = lapply(answers, function(answer)
+    str.trim(strsplit(answer,",", fixed=TRUE))
+  )
+  if (is.null(part$multiple)) {
+    len.answers = sapply(answers, length)
+    part$multiple = !all(len.answers==1)
+  }
+
+  if (is.null(part[["points"]])) {
+    part$points = 1
+  }
+  part$question = md2html(replace.whiskers(part$question,values=whiskers))
+
+  if (!is.null(part$explain))
+    part$success = paste0(part$success,"\n\n", part$explain)
+  
+  txt = replace.whiskers(part$success,whiskers)
+  
+  if (part$points==1) {
+    txt = paste0(txt," (", part$points, " ", defaults$point_txt,")")
+  } else if (part$points > 0 ) {
+    txt = paste0(txt," (", part$points, " ", defaults$points_txt,")")
+  }
+  txt = colored.html(txt, part$success_color)
+  part$success =  md2html(text=txt, fragment.only=TRUE)
+
+  if (!is.null(part$explain))
+    part$failure = paste0(part$failure,"\n\n", part$explain)
+
+  
+  txt = replace.whiskers(part$failure, whiskers)
+  txt = colored.html(txt, part$failure_color)
+  
+  
+  part$failure =  md2html(text=txt, fragment.only=TRUE)
+
+  part$id = paste0(qu$id,"__part", part.ind)
+  part$answerId = paste0(part$id,"__answer")
+  part$resultId = paste0(part$id,"__resultUI")
+  
+  part$ui = quiz.grid.part.ui(part,add.button = add.check.btn & !is.null(part$checkBtnId))
+  part$solved = FALSE
+
+  if (is.null(part$points)) {
+    part$points = 1
+  }
+  
+  part
+}
+
+
+quiz.grid.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {
+  restore.point("quiz.grid.part.ui")
+  head = list(
+    HTML(part$question)
+  )
+  
+  
+  ids = paste0(part$answerId,seq_along(part$rows))
+  # TO DO: Put in tables
+  inner = lapply(seq_along(part$rows), function(row){
+    if (part$multiple) {
+      stop("Grid quiz not yet implemented for checkboxes...")
+    } else {
+      gridRowRadioButtons(ids[row], choices = part$cols, selected=NA)
+    }
+  })
+  rows = paste0('<tr id="',ids,'" class="shiny-input-radiogroup shiny-input-container"><tr><td>',part$rows,"</td>",inner,'</tr>')
+  tab = paste0('<table class="rowRadioTable"><tr><td></td>',paste0("<td style='text-align: center; padding-left: 5px; padding-right: 5px'>",part$cols,"</td>", collapse=""),"</tr>" ,paste0(rows,collapse=""),'</table>')
+  
+  if (add.button) {
+    button = submitButton(part$checkBtnId,label = "check", form.ids = part$answerId)
+  } else {
+    button = NULL
+  }
+  list(head,HTML(tab),uiOutput(part$resultId),button)
+}
+
+
+gridRowRadioButtons = function(inputId, choices, selected = NA, only.inner = FALSE) {
+	restore.point("rowRadioButtons")
+	choices =  shiny:::choicesWithNames(choices)
+
+	checked = rep("", length(choices))
+	if (!is.na(selected)) {
+		names(checked) = as.character(choices)
+		checked[selected] = ' checked="checked"'
+	}
+
+	inner = paste0('
+<td align="center" style="padding-left: 5px; padding-right: 5px"><input type="radio" name="', inputId,'" value="',choices,'"',checked,'/></td>', collapse="\n")
+	return(inner)
+
+}
+
+
 quiz.ui = function(qu, solution=FALSE, add.check.btn=TRUE) {
   restore.point("quiz.ui")
   pli = lapply(seq_along(qu$parts), function(i) {
@@ -305,6 +471,7 @@ quiz.ui = function(qu, solution=FALSE, add.check.btn=TRUE) {
 }
 
 quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {
+  restore.point("quiz.part.ui")
   head = list(
     HTML(part$question)
   )
@@ -425,3 +592,14 @@ click.check.quiz = function(app=getApp(), qu, quiz.handler=NULL, formValues, ...
   }
   solved
 }
+# 
+# quizRadioButtons = function(inputId, label, choices,...) {
+#   restore.point("quizeRadioButtons")
+#   choices = lapply(choices, function(choice) {
+#     choice = gsub(">","&gt;",choice,fixed = TRUE)
+#     choice = gsub("<","&lt;",choice, fixed = TRUE)
+#     choice
+#   })
+#   radioButtons(inputId, label, choices,...)
+#   
+# }

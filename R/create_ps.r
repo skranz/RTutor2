@@ -5,7 +5,7 @@ examples.create.ps = function() {
   file = "ex1.Rmd"
   ps = create.ps(file=file)
   app = rtutorApp(ps)
-  viewApp(app,launch.browser = rstudio::viewer)
+  viewApp(app,launch.browser = rstudioapi::viewer)
 
   library(yaml)
   setwd("D:/libraries/RTutor2/examples/sporer")

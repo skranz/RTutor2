@@ -43,8 +43,18 @@ rtutor.parse.widget = function(bi, ps, opts=ps$opts) {
   args = parse.block.args(arg.str = br$arg.str)
   if (!is.null(args$name)) ps$bdf$name[[bi]] = args$name
   
-  use.clicker = !is.null(Wid[["clicker"]]) & isTRUE(opts$use.clicker) & !is.null(opts[["courseid"]]) & !is.null(opts[["clicker.dir"]])
+  use.clicker = !is.null(Wid[["clicker"]]) & isTRUE(opts$use.clicker)
   
+  # if (use.clicker & is.null(opts[["courseid"]])) {
+  #   use.clicker = FALSE
+  #   cat("\nClicker cannot be used since no 'courseid' is specified in the settings.")
+  # }
+  # if (use.clicker & is.null(opts[["clicker.dir"]])) {
+  #   use.clicker = FALSE
+  #   cat("\nClicker cannot be used since no 'clicker.dir' is specified in the settings.")
+  # }
+  
+    
   if (use.clicker) {
     library(RTutorClicker)
     wid = call.fun(Wid$clicker$parse.fun,
