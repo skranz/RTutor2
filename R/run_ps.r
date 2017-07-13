@@ -53,8 +53,12 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   app = eventsApp()
   setAppHasBottomScript(TRUE, app=app)
 
-  if (!is.null(ps$figure.web.dir))
-    addResourcePath(ps$figure.web.dir,figure.dir)
+  if (!is.null(ps$figure.web.dir)) {
+    if (!dir.exists(ps$figure.web.dir)) {
+      try(dir.create(ps$figure.web.dir))
+    }
+    try(addResourcePath(ps$figure.web.dir,figure.dir))
+  }
 
   #shiny::addResourcePath(prefix = "shinyAce", directoryPath = system.file("www", package = "shinyAce"))
   #shinyAce:::initResourcePaths()
