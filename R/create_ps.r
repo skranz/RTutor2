@@ -58,7 +58,7 @@ create.ps = function(...) {
 #' @param rps.has.sol shall the sample solution be stored in the .rps file. Set this option to FALSE if you use problem sets in courses and don't want to assess students the sample solution easily
 #' @param use.memoise shall functions like read.csv be memoised? Data sets then only have to be loaded once. This can make problem sets run faster. Debugging may be more complicated, however.
 #' @export
-armd.to.ps = function(am,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", figure.web.dir = "figure", filter.line=NULL, filter.type="auto", check.old.rtutor.sol=TRUE, plugins=am$opts$plugins, ...) {
+armd.to.ps = function(am,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir), figure.sub.dir = "figure", figure.web.dir = "figure", filter.line=NULL, filter.type="auto", check.old.rtutor.sol=TRUE, plugins=am$opts$plugins, write.ps.rmd=TRUE, copy.into.global.env=TRUE, ...) {
   restore.point("armd.to.ps")
   library(armd)
 
@@ -92,11 +92,15 @@ armd.to.ps = function(am,dir=getwd(), figure.dir=paste0(dir,"/",figure.sub.dir),
   remove.existing.ups(ps.name=ps$ps.name, dir=dir)
   ps$rps.time.stamp = Sys.time()
   write.rps(ps=ps,dir=dir)
-  write.ps.rmd(ps)
+  if (write.ps.rmd)
+    write.ps.rmd(ps)
 
-  # copy into global env for convenience
-  copy.into.env(ps$pre.env,dest = .GlobalEnv)
-  copy.into.env(ps$env,dest = .GlobalEnv)
+  
+  # copy pre.env and env into global env for convenience
+  if (copy.into.global.env) {
+    copy.into.env(ps$pre.env,dest = .GlobalEnv)
+    copy.into.env(ps$env,dest = .GlobalEnv)
+  }
 
   ps
 }

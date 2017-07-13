@@ -173,7 +173,12 @@ get.ts = function(task.ind=ps$task.ind, app=getApp(), ps=get.ps(), bi=NULL) {
   
   if (!is.null(bi)) task.ind = ps$bdf$task.ind[bi]
   if (is.null(task.ind)) return(NULL)
-  ps$task.states[[task.ind]]
+  
+  # There is a weird error here. So I put it into the
+  # try case...
+  res = try(ps$task.states[[task.ind]])
+  if (is(res,"try-error")) return(NULL)
+  res
 }
 
 set.ts = function(task.ind,ts, app=getApp(),ps=get.ps()) {
@@ -292,7 +297,7 @@ call.task.listeners = function(ts, ps = get.ps()) {
   if (length(tl)==0) return()
   for (bi in tl) {
     Wid = get.Widget(bi=bi)
-    Wid$listener.handler(target.ts=ts, target.wid=ts$wid, target.bi=ts$bi, ts=ts, bi=bi)
+    do.call(Wid$listener.handler, list(target.ts=ts, target.wid=ts$wid, target.bi=ts$bi, ts=ts, bi=bi))
   }
 }
 

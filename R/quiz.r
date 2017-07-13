@@ -52,7 +52,7 @@ viewApp(app)
 
 rtutor.widget.quiz = function() {
   list(
-    clicker = rtutor.clicker.widget.quiz(),
+    #clicker = rtutor.clicker.widget.quiz(),
     is.task = TRUE,
     parse.fun = rtutor.quiz.block.parse,
     make.org.task.state = rtutor.quiz.make.org.task.state,
