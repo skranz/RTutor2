@@ -1,13 +1,13 @@
-with.mathjax = function (..., config="TeX-AMS_HTML") 
-{
-    path <- paste0("https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=",config)
-    
-    tagList(
-      tags$head(
-        singleton(tags$script(src = path, class="mathjax_load", type = "text/javascript"))
-      ),
-        ..., tags$script(class="mathjax_typeset",HTML("MathJax.Hub.Queue([\"Typeset\", MathJax.Hub]);")))
-}
+# with.mathjax = function (..., config="TeX-AMS_HTML") 
+# {
+#     path <- paste0("https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=",config)
+#     
+#     tagList(
+#       tags$head(
+#         singleton(tags$script(src = path, class="mathjax_load", type = "text/javascript"))
+#       ),
+#         ..., tags$script(class="mathjax_typeset",HTML("MathJax.Hub.Queue([\"Typeset\", MathJax.Hub]);")))
+# }
 
 mathjax.to.offline = function(container.id=NULL, use.button=TRUE) {
   
