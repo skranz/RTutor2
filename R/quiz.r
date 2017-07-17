@@ -332,9 +332,8 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
   cols = part$cols
   
   part$row.has.answers = row.has.answers = all(has.substr(rows,"|"))
-  col.has.answers = all(has.substr(rows,"|"))
-  if (!row.has.answers & ! col.has.answers) {
-    stop("You must specify the answers after a |")
+  if (!row.has.answers) {
+    stop("You must specify the answers after a | in the rows.")
   }
   if (row.has.answers) {
     answers = str.right.of(rows,"|")
@@ -391,7 +390,8 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
   } else {
     part$type = "grid_sc"
   }
-
+  part$choices = part$cols
+  
   if (is.null(part$points)) {
     part$points = 1
   }
