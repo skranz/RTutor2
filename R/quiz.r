@@ -345,6 +345,7 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
   answers = lapply(answers, function(answer)
     str.trim(strsplit(answer,",", fixed=TRUE))
   )
+  part$answers = answers
   if (is.null(part$multiple)) {
     len.answers = sapply(answers, length)
     part$multiple = !all(len.answers==1)
