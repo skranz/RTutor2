@@ -385,6 +385,12 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
   
   part$ui = quiz.grid.part.ui(part,add.button = add.check.btn & !is.null(part$checkBtnId))
   part$solved = FALSE
+  
+  if (part$multiple) {
+    part$type = "grid_mc"
+  } else {
+    part$type = "grid_sc"
+  }
 
   if (is.null(part$points)) {
     part$points = 1
@@ -410,7 +416,7 @@ quiz.grid.part.ui = function(part, solution=FALSE, add.button=!is.null(part$chec
       gridRowRadioButtons(ids[row], choices = part$cols, selected=NA)
     }
   })
-  rows = paste0('<tr id="',ids,'" class="shiny-input-radiogroup shiny-input-container"><tr><td>',part$rows,"</td>",inner,'</tr>')
+  rows = paste0('<tr id="',ids,'" class="shiny-input-radiogroup shiny-input-container"><td>',part$rows,"</td>",inner,'</tr>')
   tab = paste0('<table class="rowRadioTable"><tr><td></td>',paste0("<td style='text-align: center; padding-left: 5px; padding-right: 5px'>",part$cols,"</td>", collapse=""),"</tr>" ,paste0(rows,collapse=""),'</table>')
   
   if (add.button) {
