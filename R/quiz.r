@@ -273,7 +273,7 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   if (is.null(part[["points"]])) {
     part$points = 1
   }
-  part$question = md2html(replace.whiskers(part$question,values=whiskers))
+  part$question.html = md2html(replace.whiskers(part$question,values=whiskers))
 
   if (!is.null(part$explain))
     part$success = paste0(part$success,"\n\n", part$explain)
@@ -354,7 +354,7 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
   if (is.null(part[["points"]])) {
     part$points = 1
   }
-  part$question = md2html(replace.whiskers(part$question,values=whiskers))
+  part$question.html = md2html(replace.whiskers(part$question,values=whiskers))
 
   if (!is.null(part$explain))
     part$success = paste0(part$success,"\n\n", part$explain)
@@ -404,7 +404,7 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
 quiz.grid.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {
   restore.point("quiz.grid.part.ui")
   head = list(
-    HTML(part$question)
+    HTML(part$question.html)
   )
   
   
@@ -480,7 +480,7 @@ quiz.ui = function(qu, solution=FALSE, add.check.btn=TRUE) {
 quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {
   restore.point("quiz.part.ui")
   head = list(
-    HTML(part$question)
+    HTML(part$question.html)
   )
   if (solution) {
     if (part$type=="numeric") {
