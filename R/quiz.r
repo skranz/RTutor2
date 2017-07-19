@@ -634,6 +634,8 @@ examples.list.string.to.vector = function() {
 
 list.string.to.vector = function(str,split=",", class="numeric", fixed=TRUE) {
   restore.point("list.string.to.vector")
+  if (length(str)==0) return(NULL)
+  if (nchar(str)==0) return(NULL)
   vec = str.trim(unlist(strsplit(str,split = split, fixed=fixed)))
   as(vec,class)
 }

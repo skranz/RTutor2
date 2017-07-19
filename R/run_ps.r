@@ -105,6 +105,7 @@ slidesApp = function(ps,user.name = "John Doe", nick=user.name, start.slide=firs
   appInitHandler(app=app,function(app,...) {
     restore.point("slidesApp.appInitHandler")
     ps = init.ps.session(ps=ps,user.name=user.name, nick=nick,app=app)
+    init.slide.plugin.handlers(ps=ps)
     ps$slide.ind = start.slide
     app$ps = ps 
     init.ps.handlers(ps)

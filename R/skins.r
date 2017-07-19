@@ -44,7 +44,9 @@ rtutor.slides.ui = function(ps = NULL, add.page=TRUE, start.slide = first.non.nu
     css,
     mcss,
     #tags$style("table { max-width: 100%;}"),
+    
     div(id="maindiv",
+      div(id="slidePluginPanel", style="display: none", slides.plugins.ui(ps=ps)),
       content.ui
     ),
     tags$script(class="remove_offline_print",

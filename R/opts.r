@@ -4,7 +4,7 @@ default.ps.opts = function(
   
   rmd.modes = c("rmd","tex","shown","sol"),
   plugins = c("stats","export","dataexplorer"),
-  # slides
+   # slides
   slides = identical(ps.type,"slides"),
   slide.type = "frame",
   # menu
@@ -69,6 +69,8 @@ default.ps.opts = function(
   
   use.clicker = FALSE,
   clicker.stop.in = 5,
+  slide.plugins = if (use.clicker) "custom.clicker" else c(),
+  
   ...
 ) {
   args = c(as.list(environment()),list(...))
