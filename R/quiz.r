@@ -199,6 +199,7 @@ shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, block
   if (is.null(qu[["id"]])) {
     qu$id = id
   }
+  
   if (is.null(qu$parts)) {
     qu$parts = list(qu)
   }
@@ -219,6 +220,9 @@ shinyQuiz = function(id=paste0("quiz_",sample.int(10e10,1)),qu=NULL, yaml, block
 
   if (add.handler)
     add.quiz.handlers(qu, quiz.handler)
+  
+  qu$type = "quiz"
+  
   qu
 }
 
@@ -243,12 +247,24 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
 
 
   if (!is.null(part$choices)) {
-    correct.choices = which(str.ends.with(part$choices,"*"))
+    if (!is.null(part[["answer.ind"]])) {
+      if (is.character(part$answer.ind)) {
+        part$answer.ind = list.string.to.vector(part$answer.ind,class="integer")
+      }
+      correct.choices = part$answer.ind
+    } else {
+      correct.choices = which(str.ends.with(part$choices,"*"))
+      part$choices[correct.choices] = str.remove.ends(part$choices[correct.choices],right=1)
+    }
+    
     if (is.null(part$multiple)) {
       part$multiple = length(correct.choices) != 1
     }
+    
+    
     part$correct.choices = correct.choices
-    part$choices[correct.choices] = str.remove.ends(part$choices[correct.choices],right=1)
+    
+    
     
     part$choices = lapply(part$choices, replace.whiskers,values=whiskers)
     
@@ -610,3 +626,14 @@ click.check.quiz = function(app=getApp(), qu, quiz.handler=NULL, formValues, ...
 #   radioButtons(inputId, label, choices,...)
 #   
 # }
+
+examples.list.string.to.vector = function() {
+  list.string.to.vector("1,3", class="integer")
+  as("1","numeric")
+}
+
+list.string.to.vector = function(str,split=",", class="numeric", fixed=TRUE) {
+  restore.point("list.string.to.vector")
+  vec = str.trim(unlist(strsplit(str,split = split, fixed=fixed)))
+  as(vec,class)
+}
