@@ -78,7 +78,7 @@ initRTutorApp = function(ps, catch.errors = TRUE, offline=FALSE, use.mathjax = !
   ps$opts$catch.errors = catch.errors
   ps$given.awards.bi = NULL
   
-  load.ps.libs(ps$opts$libs)
+  load.ps.libs(ps$opts$libs,need.all.libs=!isTRUE(ps$opts$need.all.libs==FALSE))
   
   set.rt.opts(ps$opts)
   

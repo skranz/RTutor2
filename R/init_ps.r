@@ -36,7 +36,7 @@ init.rmd.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = past
   ps$stud.short.file = stud.short.file
   ps$log.file = log.file
     
-  load.ps.libs(ps$opts$libs)
+  load.ps.libs(ps$opts$libs, need.all.libs=!isTRUE(ps$opts$need.all.libs==FALSE))
 
   if (isTRUE(ps$opts$use.memoise)) {
     copy.into.env(dest=ps$init.env, source=ps$memoise.fun.li)
@@ -54,18 +54,33 @@ init.rmd.ps = function(ps.name,user.name="", dir=getwd(), stud.short.file = past
   return(ps)
 }
 
-load.ps.libs = function(libs) {
+
+load.ps.libs = function(libs, verbose=FALSE, need.all.libs=TRUE) {
   if (length(libs)==0)
     return()
+  num.missing = 0
   for (i in seq_along(libs)) {
     lib = libs[i]
-    display("load package ", lib, "...")
+    if (verbose)
+      display("load package ", lib, "...")
     ret = suppressWarnings(require(lib, quietly=TRUE, warn.conflicts =FALSE,character.only=TRUE))
     if (!ret) {
-      stop(paste0("Please install the package '", lib,
-                  "', which is required to solve this problem set."))
+      if (need.all.libs) {
+        stop(paste0("Please install the required package '", lib,"'."))
+      } else {
+        num.missing = num.missing+1
+        warning(paste0("Warning could not find package '", lib,"'."))
+      }
     }
-    display("... all required packages loaded.")
+    if (verbose) {
+      if (num.missing==0) {
+        display("... all required packages loaded.")
+      } else {
+        display(num.missing, " required packages were not found.")
+      }
+    }
+
   }
 }
+
 
