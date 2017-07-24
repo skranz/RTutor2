@@ -180,15 +180,6 @@ rtutor.html.ressources = function() {
     tags$head(tags$link(rel = 'stylesheet', type = 'text/css',href = 'highlightjs/styles/mycode.css')),
     tags$head(tags$script(src = 'highlightjs/highlight.min.js',type = 'text/javascript')),
     tags$head(tags$script(src = 'highlightjs/languages/r.min.js',type = 'text/javascript'))
-    #tags$head(tags$script(src = 'highlightjs/highlight.pack.js',type = 'text/javascript')),
-    #tags$head(tags$script("hljs.initHighlightingOnLoad();"))
-    
-#     HTML('
-#     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/styles/default.min.css">
-# <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/highlight.min.js"></script>
-# <script>hljs.initHighlightingOnLoad();</script>
-#    ')
-    
   )
 }
 
