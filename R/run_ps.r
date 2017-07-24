@@ -342,18 +342,3 @@ set.slide = function(slide.ind = ps$slide.ind, ps=app$ps,app=getApp(),use.mathja
 }
 
 
-
-load.ps.libs = function(libs) {
-  if (length(libs)==0)
-    return()
-  for (i in seq_along(libs)) {
-    lib = libs[i]
-    display("load package ", lib, "...")
-    ret = suppressWarnings(require(lib, quietly=TRUE, warn.conflicts =FALSE,character.only=TRUE))
-    if (!ret) {
-      stop(paste0("Please install the package '", lib,
-                  "', which is required to solve this problem set."))
-    }
-    display("... all required packages loaded.")
-  }
-}
