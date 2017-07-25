@@ -41,6 +41,8 @@ rtutor.slides.ui = function(ps = NULL, add.page=TRUE, start.slide = first.non.nu
     singleton(tags$head(tags$script(src = 'highlightjs/highlight.min.js',class="remove_offline", type = 'text/javascript'))),
     singleton(tags$head(tags$script(src = 'highlightjs/languages/r.min.js', class="remove_offline",type = 'text/javascript'))),
     head,
+    ps$dependencies,
+    ps$header.tags,
     css,
     mcss,
     #tags$style("table { max-width: 100%;}"),
@@ -170,6 +172,8 @@ center: {
 
   ui = tagList(
     head,
+    ps$dependencies,
+    ps$header.tags,
     resTags,
     css,
     bootstrapPage(
