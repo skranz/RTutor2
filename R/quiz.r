@@ -287,7 +287,13 @@ init.quiz.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaults=qu
   }
 
   if (is.null(part[["points"]])) {
-    part$points = 1
+    if (part$type == "sc") {
+      part$points = 2
+    } else if (part$type == "mc") {
+      part$points = 0.5*length(part$choices)
+    } else {
+      part$points = 2
+    }
   }
   part$question.html = md2html(replace.whiskers(part$question,values=whiskers))
 
@@ -368,8 +374,10 @@ init.quiz.grid.part = function(part=qu$parts[[part.ind]], part.ind=1, qu, defaul
   }
 
   if (is.null(part[["points"]])) {
-    part$points = 1
+    part$points = 1*length(part$rows)
   }
+  
+  
   part$question.html = md2html(replace.whiskers(part$question,values=whiskers))
 
   if (!is.null(part$explain))
@@ -490,7 +498,7 @@ quiz.ui = function(qu, solution=FALSE, add.check.btn=TRUE) {
     pli = c(pli, list(submitButton(qu$checkBtnId,label = "check",form.ids = ids),br()))
   }
 
-  with.mathjax(pli)
+  with.mathjax(div(class="quiz_div",pli))
 }
 
 quiz.part.ui = function(part, solution=FALSE, add.button=!is.null(part$checkBtnId)) {
