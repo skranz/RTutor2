@@ -44,7 +44,7 @@ init.ups = function(user.name=ps$user.name, nick=user.name, user.id=user.name, p
     return(ups)
   }
   
-  utt = data_frame(
+  utt = fast_df(
     was.solved = rep(FALSE,n),
     points = 0L,
     score = 0,

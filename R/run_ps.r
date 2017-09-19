@@ -31,7 +31,7 @@ init.ps.session = function(ps, user.name, nick=user.name, app=getApp(), rendered
     rendered = rep(rendered,length.out=n)
     hidden = rep(hidden,length.out=n)
     hidden[ps$bdf$type %in% ps$hidden.container.types] = TRUE
-    ps$cont.state = data_frame(
+    ps$cont.state = fast_df(
       rendered = rendered,
       hidden = TRUE
     )

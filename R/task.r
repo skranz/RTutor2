@@ -147,7 +147,7 @@ create.ps.tasks = function(ps, opts=rt.opts()) {
     match(req.bi,bi)
   })
   
-  task.table = data_frame(
+  task.table = fast_df(
     task.ind = task.ind,
     bi = bi,
     task.line = ps$bdf$task.line[bi],
@@ -236,8 +236,9 @@ init.task.state = function(org.ts,obj=NULL, ups=get.ups(), opts=rt.opts(), ps=ge
     restore.point("init.task.state.widget")
     ts = as.environment(as.list(org.ts))
     Widget = ps$Widgets[[ts$stype]]
-    
-    ts = Widget$init.task.state(ts, ups=ups,opts=opts)
+    if (!is.null(Widget[["init.task.state"]])) {
+      ts = Widget$init.task.state(ts, ups=ups,opts=opts)
+    }
   }
   return(ts)
 }

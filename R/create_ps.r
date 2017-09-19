@@ -191,7 +191,7 @@ create.ps.rmc = function(ps) {
   })
 
 
-  rmc = data_frame(chunk.ind = seq_along(task.ind), bi, task.ind, task.line = ps$task.table$task.line[task.ind], chunk.name = ps$bdf$name[bi], shown.code = shown.code, all.required=vector("list", length(task.ind)))
+  rmc = fast_df(chunk.ind = seq_along(task.ind), bi=bi, task.ind=task.ind, task.line = ps$task.table$task.line[task.ind], chunk.name = ps$bdf$name[bi], shown.code = shown.code, all.required=vector("list", length(task.ind)))
   ps$rmc = rmc
 
   for (r in seq_len(NROW(rmc))[-1]) {
